@@ -11,15 +11,18 @@
         <!-- TABS -->
         <div class="bg-gray-50 px-6 py-2 border-b border-gray-200 flex space-x-4">
             <a href="{{ route('invoices.ready') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.ready') ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-200' }}">Ready
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.ready') ? 'bg-green-100 text-green-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Ready
                 to Invoice</a>
             <a href="{{ route('invoices.index') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.index') ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-200' }}">Invoices</a>
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.index') ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Invoices</a>
+            <a href="{{ route('invoices.proforma') }}"
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.proforma') ? 'bg-purple-100 text-purple-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Proforma
+                Invoices</a>
             <a href="{{ route('invoices.invoiced') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.invoiced') ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-200' }}">Invoiced
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.invoiced') ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Invoiced
                 Estimates</a>
             <a href="{{ route('invoices.rejected') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.rejected') ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-200' }}">Rejected
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.rejected') ? 'bg-red-100 text-red-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Rejected
                 Invoices</a>
         </div>
 
@@ -81,10 +84,16 @@
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 ${{ number_format($estimate->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
-                                <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
-                                    onsubmit="return confirm('Convert to Invoice?');">@csrf <button type="submit"
-                                        class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs shadow-sm"><i
-                                            class="fas fa-file-invoice-dollar mr-1"></i> Convert</button></form>
+                                <a href="{{ route('estimates.show', $estimate) }}"
+                                    class="text-brand-blue hover:text-brand-purple mr-3" title="View Estimate">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                @if(auth()->user()->role === 'Super Admin')
+                                    <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
+                                        onsubmit="return confirm('Convert to Invoice?');">@csrf <button type="submit"
+                                            class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs shadow-sm"><i
+                                                class="fas fa-file-invoice-dollar mr-1"></i> Convert</button></form>
+                                @endif
                             </td>
                         </tr>
                     @empty

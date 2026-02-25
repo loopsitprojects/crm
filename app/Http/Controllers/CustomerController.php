@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Customer;
+use App\Traits\LogsActivity;
 
 class CustomerController extends Controller
 {
+    use LogsActivity;
+
     /**
      * Display a listing of the resource.
      */
@@ -49,9 +52,66 @@ class CustomerController extends Controller
             'approved_credit_limit' => 'nullable|numeric|min:0',
         ]);
 
-        Customer::create($validated);
+        $customer = Customer::create($validated);
+        $this->logAction("Created customer: {$customer->name}", $customer);
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(string $id)
+    {
+        //
+    }
+
+    // Admin Review Methods
+    public function reviewRequest($requestId)
+    {
+        $request = \App\Models\CustomerUpdateRequest::with(['customer', 'user'])->findOrFail($requestId);
+        return view('customers.review', compact('request'));
+    }
+
+    public function approveRequest($requestId)
+    {
+        $request = \App\Models\CustomerUpdateRequest::findOrFail($requestId);
+
+        if ($request->status !== 'pending') {
+            return back()->with('error', 'Request already processed.');
+        }
+
+        $customer = $request->customer;
+        $customer->update($request->data);
+
+        $request->update(['status' => 'approved']);
+        $this->logAction("Approved customer update for: {$customer->name}", $customer);
+
+        // Notify User
+        if ($request->user) {
+            $request->user->notify(new \App\Notifications\CustomerUpdateResultNotification($request, 'approved'));
+        }
+
+        return redirect()->route('customers.index')->with('success', 'Customer update approved and applied.');
+    }
+
+    public function rejectRequest($requestId)
+    {
+        $request = \App\Models\CustomerUpdateRequest::findOrFail($requestId);
+
+        if ($request->status !== 'pending') {
+            return back()->with('error', 'Request already processed.');
+        }
+
+        $request->update(['status' => 'rejected']);
+        $this->logAction("Rejected customer update for: {$request->customer->name}", $request->customer);
+
+        // Notify User
+        if ($request->user) {
+            $request->user->notify(new \App\Notifications\CustomerUpdateResultNotification($request, 'rejected'));
+        }
+
+        return redirect()->route('customers.index')->with('success', 'Customer update rejected.');
     }
 
     /**
@@ -65,9 +125,11 @@ class CustomerController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
+
     public function edit(string $id)
     {
-        //
+        $customer = Customer::findOrFail($id);
+        return view('customers.edit', compact('customer'));
     }
 
     /**
@@ -75,14 +137,54 @@ class CustomerController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
-    }
+        $customer = Customer::findOrFail($id);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:customers,email,' . $customer->id,
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'billing_address' => 'nullable|string',
+            'telephone' => 'nullable|string|max:20',
+            'fax' => 'nullable|string|max:20',
+            'business_registration_number' => 'nullable|string|max:255',
+            'primary_contact_name' => 'nullable|string|max:255',
+            'primary_contact_designation' => 'nullable|string|max:255',
+            'primary_contact_mobile' => 'nullable|string|max:20',
+            'primary_contact_office' => 'nullable|string|max:255',
+            'primary_contact_email' => 'nullable|email|max:255',
+            'promo_contact_name' => 'nullable|string|max:255',
+            'promo_contact_designation' => 'nullable|string|max:255',
+            'promo_contact_mobile' => 'nullable|string|max:20',
+            'promo_contact_office' => 'nullable|string|max:255',
+            'promo_contact_email' => 'nullable|email|max:255',
+            'customer_tax_number' => 'nullable|string|max:255',
+            'customer_vat_registration_number' => 'nullable|string|max:255',
+            'customer_suspended_vat_registration_number' => 'nullable|string|max:255',
+            'approved_credit_period' => 'nullable|string|max:255',
+            'approved_credit_limit' => 'nullable|numeric|min:0',
+        ]);
+
+        if (auth()->user()->role === 'Super Admin') {
+            $customer->update($validated);
+            $this->logAction("Updated customer: {$customer->name}", $customer);
+            return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
+        } else {
+            // Create Update Request
+            $updateRequest = \App\Models\CustomerUpdateRequest::create([
+                'customer_id' => $customer->id,
+                'user_id' => auth()->id(),
+                'data' => $validated,
+                'status' => 'pending'
+            ]);
+
+            // Notify Super Admin
+            $admins = \App\Models\User::where('role', 'Super Admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\CustomerUpdateNotification($updateRequest));
+            }
+
+            return redirect()->route('customers.index')->with('success', 'Update requested successfully. Waiting for Admin approval.');
+        }
     }
 }

@@ -9,9 +9,12 @@ use App\Models\Invoice;
 use App\Models\Setting;
 use App\Models\StandardTerm;
 use App\Models\SystemCurrency;
+use App\Traits\LogsActivity;
 
 class EstimateController extends Controller
 {
+    use LogsActivity;
+
     /**
      * Display a listing of the resource.
      */
@@ -128,6 +131,7 @@ class EstimateController extends Controller
         }
 
         $estimate->update(['total_amount' => $grandTotal]);
+        $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
     }
@@ -135,22 +139,36 @@ class EstimateController extends Controller
     public function markAsAccepted(Estimate $estimate)
     {
         $estimate->update(['status' => 'accepted']);
+        $this->logAction("Accepted estimate: {$estimate->reference_number}", $estimate);
         return back()->with('success', 'Estimate marked as accepted.');
     }
 
     public function markAsRejected(Estimate $estimate)
     {
         $estimate->update(['status' => 'rejected']);
+        $this->logAction("Rejected estimate: {$estimate->reference_number}", $estimate);
         return back()->with('success', 'Estimate marked as rejected.');
     }
 
     public function updateStatus(Request $request, Estimate $estimate)
     {
+        $user = auth()->user();
+        $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
+
+        // Define allowed statuses
+        $allowedStatuses = 'draft,approved,accepted,rejected,invoiced,ready_to_invoice';
+
+        // If restricted, they can ONLY set status to ready_to_invoice
+        if ($isRestricted && $request->status !== 'ready_to_invoice') {
+            return back()->with('error', 'You are only authorized to change status to Ready to Invoice.');
+        }
+
         $request->validate([
-            'status' => 'required|in:draft,approved,accepted,rejected,invoiced'
+            'status' => "required|in:$allowedStatuses"
         ]);
 
         $estimate->update(['status' => $request->status]);
+        $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate);
 
         $message = "Estimate status updated to " . ucfirst($request->status) . ".";
         return back()->with('success', $message);
@@ -158,8 +176,8 @@ class EstimateController extends Controller
 
     public function convertToInvoice(Estimate $estimate)
     {
-        if ($estimate->status !== 'accepted') {
-            return back()->with('error', 'Only accepted estimates can be invoiced.');
+        if (!in_array($estimate->status, ['accepted', 'ready_to_invoice'])) {
+            return back()->with('error', 'Only accepted/ready to invoice estimates can be invoiced.');
         }
 
         // Create Invoice
@@ -187,6 +205,7 @@ class EstimateController extends Controller
         }
 
         $estimate->update(['status' => 'invoiced']);
+        $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
 
         return redirect()->route('invoices.index')->with('success', 'Estimate converted to Invoice successfully.');
     }
@@ -209,6 +228,12 @@ class EstimateController extends Controller
     public function edit(string $id)
     {
         $estimate = Estimate::with('items')->findOrFail($id);
+
+        $user = auth()->user();
+        if (!in_array($user->role, ['Super Admin', 'Management']) && $estimate->status !== 'draft') {
+            abort(403, 'You can only edit Draft estimates.');
+        }
+
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
         $currencies = \App\Models\SystemCurrency::all();
@@ -223,6 +248,11 @@ class EstimateController extends Controller
     public function update(Request $request, string $id)
     {
         $estimate = Estimate::findOrFail($id);
+
+        $user = auth()->user();
+        if (!in_array($user->role, ['Super Admin', 'Management']) && $estimate->status !== 'draft') {
+            abort(403, 'You can only edit Draft estimates.');
+        }
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -296,6 +326,7 @@ class EstimateController extends Controller
         }
 
         $estimate->update(['total_amount' => $grandTotal]);
+        $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');
     }
@@ -305,8 +336,10 @@ class EstimateController extends Controller
      */
     public function destroy(Estimate $estimate)
     {
+        $ref = $estimate->reference_number;
         $estimate->items()->delete();
         $estimate->delete();
+        $this->logAction("Deleted estimate: {$ref}");
 
         return redirect()->route('estimates.index')->with('success', 'Estimate deleted successfully.');
     }

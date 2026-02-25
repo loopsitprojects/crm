@@ -28,17 +28,17 @@
                         <div class="w-10 h-10 bg-brand-blue/10 rounded-lg flex items-center justify-center mr-3">
                             <i class="fas fa-building text-brand-blue"></i>
                         </div>
-                        <h4 class="text-lg font-bold text-gray-800">Company Information</h4>
+                        <h4 class="text-lg font-bold text-gray-800">Customer Information</h4>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Name of Company <span class="text-red-500">*</span>
+                                Name of Customer <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="name" id="name" value="{{ old('name') }}" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
-                                placeholder="Name of Company">
+                                placeholder="Name of Customer">
                             @error('name') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>

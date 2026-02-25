@@ -175,14 +175,7 @@
                                                 <input type="text" name="items[{{ $index }}][locations]"
                                                     value="{{ $item->locations }}" placeholder="Loc"
                                                     class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                <select name="items[{{ $index }}][days]"
-                                                    class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                    <option value="">Day</option>
-                                                    @for($i = 1; $i <= 31; $i++)
-                                                        <option value="{{ $i }}" {{ $item->days == $i ? 'selected' : '' }}>{{ $i }}
-                                                        </option>
-                                                    @endfor
-                                                </select>
+
                                             </td>
                                             <td class="p-2 align-top text-center">
                                                 <button type="button" onclick="this.closest('tr').remove();"
@@ -225,15 +218,16 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Currency <span
                                         class="text-red-500">*</span></label>
-                                <select name="currency"
+                                <select name="currency" required
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm py-2">
+                                    <option value="">Select Currency</option>
                                     @if($currencies->isEmpty())
-                                        <option value="LKR" {{ $estimate->currency == 'LKR' ? 'selected' : '' }}>LKR (Rs)
-                                            (Default)</option>
+                                        <option value="LKR" {{ $estimate->currency == 'LKR' ? 'selected' : '' }}>LKR - Sri Lankan
+                                            Rupee (Rs)</option>
                                     @else
                                         @foreach($currencies as $currency)
                                             <option value="{{ $currency->code }}" {{ $estimate->currency == $currency->code ? 'selected' : '' }}>
-                                                {{ $currency->code }} ({{ $currency->symbol }})
+                                                {{ $currency->code }} - {{ $currency->name }} ({{ $currency->symbol }})
                                             </option>
                                         @endforeach
                                     @endif
@@ -365,41 +359,37 @@
             row.className = "group hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-                                                            <td class="p-2 align-top">
-                                                                <textarea name="items[${newIndex}][description]" rows="2" placeholder="Item Description" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent"></textarea>
-                                                            </td>
-                                                            <td class="p-2 align-top">
-                                                                <input type="number" name="items[${newIndex}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                            </td>
-                                                            <td class="p-2 align-top">
-                                                                <input type="number" step="0.01" name="items[${newIndex}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                            </td>
-                                                            <td class="p-2 align-top">
-                                                                <input type="number" step="0.01" name="items[${newIndex}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
-                                                            </td>
-                                                             <td class="p-2 align-top">
-                                                                 <div class="space-y-1">
-                                                                    <input type="text" readonly name="items[${newIndex}][sscl_amount]" placeholder="SSCL" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
-                                                                    <input type="text" readonly name="items[${newIndex}][vat_amount]" placeholder="VAT" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
-                                                                 </div>
-                                                            </td>
-                                                            <td class="p-2 align-top space-y-2">
-                                                                <select name="items[${newIndex}][item_heading]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                    <option value="">Head</option>
-                                                                    <option value="General">General</option>
-                                                                </select>
-                                                                <input type="text" name="items[${newIndex}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                 <select name="items[${newIndex}][days]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                        <option value="">Day</option>
-                                                                         ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-                                                                </select>
-                                                            </td>
-                                                            <td class="p-2 align-top text-center">
-                                                                <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
-                                                                    <i class="fas fa-trash-alt"></i>
-                                                                </button>
-                                                            </td>
-                                                        `;
+                                                                                    <td class="p-2 align-top">
+                                                                                        <textarea name="items[${newIndex}][description]" rows="2" placeholder="Item Description" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent"></textarea>
+                                                                                    </td>
+                                                                                    <td class="p-2 align-top">
+                                                                                        <input type="number" name="items[${newIndex}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                    </td>
+                                                                                    <td class="p-2 align-top">
+                                                                                        <input type="number" step="0.01" name="items[${newIndex}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                    </td>
+                                                                                    <td class="p-2 align-top">
+                                                                                        <input type="number" step="0.01" name="items[${newIndex}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
+                                                                                    </td>
+                                                                                     <td class="p-2 align-top">
+                                                                                         <div class="space-y-1">
+                                                                                            <input type="text" readonly name="items[${newIndex}][sscl_amount]" placeholder="SSCL" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
+                                                                                            <input type="text" readonly name="items[${newIndex}][vat_amount]" placeholder="VAT" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
+                                                                                         </div>
+                                                                                    </td>
+                                                                                    <td class="p-2 align-top space-y-2">
+                                                                                        <select name="items[${newIndex}][item_heading]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
+                                                                                            <option value="">Head</option>
+                                                                                            <option value="General">General</option>
+                                                                                        </select>
+                                                                                        <input type="text" name="items[${newIndex}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
+                                                                                    </td>
+                                                                                    <td class="p-2 align-top text-center">
+                                                                                        <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                                                                                            <i class="fas fa-trash-alt"></i>
+                                                                                        </button>
+                                                                                    </td>
+                                                                                `;
 
             tbody.appendChild(row);
             // Trigger calc for initial state
@@ -415,10 +405,7 @@
             const qty = parseFloat(row.querySelector('input[name*="[quantity]"]').value) || 0;
             const price = parseFloat(row.querySelector('input[name*="[unit_price]"]').value) || 0;
 
-            const amount = qty * price;
-
-            // Update input value
-            row.querySelector('input[name*="[amount]"]').value = amount.toFixed(2);
+            const baseAmount = qty * price;
 
             const ssclApplicable = document.getElementById('sscl_applicable').checked;
             const vatApplicable = document.getElementById('vat_applicable').checked;
@@ -426,8 +413,13 @@
             let sscl = 0;
             let vat = 0;
 
-            if (ssclApplicable) sscl = amount * ssclRate;
-            if (vatApplicable) vat = (amount + sscl) * vatRate;
+            if (ssclApplicable) sscl = baseAmount * ssclRate;
+            if (vatApplicable) vat = (baseAmount + sscl) * vatRate;
+
+            const totalWithTaxes = baseAmount + sscl + vat;
+
+            // Update the amount input to show the total including taxes
+            row.querySelector('input[name*="[amount]"]').value = totalWithTaxes.toFixed(2);
 
             const ssclInput = row.querySelector('input[name*="[sscl_amount]"]');
             const vatInput = row.querySelector('input[name*="[vat_amount]"]');
@@ -459,10 +451,10 @@
             div.className = "flex justify-between items-start bg-gray-50 p-2 rounded border border-gray-200 text-sm";
             div.id = id;
             div.innerHTML = `
-                                            <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
-                                            <input type="hidden" name="terms[]" value="${content}">
-                                            <button type="button" onclick="document.getElementById('${id}').remove()" class="text-red-400 hover:text-red-600 focus:outline-none"><i class="fas fa-times"></i></button>
-                                        `;
+                                                                <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
+                                                                <input type="hidden" name="terms[]" value="${content}">
+                                                                <button type="button" onclick="document.getElementById('${id}').remove()" class="text-red-400 hover:text-red-600 focus:outline-none"><i class="fas fa-times"></i></button>
+                                                            `;
             container.appendChild(div);
         }
 

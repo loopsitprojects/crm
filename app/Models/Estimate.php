@@ -10,6 +10,7 @@ class Estimate extends Model
 
     protected $fillable = [
         'customer_id',
+        'deal_id',
         'reference_number',
         'date',
         'total_amount',
@@ -44,5 +45,10 @@ class Estimate extends Model
     public function items()
     {
         return $this->hasMany(EstimateItem::class, 'quotation_id');
+    }
+
+    public function deal()
+    {
+        return $this->belongsTo(Deal::class);
     }
 }

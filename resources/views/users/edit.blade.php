@@ -58,6 +58,23 @@
                     @error('supervisor_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
                 </div>
 
+                <div>
+                    <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
+                    <select name="department" id="department" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                        <option value="">-- Select Department --</option>
+                        <option value="creative" {{ old('department', $user->department) == 'creative' ? 'selected' : '' }}>
+                            Creative</option>
+                        <option value="digital" {{ old('department', $user->department) == 'digital' ? 'selected' : '' }}>
+                            Digital</option>
+                        <option value="play" {{ old('department', $user->department) == 'play' ? 'selected' : '' }}>Play
+                        </option>
+                        <option value="tech" {{ old('department', $user->department) == 'tech' ? 'selected' : '' }}>Tech
+                        </option>
+                    </select>
+                    @error('department') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                </div>
+
                 <div class="bg-blue-50 p-4 rounded-md mb-4 border-l-4 border-brand-blue">
                     <p class="text-xs text-blue-700 font-medium">Leave password fields blank if you don't want to change the
                         password.</p>

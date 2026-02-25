@@ -9,6 +9,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DealController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\JobController;
 
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.post');
@@ -16,6 +19,8 @@ Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export', [ReportController::class, 'exportCsv'])->name('reports.export');
     Route::get('/', function () {
         return redirect()->route('dashboard');
     });
@@ -28,7 +33,13 @@ Route::middleware(['auth'])->group(function () {
     // Deals
     Route::get('/deals', [DealController::class, 'index'])->name('deals.index');
     Route::post('/deals', [DealController::class, 'store'])->name('deals.store');
+    Route::put('/deals/{deal}', [DealController::class, 'update'])->name('deals.update');
+    Route::get('/deals/{deal}/delete', [DealController::class, 'destroy'])->name('deals.destroy.get');
+    Route::delete('/deals/{deal}', [DealController::class, 'destroy'])->name('deals.destroy');
     Route::post('/deals/{deal}/stage', [DealController::class, 'updateStage'])->name('deals.updateStage');
+
+    // Jobs
+    Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
 
     Route::resource('estimates', EstimateController::class);
     Route::post('estimates/{estimate}/accept', [EstimateController::class, 'markAsAccepted'])->name('estimates.accept');
@@ -43,11 +54,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('invoices/invoiced', [InvoiceController::class, 'invoiced'])->name('invoices.invoiced');
     Route::get('invoices/rejected', [InvoiceController::class, 'rejected'])->name('invoices.rejected');
     Route::get('invoices/proforma', [InvoiceController::class, 'proforma'])->name('invoices.proforma');
+    Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
+    Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
     Route::resource('invoices', InvoiceController::class);
 
     // Super Admin Only Routes
     Route::middleware(['role:Super Admin'])->group(function () {
+        Route::get('activities', [ActivityController::class, 'index'])->name('activities.index');
+        Route::get('users/download-sample', [UserController::class, 'downloadSample'])->name('users.download-sample');
+        Route::post('users/import', [UserController::class, 'import'])->name('users.import');
         Route::resource('users', UserController::class);
+
+        // Customer Requests
+        Route::get('customers/requests/{request}', [CustomerController::class, 'reviewRequest'])->name('customers.requests.review');
+        Route::post('customers/requests/{request}/approve', [CustomerController::class, 'approveRequest'])->name('customers.requests.approve');
+        Route::post('customers/requests/{request}/reject', [CustomerController::class, 'rejectRequest'])->name('customers.requests.reject');
 
         // Settings
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');

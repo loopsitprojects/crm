@@ -102,6 +102,25 @@
                             @error('supervisor_id') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
+
+                        <div>
+                            <label for="department" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-building text-brand-purple mr-2"></i>Department <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <select name="department" id="department" required
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
+                                <option value="">-- Select Department --</option>
+                                <option value="creative" {{ old('department') == 'creative' ? 'selected' : '' }}>Creative
+                                </option>
+                                <option value="digital" {{ old('department') == 'digital' ? 'selected' : '' }}>Digital
+                                </option>
+                                <option value="play" {{ old('department') == 'play' ? 'selected' : '' }}>Play</option>
+                                <option value="tech" {{ old('department') == 'tech' ? 'selected' : '' }}>Tech</option>
+                            </select>
+                            @error('department') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
                     </div>
                 </div>
 

@@ -66,6 +66,10 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($estimates as $estimate)
+                        @php
+                            $user = auth()->user();
+                            $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
+                        @endphp
                         <tr>
                             <td class="px-6 py-4 white-space-nowrap text-sm font-medium text-gray-900">
                                 {{ $estimate->reference_number }}
@@ -75,28 +79,47 @@
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 ${{ number_format($estimate->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap">
-                                <form action="{{ route('estimates.updateStatus', $estimate) }}" method="POST">
-                                    @csrf
-                                    <select name="status" onchange="this.form.submit()" class="text-xs font-semibold rounded-full px-2 py-1 border-none focus:ring-0 cursor-pointer w-full
-                                                @if($estimate->status == 'draft') bg-gray-100 text-gray-800
-                                                @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
-                                                @elseif($estimate->status == 'accepted') bg-green-100 text-green-800
-                                                @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
-                                                @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
-                                                @endif">
-                                        <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
-                                        </option>
-                                        <option value="approved" {{ $estimate->status == 'approved' ? 'selected' : '' }}>Approved
-                                        </option>
-                                        <option value="rejected" {{ $estimate->status == 'rejected' ? 'selected' : '' }}>Rejected
-                                        </option>
-                                        <option value="accepted" {{ $estimate->status == 'accepted' ? 'selected' : '' }}>Ready to
-                                            Invoice</option>
-                                        @if($estimate->status == 'invoiced')
-                                            <option value="invoiced" selected disabled>Invoiced</option>
-                                        @endif
-                                    </select>
-                                </form>
+                                @if($isRestricted && $estimate->status != 'draft')
+                                    <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
+                                                                            @if($estimate->status == 'approved') bg-yellow-100 text-yellow-800
+                                                                            @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
+                                                                            @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
+                                                                            @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
+                                                                            @endif">
+                                        {{ $estimate->status == 'ready_to_invoice' ? 'Ready to Invoice' : ucfirst($estimate->status == 'accepted' ? 'Ready to Invoice (Old)' : $estimate->status) }}
+                                    </span>
+                                @else
+                                    <form action="{{ route('estimates.updateStatus', $estimate) }}" method="POST">
+                                        @csrf
+                                        <select name="status" onchange="this.form.submit()" class="text-xs font-semibold rounded-full px-2 py-1 border-none focus:ring-0 cursor-pointer w-full
+                                                                                        @if($estimate->status == 'draft') bg-gray-100 text-gray-800
+                                                                                        @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
+                                                                                        @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
+                                                                                        @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
+                                                                                        @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
+                                                                                        @endif">
+                                            @if($isRestricted)
+                                                <!-- Restricted User Options (Draft -> Ready to Invoice only) -->
+                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
+                                                </option>
+                                                <option value="ready_to_invoice">Ready to Invoice</option>
+                                            @else
+                                                <!-- Admin Options -->
+                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
+                                                </option>
+                                                <option value="approved" {{ $estimate->status == 'approved' ? 'selected' : '' }}>Approved
+                                                </option>
+                                                <option value="rejected" {{ $estimate->status == 'rejected' ? 'selected' : '' }}>Rejected
+                                                </option>
+                                                <option value="ready_to_invoice" {{ $estimate->status == 'ready_to_invoice' ? 'selected' : '' }}>Ready to Invoice</option>
+                                                <option value="accepted" {{ $estimate->status == 'accepted' ? 'selected' : '' }}>Accepted
+                                                    (Legacy)</option>
+                                                <option value="invoiced" {{ $estimate->status == 'invoiced' ? 'selected' : '' }} disabled>
+                                                    Invoiced</option>
+                                            @endif
+                                        </select>
+                                    </form>
+                                @endif
                             </td>
                             <td
                                 class="px-6 py-4 white-space-nowrap text-right text-sm font-medium flex justify-end gap-2 items-center">
@@ -106,24 +129,28 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                <!-- Edit -->
-                                <a href="{{ route('estimates.edit', $estimate) }}" class="text-gray-600 hover:text-brand-blue"
-                                    title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </a>
+                                <!-- Edit (Restricted: Only if Draft) -->
+                                @if(!$isRestricted || $estimate->status == 'draft')
+                                    <a href="{{ route('estimates.edit', $estimate) }}" class="text-gray-600 hover:text-brand-blue"
+                                        title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                @endif
 
-                                <!-- Delete -->
-                                <form action="{{ route('estimates.destroy', $estimate) }}" method="POST"
-                                    onsubmit="return confirm('Are you sure you want to delete this estimate?');" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-gray-400 hover:text-red-600" title="Delete">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
+                                <!-- Delete (Restricted: Only if Draft) -->
+                                @if(!$isRestricted || $estimate->status == 'draft')
+                                    <form action="{{ route('estimates.destroy', $estimate) }}" method="POST"
+                                        onsubmit="return confirm('Are you sure you want to delete this estimate?');" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-gray-400 hover:text-red-600" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                @endif
 
                                 <!-- Convert Shortcut if Ready -->
-                                @if($estimate->status == 'accepted')
+                                @if(in_array($estimate->status, ['accepted', 'ready_to_invoice']) && !$isRestricted)
                                     <div class="h-4 w-px bg-gray-300 mx-1"></div>
                                     <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
                                         onsubmit="return confirm('Convert to Invoice?');">

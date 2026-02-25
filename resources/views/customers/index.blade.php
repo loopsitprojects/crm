@@ -46,7 +46,8 @@
                                 <div class="text-sm text-gray-500">{{ Str::limit($customer->address, 30) ?? '-' }}</div>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
-                                <a href="#" class="text-brand-blue hover:text-brand-purple mr-3">Edit</a>
+                                <a href="{{ route('customers.edit', $customer) }}"
+                                    class="text-brand-blue hover:text-brand-purple mr-3">Edit</a>
                                 <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="inline-block"
                                     onsubmit="return confirm('Are you sure?');">
                                     @csrf

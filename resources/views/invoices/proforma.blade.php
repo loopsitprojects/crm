@@ -11,18 +11,18 @@
         <!-- TABS -->
         <div class="bg-gray-50 px-6 py-2 border-b border-gray-200 flex space-x-4">
             <a href="{{ route('invoices.ready') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.ready') ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-200' }}">Ready
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.ready') ? 'bg-green-100 text-green-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Ready
                 to Invoice</a>
             <a href="{{ route('invoices.index') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.index') ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-200' }}">Invoices</a>
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.index') ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Invoices</a>
             <a href="{{ route('invoices.proforma') }}"
                 class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.proforma') ? 'bg-purple-100 text-purple-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Proforma
                 Invoices</a>
             <a href="{{ route('invoices.invoiced') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.invoiced') ? 'bg-brand-pink bg-opacity-10 text-brand-pink font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Invoiced
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.invoiced') ? 'bg-indigo-100 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Invoiced
                 Estimates</a>
             <a href="{{ route('invoices.rejected') }}"
-                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.rejected') ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-200' }}">Rejected
+                class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.rejected') ? 'bg-red-100 text-red-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Rejected
                 Invoices</a>
         </div>
 
@@ -92,17 +92,36 @@
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 LKR {{ number_format($invoice->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap">
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                                    Proforma
-                                </span>
+                                <form action="{{ route('invoices.updateStatus', $invoice) }}" method="POST">
+                                    @csrf
+                                    <select name="status" onchange="this.form.submit()"
+                                        class="text-xs font-semibold rounded-full px-2 py-1 border-none focus:ring-0 cursor-pointer
+                                                                                                                                            @if($invoice->status == 'unpaid') bg-yellow-100 text-yellow-800
+                                                                                                                                            @elseif($invoice->status == 'paid') bg-green-100 text-green-800
+                                                                                                                                            @elseif($invoice->status == 'overdue') bg-red-100 text-red-800
+                                                                                                                                            @endif">
+                                        <option value="unpaid" {{ $invoice->status == 'unpaid' ? 'selected' : '' }}>Unpaid
+                                        </option>
+                                        <option value="paid" {{ $invoice->status == 'paid' ? 'selected' : '' }}>Paid</option>
+                                        <option value="overdue" {{ $invoice->status == 'overdue' ? 'selected' : '' }}>Overdue
+                                        </option>
+                                    </select>
+                                </form>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
-                                <a href="{{ route('invoices.show', $invoice) }}"
-                                    class="text-brand-blue hover:text-brand-purple mr-2" title="View"><i
-                                        class="fas fa-eye"></i></a>
-                                <a href="#" class="text-purple-600 hover:text-purple-800" title="Download PDF"><i
-                                        class="fas fa-download"></i></a>
+                            <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium flex justify-end space-x-2">
+                                <a href="{{ route('invoices.show', $invoice) }}" class="text-brand-blue hover:text-brand-purple"
+                                    title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                @if(auth()->user()->role === 'Super Admin')
+                                    <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" class="text-brand-purple hover:text-brand-pink"
+                                            title="Duplicate to Estimate">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

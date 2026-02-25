@@ -30,6 +30,7 @@ class User extends Authenticatable
         'password',
         'role',
         'supervisor_id',
+        'department',
     ];
 
     /**
@@ -86,5 +87,10 @@ class User extends Authenticatable
         $normalizedStored = strtolower($this->role);
 
         return $normalizedInput === $normalizedStored;
+    }
+
+    public function deals()
+    {
+        return $this->belongsToMany(Deal::class, 'deal_user');
     }
 }

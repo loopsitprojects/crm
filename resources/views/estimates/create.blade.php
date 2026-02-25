@@ -155,13 +155,15 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-500 uppercase mb-1">Currency <span
                                         class="text-red-500">*</span></label>
-                                <select name="currency"
+                                <select name="currency" required
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm py-2">
+                                    <option value="" selected>Select Currency</option>
                                     @if($currencies->isEmpty())
-                                        <option value="LKR">LKR (Rs) (Default)</option>
+                                        <option value="LKR">LKR - Sri Lankan Rupee (Rs)</option>
                                     @else
                                         @foreach($currencies as $currency)
-                                            <option value="{{ $currency->code }}">{{ $currency->code }} ({{ $currency->symbol }})
+                                            <option value="{{ $currency->code }}">
+                                                {{ $currency->code }} - {{ $currency->name }} ({{ $currency->symbol }})
                                             </option>
                                         @endforeach
                                     @endif
@@ -284,41 +286,38 @@
             row.className = "group hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-                                                                        <td class="p-2 align-top">
-                                                                            <textarea name="items[${rowCount}][description]" rows="2" placeholder="Item Description" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent"></textarea>
-                                                                        </td>
-                                                                        <td class="p-2 align-top">
-                                                                            <input type="number" name="items[${rowCount}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                                        </td>
-                                                                        <td class="p-2 align-top">
-                                                                            <input type="number" step="0.01" name="items[${rowCount}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                                        </td>
-                                                                        <td class="p-2 align-top">
-                                                                            <input type="number" step="0.01" name="items[${rowCount}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
-                                                                        </td>
-                                                                         <td class="p-2 align-top">
-                                                                             <div class="space-y-1">
-                                                                                <input type="text" readonly name="items[${rowCount}][sscl_amount]" placeholder="SSCL" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
-                                                                                <input type="text" readonly name="items[${rowCount}][vat_amount]" placeholder="VAT" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
-                                                                             </div>
-                                                                        </td>
-                                                                        <td class="p-2 align-top space-y-2">
-                                                                            <select name="items[${rowCount}][item_heading]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                                <option value="">Head</option>
-                                                                                <option value="General">General</option>
-                                                                            </select>
-                                                                            <input type="text" name="items[${rowCount}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                            <select name="items[${rowCount}][days]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                                    <option value="">Day</option>
-                                                                                     ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-                                                                            </select>
-                                                                        </td>
-                                                                        <td class="p-2 align-top text-center">
-                                                                            <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
-                                                                                <i class="fas fa-trash-alt"></i>
-                                                                            </button>
-                                                                        </td>
-                                                                    `;
+                                                                                                <td class="p-2 align-top">
+                                                                                                    <textarea name="items[${rowCount}][description]" rows="2" placeholder="Item Description" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent"></textarea>
+                                                                                                </td>
+                                                                                                <td class="p-2 align-top">
+                                                                                                    <input type="number" name="items[${rowCount}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                                </td>
+                                                                                                <td class="p-2 align-top">
+                                                                                                    <input type="number" step="0.01" name="items[${rowCount}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                                </td>
+                                                                                                <td class="p-2 align-top">
+                                                                                                    <input type="number" step="0.01" name="items[${rowCount}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
+                                                                                                </td>
+                                                                                                 <td class="p-2 align-top">
+                                                                                                     <div class="space-y-1">
+                                                                                                        <input type="text" readonly name="items[${rowCount}][sscl_amount]" placeholder="SSCL" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
+                                                                                                        <input type="text" readonly name="items[${rowCount}][vat_amount]" placeholder="VAT" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
+                                                                                                     </div>
+                                                                                                </td>
+                                                                                                <td class="p-2 align-top space-y-2">
+                                                                                                    <select name="items[${rowCount}][item_heading]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
+                                                                                                        <option value="">Head</option>
+                                                                                                        <option value="General">General</option>
+                                                                                                    </select>
+                                                                                                    <input type="text" name="items[${rowCount}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
+
+                                                                                                </td>
+                                                                                                <td class="p-2 align-top text-center">
+                                                                                                    <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                                                                                                        <i class="fas fa-trash-alt"></i>
+                                                                                                    </button>
+                                                                                                </td>
+                                                                                            `;
 
             tbody.appendChild(row);
             // Trigger calc for initial state
@@ -332,46 +331,7 @@
             const row = input.closest('tr');
             const quantity = parseFloat(row.querySelector('[name*="[quantity]"]').value) || 0;
             const unitPrice = parseFloat(row.querySelector('[name*="[unit_price]"]').value) || 0;
-            const amount = quantity * unitPrice;
-
-            // Update the hidden input for form submission
-            row.querySelector('input[name*="[amount]"]').value = amount.toFixed(2);
-            // Update the display for the user
-            row.querySelector('.amount-display').textContent = amount.toFixed(2); // Assuming .amount-display is the input field itself or a span next to it.
-            calculateTotals();
-        }
-
-        function calculateTotals() {
-            let total = 0;
-            document.querySelectorAll('#items-body tr').forEach(row => {
-                const quantity = parseFloat(row.querySelector('[name*="[quantity]"]').value) || 0;
-                const unitPrice = parseFloat(row.querySelector('[name*="[unit_price]"]').value) || 0;
-                const itemAmount = quantity * unitPrice;
-                total += itemAmount;
-
-                // Update individual item SSCL/VAT display (if applicable)
-                const ssclApplicable = document.querySelector('input[name="sscl_applicable"]')?.checked || false;
-                const vatApplicable = document.querySelector('input[name="vat_applicable"]')?.checked || false;
-
-                let itemSscl = 0;
-                let itemVat = 0;
-
-                if (ssclApplicable) itemSscl = itemAmount * ssclRate;
-                if (vatApplicable) itemVat = (itemAmount + itemSscl) * vatRate;
-
-                const ssclInput = row.querySelector('input[name*="[sscl_amount]"]');
-                const vatInput = row.querySelector('input[name*="[vat_amount]"]');
-
-                if (ssclInput) {
-                    ssclInput.value = itemSscl > 0 ? itemSscl.toFixed(2) : '';
-                    ssclInput.style.display = ssclApplicable ? 'block' : 'none';
-                }
-
-                if (vatInput) {
-                    vatInput.value = itemVat > 0 ? itemVat.toFixed(2) : '';
-                    vatInput.style.display = vatApplicable ? 'block' : 'none';
-                }
-            });
+            const baseAmount = quantity * unitPrice;
 
             const ssclApplicable = document.querySelector('input[name="sscl_applicable"]')?.checked || false;
             const vatApplicable = document.querySelector('input[name="vat_applicable"]')?.checked || false;
@@ -379,15 +339,51 @@
             let sscl = 0;
             let vat = 0;
 
-            if (ssclApplicable) {
-                sscl = total * ssclRate;
+            if (ssclApplicable) sscl = baseAmount * ssclRate;
+            if (vatApplicable) vat = (baseAmount + sscl) * vatRate;
+
+            const totalWithTaxes = baseAmount + sscl + vat;
+
+            // Update the amount input to show the total including taxes
+            row.querySelector('input[name*="[amount]"]').value = totalWithTaxes.toFixed(2);
+
+            // Update individual item SSCL/VAT display
+            const ssclInput = row.querySelector('input[name*="[sscl_amount]"]');
+            const vatInput = row.querySelector('input[name*="[vat_amount]"]');
+
+            if (ssclInput) {
+                ssclInput.value = sscl > 0 ? sscl.toFixed(2) : '';
+                ssclInput.style.display = ssclApplicable ? 'block' : 'none';
             }
 
-            if (vatApplicable) {
-                vat = (total + sscl) * vatRate;
+            if (vatInput) {
+                vatInput.value = vat > 0 ? vat.toFixed(2) : '';
+                vatInput.style.display = vatApplicable ? 'block' : 'none';
             }
 
-            const grandTotal = total + sscl + vat;
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            let subtotalBase = 0;
+            let totalSSCL = 0;
+            let totalVAT = 0;
+
+            const ssclApplicable = document.querySelector('input[name="sscl_applicable"]')?.checked || false;
+            const vatApplicable = document.querySelector('input[name="vat_applicable"]')?.checked || false;
+
+            document.querySelectorAll('#items-body tr').forEach(row => {
+                const quantity = parseFloat(row.querySelector('[name*="[quantity]"]').value) || 0;
+                const unitPrice = parseFloat(row.querySelector('[name*="[unit_price]"]').value) || 0;
+                const baseAmount = quantity * unitPrice;
+
+                subtotalBase += baseAmount;
+
+                if (ssclApplicable) totalSSCL += baseAmount * ssclRate;
+                if (vatApplicable) totalVAT += (baseAmount + (ssclApplicable ? baseAmount * ssclRate : 0)) * vatRate;
+            });
+
+            const grandTotal = subtotalBase + totalSSCL + totalVAT;
 
             // These elements need to exist in the HTML for the totals to display
             const displaySubtotal = document.getElementById('display_subtotal');
@@ -395,9 +391,9 @@
             const displayVat = document.getElementById('display_vat');
             const displayTotal = document.getElementById('display_total');
 
-            if (displaySubtotal) displaySubtotal.textContent = total.toFixed(2);
-            if (displaySscl) displaySscl.textContent = sscl.toFixed(2);
-            if (displayVat) displayVat.textContent = vat.toFixed(2);
+            if (displaySubtotal) displaySubtotal.textContent = subtotalBase.toFixed(2);
+            if (displaySscl) displaySscl.textContent = totalSSCL.toFixed(2);
+            if (displayVat) displayVat.textContent = totalVAT.toFixed(2);
             if (displayTotal) displayTotal.textContent = grandTotal.toFixed(2);
         }
 
@@ -423,13 +419,13 @@
             div.id = id;
 
             div.innerHTML = `
-                                        <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
-                                        <input type="hidden" name="terms[]" value="${content}">
-                                        <button type="button" onclick="document.getElementById('${id}').remove()" 
-                                            class="text-red-400 hover:text-red-600 focus:outline-none">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    `;
+                                                                <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
+                                                                <input type="hidden" name="terms[]" value="${content}">
+                                                                <button type="button" onclick="document.getElementById('${id}').remove()" 
+                                                                    class="text-red-400 hover:text-red-600 focus:outline-none">
+                                                                    <i class="fas fa-times"></i>
+                                                                </button>
+                                                            `;
 
             container.appendChild(div);
         }

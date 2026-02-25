@@ -4,6 +4,12 @@
     <div class="flex justify-between items-center no-print">
         <span>Invoice Details</span>
         <div>
+            <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm mr-2">
+                    <i class="fas fa-copy mr-1"></i> Duplicate to Estimate
+                </button>
+            </form>
             <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm mr-2">
                 <i class="fas fa-print mr-1"></i> Print
             </button>

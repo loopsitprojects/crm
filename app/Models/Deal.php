@@ -14,12 +14,16 @@ class Deal extends Model
         'customer_email',
         'customer_phone',
         'amount',
+        'project_cost',
         'currency',
         'stage',
         'pipeline',
         'type',
         'priority',
-        'close_date'
+        'winning_percentage',
+        'close_date',
+        'job_number',
+        'rejection_reason'
     ];
 
     public function owner()
@@ -30,5 +34,15 @@ class Deal extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function estimates()
+    {
+        return $this->hasMany(Estimate::class);
+    }
+
+    public function teamMembers()
+    {
+        return $this->belongsToMany(User::class, 'deal_user')->withPivot('cost_allocation')->withTimestamps();
     }
 }

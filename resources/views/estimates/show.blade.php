@@ -102,16 +102,15 @@
                         <tr class="border-b border-gray-50">
                             <td class="py-4 pr-4">
                                 <p class="font-medium text-gray-800">{{ $item->description }}</p>
-                                @if($item->days || $item->locations)
+                                @if($item->locations)
                                     <p class="text-xs text-gray-500 mt-1">
-                                        @if($item->locations) Location: {{ $item->locations }} @endif
-                                        @if($item->days) | Days: {{ $item->days }} @endif
+                                        Location: {{ $item->locations }}
                                     </p>
                                 @endif
                             </td>
                             <td class="py-4 text-center text-gray-600">{{ $item->quantity }}</td>
                             <td class="py-4 text-right text-gray-600">{{ number_format($item->unit_price, 2) }}</td>
-                            <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->amount, 2) }}</td>
+                            <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->total_with_vat, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

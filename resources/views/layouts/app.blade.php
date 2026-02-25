@@ -29,6 +29,11 @@
     </script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tom Select -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -42,7 +47,7 @@
         <!-- Sidebar -->
         <aside class="w-64 bg-dark text-white flex-shrink-0 hidden md:flex flex-col">
             <div class="p-4 flex items-center justify-center h-20 border-b border-gray-700">
-                <img src="{{ asset('images/logo_loops.png') }}" alt="Loops Integrated" class="h-12 w-auto">
+                <img src="{{ asset('images/logo_loops_light.png') }}" alt="Loops Integrated" class="h-12 w-auto">
             </div>
             <nav class="flex-1 px-2 py-4 space-y-2 overflow-y-auto">
                 <a href="{{ route('dashboard') }}"
@@ -60,6 +65,11 @@
                     <i class="fas fa-funnel-dollar w-6"></i>
                     <span>Deals</span>
                 </a>
+                <a href="{{ route('jobs.index') }}"
+                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('jobs.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                    <i class="fas fa-briefcase w-6"></i>
+                    <span>Jobs</span>
+                </a>
                 <a href="{{ route('estimates.index') }}"
                     class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('estimates.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
                     <i class="fas fa-file-invoice w-6"></i>
@@ -69,11 +79,21 @@
                     class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->is('invoices*') ? 'bg-gray-700 text-brand-pink' : '' }}">
                     <i class="fas fa-file-invoice-dollar mr-3 w-5"></i> Invoices
                 </a>
+                <a href="{{ route('reports.index') }}"
+                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('reports.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                    <i class="fas fa-chart-bar w-6"></i>
+                    <span>Reports</span>
+                </a>
 
                 @if(auth()->user()->role === 'Super Admin')
                     <a href="{{ route('users.index') }}"
                         class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->is('users*') ? 'bg-gray-700 text-brand-pink' : '' }}">
                         <i class="fas fa-users-cog mr-3 w-5"></i> Users
+                    </a>
+
+                    <a href="{{ route('activities.index') }}"
+                        class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('activities.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                        <i class="fas fa-history mr-3 w-5"></i> Activity Log
                     </a>
 
                     <a href="{{ route('settings.index') }}"
@@ -111,12 +131,48 @@
                         </button>
                         <h2 class="text-xl font-semibold text-gray-700 ml-4">@yield('header')</h2>
                     </div>
-                    <div>
-                        <button class="relative p-2 text-gray-400 hover:text-gray-500">
-                            <i class="fas fa-bell"></i>
-                            <span
-                                class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">3</span>
+                    <div x-data="{ open: false }" class="relative">
+                        <button @click="open = !open"
+                            class="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none">
+                            <i class="fas fa-bell fa-lg"></i>
+                            @if(auth()->user()->unreadNotifications->count() > 0)
+                                <span
+                                    class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
+                                    {{ auth()->user()->unreadNotifications->count() }}
+                                </span>
+                            @endif
                         </button>
+
+                        <!-- Notification Dropdown -->
+                        <div x-show="open" @click.away="open = false"
+                            class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-20 border border-gray-200"
+                            style="display: none;">
+                            <div class="py-2">
+                                <div class="px-4 py-2 border-b border-gray-200 text-sm font-semibold text-gray-700">
+                                    Notifications
+                                </div>
+                                @forelse(auth()->user()->unreadNotifications as $notification)
+                                    <a href="{{ isset($notification->data['request_id']) ? route('customers.requests.review', $notification->data['request_id']) : (isset($notification->data['customer_id']) ? route('customers.edit', $notification->data['customer_id']) : (isset($notification->data['invoice_id']) ? route('invoices.show', $notification->data['invoice_id']) : '#')) }}"
+                                        class="block px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out border-b border-gray-100 last:border-b-0">
+                                        <p class="text-sm font-medium text-gray-900">
+                                            {{ $notification->data['message'] ?? 'New Notification' }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            {{ $notification->created_at->diffForHumans() }}
+                                        </p>
+                                    </a>
+                                    {{ $notification->markAsRead() }}
+                                @empty
+                                    <div class="px-4 py-3 text-sm text-gray-500 text-center">
+                                        No new notifications
+                                    </div>
+                                @endforelse
+                                <div class="border-t border-gray-200 bg-gray-50 px-4 py-2 text-center">
+                                    <a href="#" class="text-xs font-medium text-brand-blue hover:text-brand-purple">View
+                                        all</a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </header>
