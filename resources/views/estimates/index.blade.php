@@ -55,6 +55,8 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount
                         </th>
@@ -75,29 +77,39 @@
                                 {{ $estimate->reference_number }}
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
+                                @if($estimate->brand_name)
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                        {{ $estimate->brand_name }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-400 text-xs italic">No Brand</span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 ${{ number_format($estimate->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap">
                                 @if($isRestricted && $estimate->status != 'draft')
                                     <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
-                                                                            @if($estimate->status == 'approved') bg-yellow-100 text-yellow-800
-                                                                            @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
-                                                                            @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
-                                                                            @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
-                                                                            @endif">
+                                                                                        @if($estimate->status == 'approved') bg-yellow-100 text-yellow-800
+                                                                                        @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
+                                                                                        @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
+                                                                                        @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
+                                                                                        @endif">
                                         {{ $estimate->status == 'ready_to_invoice' ? 'Ready to Invoice' : ucfirst($estimate->status == 'accepted' ? 'Ready to Invoice (Old)' : $estimate->status) }}
                                     </span>
                                 @else
                                     <form action="{{ route('estimates.updateStatus', $estimate) }}" method="POST">
                                         @csrf
                                         <select name="status" onchange="this.form.submit()" class="text-xs font-semibold rounded-full px-2 py-1 border-none focus:ring-0 cursor-pointer w-full
-                                                                                        @if($estimate->status == 'draft') bg-gray-100 text-gray-800
-                                                                                        @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
-                                                                                        @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
-                                                                                        @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
-                                                                                        @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
-                                                                                        @endif">
+                                                                                                    @if($estimate->status == 'draft') bg-gray-100 text-gray-800
+                                                                                                    @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
+                                                                                                    @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
+                                                                                                    @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
+                                                                                                    @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
+                                                                                                    @endif">
                                             @if($isRestricted)
                                                 <!-- Restricted User Options (Draft -> Ready to Invoice only) -->
                                                 <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
@@ -164,7 +176,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-gray-500 text-sm">No estimates found.</td>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500 text-sm">No estimates found.</td>
                         </tr>
                     @endforelse
                 </tbody>

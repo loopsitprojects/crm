@@ -68,8 +68,8 @@
                         </div>
                         <span class="text-[10px] font-bold text-brand-purple bg-brand-purple bg-opacity-5 px-2 py-0.5 rounded-full uppercase">Pipeline</span>
                     </div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Open Deals Value</p>
-                    <h3 class="text-2xl font-black text-slate-800">LKR {{ number_format($pipelineValue, 2) }}</h3>
+                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Open Deals Revenue</p>
+                    <h3 class="text-2xl font-black text-slate-800">LKR {{ number_format($pipelineRevenue, 2) }}</h3>
                     <p class="text-[11px] text-gray-500 mt-2">{{ $dealCount }} new deals created</p>
                 </div>
             </div>
@@ -170,7 +170,7 @@
                                             <p class="text-[10px] text-gray-500">{{ $deal->stage }}</p>
                                         </div>
                                     </div>
-                                    <p class="text-xs font-black text-slate-900">LKR {{ number_format($deal->amount, 0) }}</p>
+                                    <p class="text-xs font-black text-slate-900">LKR {{ number_format($deal->revenue, 0) }}</p>
                                 </div>
                             @empty
                                 <p class="text-xs text-gray-400 italic">No recent deals found</p>

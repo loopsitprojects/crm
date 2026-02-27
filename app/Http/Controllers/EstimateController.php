@@ -27,6 +27,7 @@ class EstimateController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('reference_number', 'LIKE', "%{$search}%")
+                    ->orWhere('brand_name', 'LIKE', "%{$search}%")
                     ->orWhereHas('customer', function ($cq) use ($search) {
                         $cq->where('name', 'LIKE', "%{$search}%");
                     });
@@ -52,7 +53,8 @@ class EstimateController extends Controller
         $currencies = \App\Models\SystemCurrency::all();
         $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
-        return view('estimates.create', compact('customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate'));
+        $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        return view('estimates.create', compact('customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands'));
     }
 
     public function store(Request $request)
@@ -60,6 +62,7 @@ class EstimateController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'reference_number' => 'required|string|max:255',
+            'brand_name' => 'nullable|string|max:255',
             'date' => 'required|date',
             'attention_to' => 'nullable|string',
             'currency' => 'required|string',
@@ -73,6 +76,7 @@ class EstimateController extends Controller
         $estimate = Estimate::create([
             'customer_id' => $request->customer_id,
             'reference_number' => $request->reference_number,
+            'brand_name' => $request->brand_name,
             'date' => $request->date,
             'status' => 'draft',
             'total_amount' => 0,
@@ -131,6 +135,18 @@ class EstimateController extends Controller
         }
 
         $estimate->update(['total_amount' => $grandTotal]);
+
+        // Sync with Deal if exists
+        if ($estimate->deal_id) {
+            $deal = \App\Models\Deal::find($estimate->deal_id);
+            if ($deal) {
+                $deal->update([
+                    'revenue' => $grandTotal,
+                    'contribution' => $grandTotal
+                ]);
+            }
+        }
+
         $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
@@ -239,7 +255,8 @@ class EstimateController extends Controller
         $currencies = \App\Models\SystemCurrency::all();
         $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
-        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate'));
+        $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands'));
     }
 
     /**
@@ -268,6 +285,7 @@ class EstimateController extends Controller
 
         $estimate->update([
             'customer_id' => $request->customer_id,
+            'brand_name' => $request->brand_name,
             'date' => $request->date,
             'attention_to' => $request->attention_to,
             'address_line_1' => $request->address_line_1,
@@ -326,6 +344,18 @@ class EstimateController extends Controller
         }
 
         $estimate->update(['total_amount' => $grandTotal]);
+
+        // Sync with Deal if exists
+        if ($estimate->deal_id) {
+            $deal = \App\Models\Deal::find($estimate->deal_id);
+            if ($deal) {
+                $deal->update([
+                    'revenue' => $grandTotal,
+                    'contribution' => $grandTotal
+                ]);
+            }
+        }
+
         $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');

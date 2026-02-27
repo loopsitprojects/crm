@@ -11,6 +11,7 @@ class Estimate extends Model
     protected $fillable = [
         'customer_id',
         'deal_id',
+        'brand_name',
         'reference_number',
         'date',
         'total_amount',
@@ -26,6 +27,10 @@ class Estimate extends Model
         'special_terms',
         'advance_payment',
         'advance_percentage',
+        'proforma_invoice',
+        'third_party_cost',
+        'proforma_percentage',
+        'proforma_tax',
         'senior_manager',
         'additional_notes',
         'sscl_applicable',

@@ -77,7 +77,8 @@
                         </th>
                         <th class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Stage
                         </th>
-                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Amount
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Project
+                            Revenue
                         </th>
                         <th class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Actions
                         </th>
@@ -100,16 +101,16 @@
                             </td>
                             <td class="px-6 py-4 white-space-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                            @if($job->stage == 'Won' || $job->stage == 'Approved') bg-green-100 text-green-800 
-                                                            @elseif($job->stage == 'Lost' || $job->stage == 'Rejected') bg-red-100 text-red-800 
-                                                            @elseif($job->stage == 'Pitched') bg-purple-100 text-purple-800
-                                                            @else bg-blue-100 text-blue-800 @endif">
+                                                                    @if($job->stage == 'Won' || $job->stage == 'Approved') bg-green-100 text-green-800 
+                                                                    @elseif($job->stage == 'Lost' || $job->stage == 'Rejected') bg-red-100 text-red-800 
+                                                                    @elseif($job->stage == 'Pitched') bg-purple-100 text-purple-800
+                                                                    @else bg-blue-100 text-blue-800 @endif">
                                     {{ $job->stage }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-right">
                                 <div class="text-sm font-medium text-gray-900">
-                                    {{ $job->currency }} {{ number_format($job->amount, 2) }}
+                                    {{ $job->currency }} {{ number_format($job->revenue, 2) }}
                                 </div>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
@@ -133,11 +134,11 @@
 
     <!-- Reusing Edit Deal Modal logic if needed, but for now just viewing -->
     <!-- Ideally, clicking View Deal would open the deal modal or go to deals page highlighting it. 
-                     For simplicity, we can link to the deals page or just show basic info. 
-                     Given the user wants to see "Jobs", a simple list is what they asked for.
-                     I'll leave the Edit/View link as a placeholder or remove the onclick if JS isn't available here.
-                     To make editDeal work here, I'd need to include the modal and JS from deals.index. 
-                     For now, I'll just link to deals index? Or maybe just text.
-                     The prompt implies a separate tab for Jobs, so listing them is the priority.
-                -->
+                         For simplicity, we can link to the deals page or just show basic info. 
+                         Given the user wants to see "Jobs", a simple list is what they asked for.
+                         I'll leave the Edit/View link as a placeholder or remove the onclick if JS isn't available here.
+                         To make editDeal work here, I'd need to include the modal and JS from deals.index. 
+                         For now, I'll just link to deals index? Or maybe just text.
+                         The prompt implies a separate tab for Jobs, so listing them is the priority.
+                    -->
 @endsection

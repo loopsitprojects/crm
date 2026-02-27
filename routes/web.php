@@ -37,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/deals/{deal}/delete', [DealController::class, 'destroy'])->name('deals.destroy.get');
     Route::delete('/deals/{deal}', [DealController::class, 'destroy'])->name('deals.destroy');
     Route::post('/deals/{deal}/stage', [DealController::class, 'updateStage'])->name('deals.updateStage');
+    Route::post('/deals/{deal}/create-estimate', [DealController::class, 'createEstimate'])->name('deals.createEstimate');
 
     // Jobs
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');

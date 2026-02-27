@@ -73,26 +73,26 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Row 1 -->
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'total_deals']) }}" class="group bg-white p-4 rounded-xl border {{ $activeTab == 'total_deals' ? 'border-brand-purple ring-2 ring-brand-purple/20' : 'border-gray-100' }} shadow-sm hover:shadow-md transition-all">
-            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-purple transition-colors">Total Deal Amount</p>
-            <h3 class="text-lg font-black {{ $activeTab == 'total_deals' ? 'text-brand-purple' : 'text-slate-700' }}">LKR {{ number_format($totalDealAmount, 2) }}</h3>
+            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-purple transition-colors">Total Project Revenue</p>
+            <h3 class="text-lg font-black {{ $activeTab == 'total_deals' ? 'text-brand-purple' : 'text-slate-700' }}">LKR {{ number_format($totalDealRevenue, 2) }}</h3>
         </a>
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'open_deals']) }}" class="group bg-white p-4 rounded-xl border {{ $activeTab == 'open_deals' ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-gray-100' }} shadow-sm hover:shadow-md transition-all">
             <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-emerald-500 transition-colors">Open Deals</p>
             <h3 class="text-xl font-black {{ $activeTab == 'open_deals' ? 'text-emerald-500' : 'text-slate-700' }}">{{ $openDealsCount }}</h3>
         </a>
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'weighted_amount']) }}" class="group bg-white p-4 rounded-xl border {{ $activeTab == 'weighted_amount' ? 'border-brand-blue ring-2 ring-brand-blue/20' : 'border-gray-100' }} shadow-sm hover:shadow-md transition-all">
-            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-blue transition-colors">Weighted Amount</p>
-            <h3 class="text-lg font-black {{ $activeTab == 'weighted_amount' ? 'text-brand-blue' : 'text-slate-700' }}">LKR {{ number_format($weightedAmount, 2) }}</h3>
+            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-blue transition-colors">Weighted Revenue</p>
+            <h3 class="text-lg font-black {{ $activeTab == 'weighted_amount' ? 'text-brand-blue' : 'text-slate-700' }}">LKR {{ number_format($weightedRevenue, 2) }}</h3>
         </a>
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'approved_amount']) }}" class="group bg-white p-4 rounded-xl border {{ $activeTab == 'approved_amount' ? 'border-brand-pink ring-2 ring-brand-pink/20' : 'border-gray-100' }} shadow-sm hover:shadow-md transition-all">
-            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-pink transition-colors">Approved Amount</p>
-            <h3 class="text-lg font-black {{ $activeTab == 'approved_amount' ? 'text-brand-pink' : 'text-slate-700' }}">LKR {{ number_format($approvedAmount, 2) }}</h3>
+            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-brand-pink transition-colors">Approved Revenue</p>
+            <h3 class="text-lg font-black {{ $activeTab == 'approved_amount' ? 'text-brand-pink' : 'text-slate-700' }}">LKR {{ number_format($approvedRevenue, 2) }}</h3>
         </a>
         
         <!-- Row 2 -->
         <a href="{{ request()->fullUrlWithQuery(['tab' => 'new_deals']) }}" class="group bg-white p-4 rounded-xl border {{ $activeTab == 'new_deals' ? 'border-cyan-500 ring-2 ring-cyan-500/20' : 'border-gray-100' }} shadow-sm hover:shadow-md transition-all">
-            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-cyan-500 transition-colors">New Deals (30D)</p>
-            <h3 class="text-lg font-black {{ $activeTab == 'new_deals' ? 'text-cyan-500' : 'text-slate-700' }}">LKR {{ number_format($newDeals30Amount, 2) }}</h3>
+            <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1 group-hover:text-cyan-500 transition-colors">New Revenue (30D)</p>
+            <h3 class="text-lg font-black {{ $activeTab == 'new_deals' ? 'text-cyan-500' : 'text-slate-700' }}">LKR {{ number_format($newDeals30Revenue, 2) }}</h3>
         </a>
         <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
             <p class="text-[9px] font-black uppercase tracking-tighter text-gray-400 mb-1">Avg Deal Age</p>
@@ -143,7 +143,7 @@
                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Owner</th>
                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Type</th>
                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Stage</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Amount (LKR)</th>
+                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Revenue (LKR)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
@@ -160,7 +160,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-right">
-                                    <span class="text-xs font-black text-slate-900">{{ number_format($deal->amount, 2) }}</span>
+                                    <span class="text-xs font-black text-slate-900">{{ number_format($deal->revenue, 2) }}</span>
                                 </td>
                             </tr>
                         @empty

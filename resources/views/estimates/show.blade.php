@@ -91,10 +91,12 @@
             <table class="w-full mb-8">
                 <thead>
                     <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b-2 border-brand-teal">
-                        <th class="py-3 text-left">Description</th>
-                        <th class="py-3 text-center">Qty</th>
-                        <th class="py-3 text-right">Unit Price</th>
-                        <th class="py-3 text-right">Amount</th>
+                        <th class="py-3 text-left w-[35%]">Description</th>
+                        <th class="py-3 text-left w-[12%]">Dept</th>
+                        <th class="py-3 text-left w-[15%]">Rev Cat</th>
+                        <th class="py-3 text-center w-8">Qty</th>
+                        <th class="py-3 text-right w-24">Unit Price</th>
+                        <th class="py-3 text-right w-28">Amount</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm">
@@ -103,14 +105,15 @@
                             <td class="py-4 pr-4">
                                 <p class="font-medium text-gray-800">{{ $item->description }}</p>
                                 @if($item->locations)
-                                    <p class="text-xs text-gray-500 mt-1">
-                                        Location: {{ $item->locations }}
-                                    </p>
+                                    <p class="text-xs text-gray-500 mt-0.5"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
+                            <td class="py-4 text-sm text-gray-600">{{ ucfirst($item->department) }}</td>
+                            <td class="py-4 text-sm text-gray-600">{{ $item->revenue_category }}</td>
                             <td class="py-4 text-center text-gray-600">{{ $item->quantity }}</td>
                             <td class="py-4 text-right text-gray-600">{{ number_format($item->unit_price, 2) }}</td>
-                            <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->total_with_vat, 2) }}</td>
+                            <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->total_with_vat, 2) }}
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

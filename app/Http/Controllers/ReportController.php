@@ -93,10 +93,10 @@ class ReportController extends Controller
         }
 
         // Expanded Metrics
-        $totalDealAmount = (clone $dealQuery)->sum('amount');
+        $totalDealRevenue = (clone $dealQuery)->sum('revenue');
         $openDealsCount = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->count();
-        $weightedAmount = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->sum('amount'); // Using total of open deals for now
-        $approvedAmount = (clone $dealQuery)->where('stage', 'Approved')->sum('amount');
+        $weightedRevenue = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->sum('revenue'); // Using total of open deals for now
+        $approvedRevenue = (clone $dealQuery)->where('stage', 'Approved')->sum('revenue');
         $newDeals30 = Deal::where('created_at', '>=', now()->subDays(30));
         if ($isRestricted) {
             $newDeals30->where(function ($q) use ($user) {
@@ -106,7 +106,7 @@ class ReportController extends Controller
                     });
             });
         }
-        $newDeals30Amount = $newDeals30->sum('amount');
+        $newDeals30Revenue = $newDeals30->sum('revenue');
 
         $avgDealAge = (clone $dealQuery)->avg(DB::raw('DATEDIFF(NOW(), created_at)')) ?: 0;
 
@@ -116,7 +116,7 @@ class ReportController extends Controller
 
         // Legacy variable for view compatibility if needed
         $revenue = $paymentCollected;
-        $dealsValue = $totalDealAmount;
+        $dealsRevenue = $totalDealRevenue;
 
         // Data for Charts
         $dailyRevenue = (clone $invoiceQuery)
@@ -127,7 +127,7 @@ class ReportController extends Controller
             ->get();
 
         $dealsByStage = (clone $dealQuery)
-            ->select('stage', DB::raw('count(*) as count'), DB::raw('SUM(amount) as total'))
+            ->select('stage', DB::raw('count(*) as count'), DB::raw('SUM(revenue) as total'))
             ->groupBy('stage')
             ->get();
 
@@ -204,17 +204,17 @@ class ReportController extends Controller
             'endDate',
             'department',
             'isRestricted',
-            'totalDealAmount',
+            'totalDealRevenue',
             'openDealsCount',
-            'weightedAmount',
-            'approvedAmount',
-            'newDeals30Amount',
+            'weightedRevenue',
+            'approvedRevenue',
+            'newDeals30Revenue',
             'avgDealAge',
             'invoicedAmount',
             'paymentCollected',
             'pendingAmount',
             'revenue',
-            'dealsValue',
+            'dealsRevenue',
             'dailyRevenue',
             'dealsByStage',
             'revenueByDept',
@@ -304,7 +304,7 @@ class ReportController extends Controller
                         $deal->owner->name ?? 'N/A',
                         $deal->type,
                         $deal->stage,
-                        $deal->amount,
+                        $deal->revenue,
                         $deal->probability . '%'
                     ]);
                 }

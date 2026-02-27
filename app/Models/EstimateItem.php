@@ -19,7 +19,9 @@ class EstimateItem extends Model
         'sscl_amount',
         'item_heading',
         'locations',
-        'days'
+        'days',
+        'department',
+        'revenue_category'
     ];
 
     public function estimate()

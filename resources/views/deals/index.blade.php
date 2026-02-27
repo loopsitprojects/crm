@@ -8,6 +8,8 @@
             width: 100% !important;
         }
 
+        
+
         .ts-wrapper .ts-control {
             border: 1px solid #d1d5db !important;
             /* border-gray-300 */
@@ -64,33 +66,33 @@
         <!-- Top Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Deal Amount</h4>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project Revenue</h4>
                 <p class="text-xl font-bold text-brand-purple mt-1">LKR
-                    {{ number_format($dealsByStage->flatten()->sum('amount'), 2) }}
+                    {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Open Deals</h4>
                 <p class="text-xl font-bold text-green-600 mt-1">
-                    {{ $dealsByStage->flatten()->whereNotIn('stage', ['Rejected', 'Approved'])->count() }}
+                    {{ $dealsByStage->flatten()->whereNotIn('stage', ['Rejected', 'Closed Won'])->count() }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted Amount</h4>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted Revenue</h4>
                 <p class="text-xl font-bold text-brand-blue mt-1">LKR
                     {{ number_format($weightedDealAmount, 2) }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Approved Amount</h4>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Closed Won Revenue</h4>
                 <p class="text-xl font-bold text-brand-pink mt-1">LKR
-                    {{ number_format($approvedDealAmount, 2) }}
+                    {{ number_format($approvedDealRevenue, 2) }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New Deals (30d)</h4>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New Revenue (30d)</h4>
                 <p class="text-xl font-bold text-brand-teal mt-1">LKR
-                    {{ number_format($newDealAmount, 2) }}
+                    {{ number_format($newDealRevenue, 2) }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -139,16 +141,30 @@
                             </div>
                             <div class="flex-1 p-2 overflow-y-auto kanban-col" data-stage="{{ $stage }}">
                                 @foreach($dealsByStage->get($stage, collect()) as $deal)
-                                    <div class="bg-white p-3 rounded shadow-sm mb-3 cursor-move hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Approved') border-green-500 @else border-brand-blue @endif"
+                                    <div class="bg-white p-3 rounded shadow-sm mb-3 cursor-move hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
                                         data-id="{{ $deal->id }}">
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="font-bold text-gray-800 text-sm line-clamp-1 flex-1">{{ $deal->title }}</h4>
                                             <div class="flex items-center gap-1 ml-2">
+                                                @if($stage === 'Objection handling')
+                                                <button onclick="createEstimate({{ $deal->id }})"
+                                                    class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
+                                                    <i class="fas fa-file-invoice text-xs"></i>
+                                                </button>
+                                                @endif
+                                                @if(in_array($stage, ['Finalizing terms', 'Closed Won']) && $deal->estimates->isNotEmpty())
+                                                <a href="{{ route('estimates.edit', $deal->estimates->first()->id) }}"
+                                                    class="text-purple-500 hover:text-purple-700 transition-colors" title="Edit Estimate">
+                                                    <i class="fas fa-file-invoice text-xs"></i>
+                                                </a>
+                                                @endif
+                                                @if(!in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won']))
                                                 <button onclick="editDeal({{ json_encode($deal) }})"
-                                                    class="text-blue-400 hover:text-blue-600 transition-colors">
-                                                    <i class="fas fa-edit text-[10px]"></i>
-                                            </button>
-                                        </div>
+                                                    class="text-blue-400 hover:text-blue-600 transition-colors" title="Edit Deal">
+                                                    <i class="fas fa-edit text-xs"></i>
+                                                </button>
+                                                @endif
+                                            </div>
                                         </div>
                                         <div class="flex flex-wrap gap-1 mb-2">
                                             @if($deal->job_number)
@@ -187,7 +203,7 @@
                                                     </div>
                                                 @endif
                                                 <span class="text-xs font-bold text-gray-900">{{ $deal->currency }}
-                                                    {{ number_format($deal->amount, 2) }}</span>
+                                                    {{ number_format($deal->contribution, 2) }}</span>
                                             </div>
                                             <div class="flex -space-x-1.5 overflow-hidden py-1">
                                                 @foreach($deal->teamMembers->take(4) as $member)
@@ -289,9 +305,9 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Amount <span
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Project Revenue <span
                                             class="text-red-500">*</span></label>
-                                    <input type="number" step="0.01" name="amount" required placeholder="0.00"
+                                    <input type="number" step="0.01" name="revenue" required placeholder="0.00"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                                 </div>
                                 <div>
@@ -306,6 +322,12 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Contribution <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" name="contribution" placeholder="0.00" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                             </div>
                         </div>
 
@@ -342,10 +364,9 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Winning Percentage (%) <span
-                                        class="text-red-500">*</span></label>
-                                <input type="number" name="winning_percentage" min="0" max="100" placeholder="e.g. 50" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Winning Percentage (%)</label>
+                                <input type="number" name="winning_percentage" id="create_winning_percentage" readonly tabindex="-1"
+                                    class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed outline-none select-none">
                             </div>
 
                             <div>
@@ -374,29 +395,32 @@
 
                         <!-- Hidden template for department row -->
                         <template id="department-row-template">
-                            <div
-                                class="department-row flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <div class="flex-1">
-                                    <select
-                                        class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none"
-                                        required>
-                                        <option value="">Select Department</option>
+                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 w-full mb-2">
+                                <div class="w-full md:w-3/12">
+                                    <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                        <option value="">Department</option>
+                                        <option value="Corporate">Corporate</option>
                                         <option value="Creative">Creative</option>
                                         <option value="Digital">Digital</option>
                                         <option value="Play">Play</option>
                                         <option value="Tech">Tech</option>
                                     </select>
                                 </div>
-                                <div class="flex-1">
-                                    <div class="relative">
-                                        <input type="number" step="0.01" min="0" max="100" placeholder="Percentage"
-                                            class="department-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8"
-                                            required>
-                                        <span class="absolute right-3 top-2 text-gray-500 text-sm">%</span>
-                                    </div>
+                                <div class="w-[48%] md:w-2/12 relative">
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
+                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
                                 </div>
-                                <button type="button"
-                                    class="remove-department-btn px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all">
+                                <div class="w-[48%] md:w-2/12">
+                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                </div>
+                                <div class="w-[48%] md:w-2/12 relative mt-2 md:mt-0">
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
+                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                </div>
+                                <div class="w-[48%] md:w-2/12 mt-2 md:mt-0">
+                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                </div>
+                                <button type="button" class="remove-department-btn px-2 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -491,9 +515,9 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-bold text-gray-700 mb-1">Amount <span
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">Project Revenue <span
                                             class="text-red-500">*</span></label>
-                                    <input type="number" step="0.01" name="amount" id="edit_amount" required
+                                    <input type="number" step="0.01" name="revenue" id="edit_revenue" required
                                         placeholder="0.00"
                                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                                 </div>
@@ -507,6 +531,12 @@
                                         @endforeach
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Contribution <span class="text-red-500">*</span></label>
+                                <input type="number" step="0.01" min="0" name="contribution" id="edit_contribution" placeholder="0.00" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                             </div>
                         </div>
 
@@ -543,10 +573,9 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Winning Percentage (%) <span
-                                        class="text-red-500">*</span></label>
-                                <input type="number" name="winning_percentage" id="edit_winning_percentage" min="0" max="100" placeholder="e.g. 50" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Winning Percentage (%)</label>
+                                <input type="number" name="winning_percentage" id="edit_winning_percentage" readonly tabindex="-1"
+                                    class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed outline-none select-none">
                             </div>
 
                             <div>
@@ -575,29 +604,32 @@
 
                         <!-- Hidden template for edit department row -->
                         <template id="edit-department-row-template">
-                            <div
-                                class="department-row flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <div class="flex-1">
-                                    <select
-                                        class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none"
-                                        required>
-                                        <option value="">Select Department</option>
+                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 w-full mb-2">
+                                <div class="w-full md:w-3/12">
+                                    <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                        <option value="">Department</option>
+                                        <option value="Corporate">Corporate</option>
                                         <option value="Creative">Creative</option>
                                         <option value="Digital">Digital</option>
                                         <option value="Play">Play</option>
                                         <option value="Tech">Tech</option>
                                     </select>
                                 </div>
-                                <div class="flex-1">
-                                    <div class="relative">
-                                        <input type="number" step="0.01" min="0" max="100" placeholder="Percentage"
-                                            class="department-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8"
-                                            required>
-                                        <span class="absolute right-3 top-2 text-gray-500 text-sm">%</span>
-                                    </div>
+                                <div class="w-[48%] md:w-2/12 relative">
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
+                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
                                 </div>
-                                <button type="button"
-                                    class="remove-department-btn px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all">
+                                <div class="w-[48%] md:w-2/12">
+                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                </div>
+                                <div class="w-[48%] md:w-2/12 relative mt-2 md:mt-0">
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
+                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                </div>
+                                <div class="w-[48%] md:w-2/12 mt-2 md:mt-0">
+                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                </div>
+                                <button type="button" class="remove-department-btn px-2 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -631,7 +663,8 @@
             document.getElementById('edit_title').value = deal.title;
             document.getElementById('edit_pipeline').value = deal.pipeline || 'Sales Pipeline';
             document.getElementById('edit_stage').value = deal.stage;
-            document.getElementById('edit_amount').value = deal.amount;
+            document.getElementById('edit_revenue').value = deal.revenue;
+            document.getElementById('edit_contribution').value = deal.contribution || '';
             document.getElementById('edit_currency').value = deal.currency;
             document.getElementById('edit_close_date').value = deal.close_date;
             document.getElementById('edit_user_id').value = deal.user_id || '';
@@ -664,17 +697,27 @@
                     const items = Array.isArray(allocations) ? allocations : Object.values(allocations);
 
                     items.forEach((allocation, index) => {
-                        if (allocation.department && (allocation.percentage || allocation.cost)) {
+                        if (allocation.department) {
                             const clone = template.content.cloneNode(true);
                             const row = clone.querySelector('.department-row');
                             const select = row.querySelector('.department-select');
-                            const percentInput = row.querySelector('.department-percentage');
+                            const revPercentInput = row.querySelector('.department-rev-percentage');
+                            const revAmountInput = row.querySelector('.department-rev-amount');
+                            const conPercentInput = row.querySelector('.department-con-percentage');
+                            const conAmountInput = row.querySelector('.department-con-amount');
                             const removeBtn = row.querySelector('.remove-department-btn');
 
                             select.value = allocation.department;
-                            percentInput.value = allocation.percentage || allocation.cost;
+                            revPercentInput.value = allocation.revenue_percentage || allocation.percentage || '';
+                            revAmountInput.value = allocation.revenue_amount || allocation.cost || '';
+                            conPercentInput.value = allocation.contribution_percentage || '';
+                            conAmountInput.value = allocation.contribution_amount || '';
+
                             select.name = `department_allocations[${index}][department]`;
-                            percentInput.name = `department_allocations[${index}][percentage]`;
+                            revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
+                            revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
+                            conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
+                            conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
 
                             removeBtn.addEventListener('click', function () {
                                 this.closest('.department-row').remove();
@@ -779,10 +822,16 @@
 
                 // Add name attributes for form submission
                 const select = clone.querySelector('.department-select');
-                const percentInput = clone.querySelector('.department-percentage');
+                const revPercentInput = clone.querySelector('.department-rev-percentage');
+                const revAmountInput = clone.querySelector('.department-rev-amount');
+                const conPercentInput = clone.querySelector('.department-con-percentage');
+                const conAmountInput = clone.querySelector('.department-con-amount');
                 const index = deptContainer.children.length;
                 select.name = `department_allocations[${index}][department]`;
-                percentInput.name = `department_allocations[${index}][percentage]`;
+                revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
+                revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
+                conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
+                conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
 
                 deptContainer.appendChild(clone);
             });
@@ -794,9 +843,15 @@
                     const rows = deptContainer.querySelectorAll('.department-row');
                     rows.forEach((row, index) => {
                         const select = row.querySelector('.department-select');
-                        const percentInput = row.querySelector('.department-percentage');
+                        const revPercentInput = row.querySelector('.department-rev-percentage');
+                        const revAmountInput = row.querySelector('.department-rev-amount');
+                        const conPercentInput = row.querySelector('.department-con-percentage');
+                        const conAmountInput = row.querySelector('.department-con-amount');
                         select.name = `department_allocations[${index}][department]`;
-                        percentInput.name = `department_allocations[${index}][percentage]`;
+                        revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
+                        revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
+                        conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
+                        conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
                     });
                 });
             }
@@ -816,10 +871,16 @@
                     });
 
                     const select = clone.querySelector('.department-select');
-                    const percentInput = clone.querySelector('.department-percentage');
+                    const revPercentInput = clone.querySelector('.department-rev-percentage');
+                    const revAmountInput = clone.querySelector('.department-rev-amount');
+                    const conPercentInput = clone.querySelector('.department-con-percentage');
+                    const conAmountInput = clone.querySelector('.department-con-amount');
                     const index = editDeptContainer.children.length;
                     select.name = `department_allocations[${index}][department]`;
-                    percentInput.name = `department_allocations[${index}][percentage]`;
+                    revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
+                    revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
+                    conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
+                    conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
 
                     editDeptContainer.appendChild(clone);
                 });
@@ -831,9 +892,15 @@
                     const rows = editDeptContainer.querySelectorAll('.department-row');
                     rows.forEach((row, index) => {
                         const select = row.querySelector('.department-select');
-                        const percentInput = row.querySelector('.department-percentage');
+                        const revPercentInput = row.querySelector('.department-rev-percentage');
+                        const revAmountInput = row.querySelector('.department-rev-amount');
+                        const conPercentInput = row.querySelector('.department-con-percentage');
+                        const conAmountInput = row.querySelector('.department-con-amount');
                         select.name = `department_allocations[${index}][department]`;
-                        percentInput.name = `department_allocations[${index}][percentage]`;
+                        revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
+                        revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
+                        conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
+                        conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
                     });
 
                     // Handle clearing
@@ -845,21 +912,108 @@
                     }
                 });
             }
+
+            function handleSplitCalculations(container, modalType) {
+                container.addEventListener('input', function(e) {
+                    const revInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="revenue"]') : document.getElementById('edit_revenue');
+                    const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
+                    
+                    const totalRev = parseFloat(revInput.value) || 0;
+                    const totalCon = parseFloat(conInput.value) || 0;
+
+                    const row = e.target.closest('.department-row');
+                    if (!row) return;
+
+                    const revPercent = row.querySelector('.department-rev-percentage');
+                    const revAmt = row.querySelector('.department-rev-amount');
+                    const conPercent = row.querySelector('.department-con-percentage');
+                    const conAmt = row.querySelector('.department-con-amount');
+
+                    if (e.target.classList.contains('department-rev-percentage')) {
+                        const p = parseFloat(e.target.value) || 0;
+                        if (totalRev > 0) revAmt.value = ((p / 100) * totalRev).toFixed(2);
+                    } else if (e.target.classList.contains('department-rev-amount')) {
+                        const amt = parseFloat(e.target.value) || 0;
+                        if (totalRev > 0) revPercent.value = ((amt / totalRev) * 100).toFixed(2);
+                    } else if (e.target.classList.contains('department-con-percentage')) {
+                        const p = parseFloat(e.target.value) || 0;
+                        if (totalCon > 0) conAmt.value = ((p / 100) * totalCon).toFixed(2);
+                    } else if (e.target.classList.contains('department-con-amount')) {
+                        const amt = parseFloat(e.target.value) || 0;
+                        if (totalCon > 0) conPercent.value = ((amt / totalCon) * 100).toFixed(2);
+                    }
+                });
+
+                // Also recalculate when main revenue/contribution changes
+                const revInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="revenue"]') : document.getElementById('edit_revenue');
+                const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
+                
+                function recalculateAll() {
+                    const totalRev = parseFloat(revInput.value) || 0;
+                    const totalCon = parseFloat(conInput.value) || 0;
+                    const rows = container.querySelectorAll('.department-row');
+                    rows.forEach(row => {
+                        const revPercent = row.querySelector('.department-rev-percentage');
+                        const revAmt = row.querySelector('.department-rev-amount');
+                        const conPercent = row.querySelector('.department-con-percentage');
+                        const conAmt = row.querySelector('.department-con-amount');
+
+                        if (revPercent.value) {
+                            revAmt.value = ((parseFloat(revPercent.value) / 100) * totalRev).toFixed(2);
+                        }
+                        if (conPercent.value) {
+                            conAmt.value = ((parseFloat(conPercent.value) / 100) * totalCon).toFixed(2);
+                        }
+                    });
+                }
+                
+                if (revInput) revInput.addEventListener('input', recalculateAll);
+                if (conInput) conInput.addEventListener('input', recalculateAll);
+            }
+
+            handleSplitCalculations(document.getElementById('department-allocations'), 'create');
+            handleSplitCalculations(document.getElementById('edit-department-allocations'), 'edit');
+
         });
         // Initialize Tom Select
         document.addEventListener('DOMContentLoaded', function () {
+            // Shared stage probabilities
+            const stageProbs = {
+                'Planned to Meet': 10,
+                'Introductory meeting': 10,
+                'Brief Stage': 20,
+                'Working on pitch': 40,
+                'Pitched': 50,
+                'Objection handling': 80,
+                'Finalizing terms': 90,
+                'Rejected': 0,
+                'Closed Won': 100
+            };
+
             // Handle edit stage change for rejection reason
             const editStageSelect = document.getElementById('edit_stage');
             const editRejectionReasonContainer = document.getElementById('edit_rejection_reason_container');
             const editRejectionReasonInput = document.getElementById('edit_rejection_reason');
+            const editWinningPercentageInput = document.getElementById('edit_winning_percentage');
 
             // Handle create stage change for rejection reason
             const createStageSelect = document.getElementById('create_stage');
             const createRejectionReasonContainer = document.getElementById('create_rejection_reason_container');
             const createRejectionReasonInput = document.getElementById('create_rejection_reason');
+            const createWinningPercentageInput = document.getElementById('create_winning_percentage');
 
             if (createStageSelect) {
+                // Initialize default
+                if (createWinningPercentageInput && createStageSelect.value) {
+                     createWinningPercentageInput.value = stageProbs[createStageSelect.value] || 0;
+                }
+                
                 createStageSelect.addEventListener('change', function () {
+                    
+                    if (createWinningPercentageInput) {
+                        createWinningPercentageInput.value = stageProbs[this.value] || 0;
+                    }
+
                     if (this.value === 'Rejected') {
                         createRejectionReasonContainer.classList.remove('hidden');
                         createRejectionReasonInput.setAttribute('required', 'required');
@@ -873,6 +1027,11 @@
 
             if (editStageSelect) {
                 editStageSelect.addEventListener('change', function () {
+                    
+                    if (editWinningPercentageInput) {
+                        editWinningPercentageInput.value = stageProbs[this.value] || 0;
+                    }
+
                     if (this.value === 'Rejected') {
                         editRejectionReasonContainer.classList.remove('hidden');
                         editRejectionReasonInput.setAttribute('required', 'required');
@@ -915,5 +1074,30 @@
                 }, 500);
             }
         });
+
+        function createEstimate(dealId) {
+            if (confirm('Create Estimate? This will generate a draft estimate from this deal.')) {
+                fetch(`/deals/${dealId}/create-estimate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else if (data.message) {
+                        alert(data.message);
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the estimate.');
+                });
+            }
+        }
     </script>
 @endsection

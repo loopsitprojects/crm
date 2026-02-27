@@ -36,8 +36,8 @@ class DashboardController extends Controller
         // Deals & Pipeline
         $dealQuery = Deal::whereBetween('created_at', [$startDate, $endDate]);
         $dealCount = (clone $dealQuery)->count();
-        $pipelineValue = (clone $dealQuery)->whereNotIn('stage', ['Rejected', 'Approved'])->sum('amount');
-        $closedDealsValue = (clone $dealQuery)->where('stage', 'Approved')->sum('amount');
+        $pipelineRevenue = (clone $dealQuery)->whereNotIn('stage', ['Rejected', 'Approved'])->sum('revenue');
+        $closedDealsRevenue = (clone $dealQuery)->where('stage', 'Approved')->sum('revenue');
 
         // Conversions
         $conversionsCount = Invoice::whereHas('estimate', function ($q) use ($startDate, $endDate) {
@@ -59,8 +59,8 @@ class DashboardController extends Controller
             'revenue',
             'pendingPayments',
             'dealCount',
-            'pipelineValue',
-            'closedDealsValue',
+            'pipelineRevenue',
+            'closedDealsRevenue',
             'conversionRate',
             'startDate',
             'endDate',

@@ -46,6 +46,34 @@
                                 </div>
                             </div>
 
+                            <!-- Brand Name -->
+                            <div class="grid grid-cols-12 gap-4 items-center">
+                                <label class="col-span-12 sm:col-span-3 text-right text-sm font-medium text-gray-600">Brand
+                                    Name</label>
+                                <div class="col-span-12 sm:col-span-9 brand-name-tom-select">
+                                    <select name="brand_name" id="brand_name_select"
+                                        class="w-full rounded-md border-none focus:border-brand-blue focus:ring-brand-blue sm:text-sm py-2">
+                                        <option value="">-- No Brand / Select Brand --</option>
+                                        @foreach($brands as $brand)
+                                            <option value="{{ $brand }}" {{ $estimate->brand_name == $brand ? 'selected' : '' }}>
+                                                {{ $brand }}
+                                            </option>
+                                        @endforeach
+                                        @if($estimate->brand_name && !$brands->contains($estimate->brand_name))
+                                            <option value="{{ $estimate->brand_name }}" selected>{{ $estimate->brand_name }}
+                                            </option>
+                                        @endif
+                                    </select>
+                                </div>
+                            </div>
+
+                            <style>
+                                .brand-name-tom-select .ts-wrapper .ts-control {
+                                    border: none !important;
+                                    box-shadow: none !important;
+                                }
+                            </style>
+
                             <!-- Attention To -->
                             <div class="grid grid-cols-12 gap-4 items-center">
                                 <label
@@ -115,17 +143,22 @@
                             <table class="w-full min-w-[800px]" id="items-table">
                                 <thead class="bg-gray-50 border-b border-gray-100">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase">
                                             Description</th>
                                         <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-20">Qty
                                         </th>
-                                        <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">Unit
-                                            Price</th>
+                                        <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">
+                                            Unit Price</th>
                                         <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">
                                             Amount</th>
                                         <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-24">Tax
                                         </th>
-                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-32">Meta
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-28">Dept
+                                        </th>
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-32">Rev
+                                            Cat
+                                        </th>
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-28">Meta
                                         </th>
                                         <th class="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-12">
                                         </th>
@@ -137,7 +170,8 @@
                                             <td class="p-2 align-top">
                                                 <textarea name="items[{{ $index }}][description]" rows="2"
                                                     placeholder="Item Description"
-                                                    class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent">{{ $item->description }}</textarea>
+                                                    class="w-full border-none bg-transparent focus:ring-0 text-sm py-2 px-3 resize-none"
+                                                    title="Description">{{ $item->description }}</textarea>
                                             </td>
                                             <td class="p-2 align-top">
                                                 <input type="number" name="items[{{ $index }}][quantity]"
@@ -157,25 +191,49 @@
                                             <td class="p-2 align-top">
                                                 <div class="space-y-1">
                                                     <input type="text" readonly name="items[{{ $index }}][sscl_amount]"
-                                                        value="{{ $item->sscl_amount }}" placeholder="SSCL"
-                                                        class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0"
+                                                        value="{{ number_format($item->sscl_amount, 2) }}" placeholder="SSCL"
+                                                        class="w-full text-sm text-right border-none bg-transparent text-gray-500 py-0"
                                                         title="SSCL">
                                                     <input type="text" readonly name="items[{{ $index }}][vat_amount]"
-                                                        value="{{ $item->vat_amount }}" placeholder="VAT"
-                                                        class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0"
+                                                        value="{{ number_format($item->vat_amount, 2) }}" placeholder="VAT"
+                                                        class="w-full text-sm text-right border-none bg-transparent text-gray-500 py-0"
                                                         title="VAT">
                                                 </div>
                                             </td>
-                                            <td class="p-2 align-top space-y-2">
+                                            <td class="p-2 align-top">
+                                                <select name="items[{{ $index }}][department]"
+                                                    class="w-full rounded-md border-gray-200 text-sm py-1 px-1"
+                                                    title="Department">
+                                                    <option value="">-- Dept --</option>
+                                                    <option value="creative" {{ $item->department == 'creative' ? 'selected' : '' }}>Creative</option>
+                                                    <option value="corporate" {{ $item->department == 'corporate' ? 'selected' : '' }}>Corporate</option>
+                                                    <option value="digital" {{ $item->department == 'digital' ? 'selected' : '' }}>Digital</option>
+                                                    <option value="play" {{ $item->department == 'play' ? 'selected' : '' }}>Play
+                                                    </option>
+                                                    <option value="tech" {{ $item->department == 'tech' ? 'selected' : '' }}>Tech
+                                                    </option>
+                                                </select>
+                                            </td>
+                                            <td class="p-2 align-top">
+                                                <select name="items[{{ $index }}][revenue_category]"
+                                                    class="w-full rounded-md border-gray-200 text-sm py-1 px-1"
+                                                    title="Revenue Category">
+                                                    <option value="">-- Rev Cat --</option>
+                                                    @foreach (['Retainer', 'ads', 'Campaigns/Projects', 'CAG', 'Corporate'] as $cat)
+                                                        <option value="{{ $cat }}" {{ $item->revenue_category == $cat ? 'selected' : '' }}>{{ $cat }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td class="p-2 align-top space-y-1">
                                                 <select name="items[{{ $index }}][item_heading]"
-                                                    class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
+                                                    class="w-full rounded-md border-gray-200 text-sm py-1 px-1" title="Heading">
                                                     <option value="">Head</option>
                                                     <option value="General" {{ $item->item_heading == 'General' ? 'selected' : '' }}>General</option>
                                                 </select>
                                                 <input type="text" name="items[{{ $index }}][locations]"
                                                     value="{{ $item->locations }}" placeholder="Loc"
-                                                    class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-
+                                                    class="w-full rounded-md border-gray-200 text-sm py-1 px-1"
+                                                    title="Location">
                                             </td>
                                             <td class="p-2 align-top text-center">
                                                 <button type="button" onclick="this.closest('tr').remove();"
@@ -359,37 +417,57 @@
             row.className = "group hover:bg-gray-50 transition-colors";
 
             row.innerHTML = `
-                                                                                    <td class="p-2 align-top">
-                                                                                        <textarea name="items[${newIndex}][description]" rows="2" placeholder="Item Description" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 px-3 resize-none bg-transparent"></textarea>
-                                                                                    </td>
-                                                                                    <td class="p-2 align-top">
-                                                                                        <input type="number" name="items[${newIndex}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                                                    </td>
-                                                                                    <td class="p-2 align-top">
-                                                                                        <input type="number" step="0.01" name="items[${newIndex}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
-                                                                                    </td>
-                                                                                    <td class="p-2 align-top">
-                                                                                        <input type="number" step="0.01" name="items[${newIndex}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
-                                                                                    </td>
-                                                                                     <td class="p-2 align-top">
-                                                                                         <div class="space-y-1">
-                                                                                            <input type="text" readonly name="items[${newIndex}][sscl_amount]" placeholder="SSCL" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
-                                                                                            <input type="text" readonly name="items[${newIndex}][vat_amount]" placeholder="VAT" class="w-full text-xs text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
-                                                                                         </div>
-                                                                                    </td>
-                                                                                    <td class="p-2 align-top space-y-2">
-                                                                                        <select name="items[${newIndex}][item_heading]" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                                            <option value="">Head</option>
-                                                                                            <option value="General">General</option>
-                                                                                        </select>
-                                                                                        <input type="text" name="items[${newIndex}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-xs py-1 px-2">
-                                                                                    </td>
-                                                                                    <td class="p-2 align-top text-center">
-                                                                                        <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
-                                                                                            <i class="fas fa-trash-alt"></i>
-                                                                                        </button>
-                                                                                    </td>
-                                                                                `;
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                     <textarea name="items[${newIndex}][description]" rows="2" placeholder="Item Description" class="w-full border-none bg-transparent focus:ring-0 text-sm py-2 px-3 resize-none" title="Description"></textarea>
+                                                                                                                                 </td>
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                                         <input type="number" name="items[${newIndex}][quantity]" value="1" min="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                                                                                     </td>
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                                         <input type="number" step="0.01" name="items[${newIndex}][unit_price]" value="0" min="0" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 focus:border-brand-blue focus:ring-brand-blue text-sm py-1.5 px-2 text-right">
+                                                                                                                                                     </td>
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                                         <input type="number" step="0.01" name="items[${newIndex}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1.5 px-2 text-right font-medium text-gray-700">
+                                                                                                                                                     </td>
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                                         <div class="space-y-1">
+                                                                                                                                                            <input type="text" readonly name="items[${newIndex}][sscl_amount]" placeholder="SSCL" class="w-full text-sm text-right border-none bg-transparent text-gray-500 py-0" title="SSCL">
+                                                                                                                                                            <input type="text" readonly name="items[${newIndex}][vat_amount]" placeholder="VAT" class="w-full text-sm text-right border-none bg-transparent text-gray-500 py-0" title="VAT">
+                                                                                                                                                         </div>
+                                                                                                                                                    </td>
+                                                                                                                                                    <td class="p-2 align-top">
+                                                                                                                                                        <select name="items[${newIndex}][department]" class="w-full rounded-md border-gray-200 text-sm py-1 px-1" title="Department">
+                                                                                                                                                            <option value="">-- Dept --</option>
+                                                                                                                                                            <option value="creative">Creative</option>
+                                                                                                                                                            <option value="corporate">Corporate</option>
+                                                                                                                                                            <option value="digital">Digital</option>
+                                                                                                                                                            <option value="play">Play</option>
+                                                                                                                                                            <option value="tech">Tech</option>
+                                                                                                                                                        </select>
+                                                                                                                                                    </td>
+                                                                                                                                                     <td class="p-2 align-top">
+                                                                                                                                                         <select name="items[${newIndex}][revenue_category]" class="w-full rounded-md border-gray-200 text-sm py-1 px-1" title="Revenue Category">
+                                                                                                                                                             <option value="">-- Rev Cat --</option>
+                                                                                                                                                             <option value="Retainer">Retainer</option>
+                                                                                                                                                             <option value="ads">Ads</option>
+                                                                                                                                                             <option value="Campaigns/Projects">Campaigns/Projects</option>
+                                                                                                                                                             <option value="CAG">CAG</option>
+                                                                                                                                                             <option value="Corporate">Corporate</option>
+                                                                                                                                                         </select>
+                                                                                                                                                     </td>
+                                                                                                                                                     <td class="p-2 align-top space-y-1">
+                                                                                                                                                         <select name="items[${newIndex}][item_heading]" class="w-full rounded-md border-gray-200 text-sm py-1 px-1" title="Heading">
+                                                                                                                                                             <option value="">Head</option>
+                                                                                                                                                             <option value="General">General</option>
+                                                                                                                                                         </select>
+                                                                                                                                                         <input type="text" name="items[${newIndex}][locations]" placeholder="Loc" class="w-full rounded-md border-gray-200 text-sm py-1 px-1" title="Location">
+                                                                                                                                                     </td>
+                                                                                                                                                    <td class="p-2 align-top text-center">
+                                                                                                                                                        <button type="button" onclick="this.closest('tr').remove();" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                                                                                                                                                            <i class="fas fa-trash-alt"></i>
+                                                                                                                                                        </button>
+                                                                                                                                                    </td>
+                                                                                                                                                `;
 
             tbody.appendChild(row);
             // Trigger calc for initial state
@@ -451,10 +529,10 @@
             div.className = "flex justify-between items-start bg-gray-50 p-2 rounded border border-gray-200 text-sm";
             div.id = id;
             div.innerHTML = `
-                                                                <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
-                                                                <input type="hidden" name="terms[]" value="${content}">
-                                                                <button type="button" onclick="document.getElementById('${id}').remove()" class="text-red-400 hover:text-red-600 focus:outline-none"><i class="fas fa-times"></i></button>
-                                                            `;
+                                                                                                                                <span class="text-gray-700 leading-snug flex-1 mr-2">${content}</span>
+                                                                                                                                <input type="hidden" name="terms[]" value="${content}">
+                                                                                                                                <button type="button" onclick="document.getElementById('${id}').remove()" class="text-red-400 hover:text-red-600 focus:outline-none"><i class="fas fa-times"></i></button>
+                                                                                                                            `;
             container.appendChild(div);
         }
 
@@ -465,6 +543,14 @@
                 @endforeach
             @endif
             calculateAllRows();
+
+            new TomSelect('#brand_name_select', {
+                create: true,
+                sortField: {
+                    field: "text",
+                    direction: "asc"
+                }
+            });
         });
     </script>
 @endsection

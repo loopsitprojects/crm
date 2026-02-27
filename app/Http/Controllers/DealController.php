@@ -25,25 +25,25 @@ class DealController extends Controller
             'Pitched',
             'Objection handling',
             'Finalizing terms',
-            'Approved',
+            'Closed Won',
             'Rejected'
         ];
 
         // Stage probability weights for weighted deal calculation
         $stageProbabilities = [
             'Planned to Meet' => 0.10,
-            'Introductory meeting' => 0.20,
-            'Brief Stage' => 0.30,
+            'Introductory meeting' => 0.10,
+            'Brief Stage' => 0.20,
             'Working on pitch' => 0.40,
             'Pitched' => 0.50,
-            'Objection handling' => 0.60,
-            'Finalizing terms' => 0.80,
+            'Objection handling' => 0.80,
+            'Finalizing terms' => 0.90,
             'Rejected' => 0.00,
-            'Approved' => 1.00
+            'Closed Won' => 1.00
         ];
 
         // Group all deals by stage for display
-        $allDeals = Deal::with(['customer', 'owner', 'teamMembers'])->orderBy('updated_at', 'desc')->get();
+        $allDeals = Deal::with(['customer', 'owner', 'teamMembers', 'estimates'])->orderBy('updated_at', 'desc')->get();
 
 
         // Group all deals by stage for counts
@@ -55,22 +55,20 @@ class DealController extends Controller
         $currencies = \App\Models\SystemCurrency::all();
 
         // Calculate metrics
-        $openDeals = $allDeals->whereNotIn('stage', ['Rejected', 'Approved']);
+        $openDeals = $allDeals->whereNotIn('stage', ['Rejected', 'Closed Won']);
 
         // Weighted Deal Amount: sum of (amount × probability) for open deals
         $weightedDealAmount = $openDeals->sum(function ($deal) use ($stageProbabilities) {
-            $probability = $deal->winning_percentage !== null
-                ? $deal->winning_percentage / 100
-                : ($stageProbabilities[$deal->stage] ?? 0);
-            return $deal->amount * $probability;
+            $probability = $stageProbabilities[$deal->stage] ?? 0;
+            return $deal->revenue * $probability;
         });
 
-        // Approved Deal Amount: sum of amounts for approved deals
-        $approvedDealAmount = $allDeals->where('stage', 'Approved')->sum('amount');
+        // Approved Deal Revenue: sum of revenue for approved deals
+        $approvedDealRevenue = $allDeals->where('stage', 'Closed Won')->sum('revenue');
 
-        // New Deal Amount: sum of amounts for deals created in last 30 days
+        // New Deal Revenue: sum of revenue for deals created in last 30 days
         $thirtyDaysAgo = now()->subDays(30);
-        $newDealAmount = $allDeals->where('created_at', '>=', $thirtyDaysAgo)->sum('amount');
+        $newDealRevenue = $allDeals->where('created_at', '>=', $thirtyDaysAgo)->sum('revenue');
 
         // Average Deal Age: average days since creation for open deals
         $averageDealAge = $openDeals->count() > 0
@@ -96,8 +94,8 @@ class DealController extends Controller
             'users',
             'currencies',
             'weightedDealAmount',
-            'approvedDealAmount',
-            'newDealAmount',
+            'approvedDealRevenue',
+            'newDealRevenue',
             'averageDealAge',
             'invoicedAmount',
             'paymentCollected',
@@ -109,7 +107,8 @@ class DealController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
+            'revenue' => 'required|numeric|min:0',
+            'contribution' => 'required|numeric|min:0',
             'project_cost' => 'nullable|numeric|min:0',
             'currency' => 'required|string|max:3',
             'pipeline' => 'nullable|string|max:255',
@@ -117,7 +116,6 @@ class DealController extends Controller
             'user_id' => 'nullable|exists:users,id', // Deal Owner
             'type' => 'nullable|string|max:255', // New/Existing Business
             'priority' => 'nullable|string|max:255', // Low, Medium, High
-            'winning_percentage' => 'required|integer|min:0|max:100',
             'close_date' => 'nullable|date',
             'customer_id' => 'nullable|string',
             'customer_name' => 'nullable|string',
@@ -141,6 +139,19 @@ class DealController extends Controller
                 $validated['customer_id'] = null;
             }
         }
+
+        $stageProbs = [
+            'Planned to Meet' => 10,
+            'Introductory meeting' => 10,
+            'Brief Stage' => 20,
+            'Working on pitch' => 40,
+            'Pitched' => 50,
+            'Objection handling' => 80,
+            'Finalizing terms' => 90,
+            'Rejected' => 0,
+            'Closed Won' => 100
+        ];
+        $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
 
         $deal = Deal::create($validated);
 
@@ -159,7 +170,8 @@ class DealController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
+            'revenue' => 'required|numeric|min:0',
+            'contribution' => 'required|numeric|min:0',
             'project_cost' => 'nullable|numeric|min:0',
             'currency' => 'required|string|max:3',
             'pipeline' => 'nullable|string|max:255',
@@ -167,7 +179,6 @@ class DealController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'type' => 'nullable|string|max:255',
             'priority' => 'nullable|string|max:255',
-            'winning_percentage' => 'required|integer|min:0|max:100',
             'close_date' => 'nullable|date',
             'customer_id' => 'nullable|string',
             'customer_name' => 'nullable|string',
@@ -192,13 +203,26 @@ class DealController extends Controller
             }
         }
 
-        // Auto-generate Job Number if stage is 'Pitched' or subsequent stages and job_number is not set
-        $jobIdStages = ['Pitched', 'Objection handling', 'Finalizing terms', 'Approved'];
+        // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
+        $jobIdStages = ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'];
         if (in_array($validated['stage'], $jobIdStages) && is_null($deal->job_number)) {
-            $year = date('y');
+            $year = date('Y');
             $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
-            $validated['job_number'] = "JOB-{$year}-{$idPad}";
+            $validated['job_number'] = "LOOPS/{$year}/{$idPad}";
         }
+
+        $stageProbs = [
+            'Planned to Meet' => 10,
+            'Introductory meeting' => 10,
+            'Brief Stage' => 20,
+            'Working on pitch' => 40,
+            'Pitched' => 50,
+            'Objection handling' => 80,
+            'Finalizing terms' => 90,
+            'Rejected' => 0,
+            'Closed Won' => 100
+        ];
+        $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
 
         $deal->update($validated);
 
@@ -244,24 +268,31 @@ class DealController extends Controller
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            // Auto-generate Job Number if stage is 'Pitched' or subsequent stages
-            $jobIdStages = ['Pitched', 'Objection handling', 'Finalizing terms', 'Approved'];
+            // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages
+            $jobIdStages = ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'];
             if (in_array($validated['stage'], $jobIdStages) && is_null($deal->job_number)) {
-                $year = date('y');
+                $year = date('Y');
                 $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
-                $validated['job_number'] = "JOB-{$year}-{$idPad}";
+                $validated['job_number'] = "LOOPS/{$year}/{$idPad}";
             }
+
+            $stageProbs = [
+                'Planned to Meet' => 10,
+                'Introductory meeting' => 10,
+                'Brief Stage' => 20,
+                'Working on pitch' => 40,
+                'Pitched' => 50,
+                'Objection handling' => 80,
+                'Finalizing terms' => 90,
+                'Rejected' => 0,
+                'Closed Won' => 100
+            ];
+            $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
 
             $deal->update($validated);
 
             if ($request->has('team_members')) {
                 $deal->teamMembers()->sync($request->team_members);
-            }
-
-            if ($request->stage === 'Approved') {
-                $this->createEstimateFromDeal($deal);
-                \Illuminate\Support\Facades\DB::commit();
-                return response()->json(['message' => 'Deal approved! Estimate draft created.', 'redirect' => route('estimates.index')]);
             }
 
             \Illuminate\Support\Facades\DB::commit();
@@ -271,6 +302,24 @@ class DealController extends Controller
             \Illuminate\Support\Facades\DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Deal update failed: ' . $e->getMessage());
             return response()->json(['message' => 'Update failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function createEstimate(Request $request, Deal $deal)
+    {
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $this->createEstimateFromDeal($deal);
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'message' => 'Estimate draft created successfully.',
+                'redirect' => route('estimates.index')
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to create estimate from deal: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to create estimate: ' . $e->getMessage()], 500);
         }
     }
 
@@ -298,7 +347,7 @@ class DealController extends Controller
             'reference_number' => 'EST-' . strtoupper(Str::random(6)),
             'date' => now(),
             'status' => 'draft',
-            'total_amount' => $deal->amount,
+            'total_amount' => $deal->revenue,
             'currency' => 'LKR',
             'heading' => 'Estimate for ' . $deal->title,
             'terms' => Setting::get('standard_terms', 'Standard business terms apply.')
@@ -308,10 +357,10 @@ class DealController extends Controller
         $estimate->items()->create([
             'description' => $deal->title,
             'quantity' => 1,
-            'unit_price' => $deal->amount,
-            'amount' => $deal->amount,
+            'unit_price' => $deal->revenue,
+            'amount' => $deal->revenue,
             'vat_amount' => 0,
-            'total_with_vat' => $deal->amount,
+            'total_with_vat' => $deal->revenue,
             'sscl_amount' => 0
         ]);
     }
