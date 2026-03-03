@@ -52,8 +52,35 @@ class Estimate extends Model
         return $this->hasMany(EstimateItem::class, 'quotation_id');
     }
 
+    public function thirdPartyCosts()
+    {
+        return $this->hasMany(ThirdPartyCost::class, 'quotation_id');
+    }
+
     public function deal()
     {
         return $this->belongsTo(Deal::class);
+    }
+
+
+    public static function generateReferenceNumber()
+    {
+        $year = date('Y');
+        $prefix = "EST/{$year}/";
+
+        $lastEstimate = self::where('reference_number', 'like', $prefix . '%')
+            ->orderBy('reference_number', 'desc')
+            ->first();
+
+        if (!$lastEstimate) {
+            $sequence = 1;
+        } else {
+            // Extract the number from EST/YYYY/XXXX
+            $parts = explode('/', $lastEstimate->reference_number);
+            $lastSequence = (int) end($parts);
+            $sequence = $lastSequence + 1;
+        }
+
+        return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }

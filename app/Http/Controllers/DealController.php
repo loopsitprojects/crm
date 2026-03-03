@@ -307,6 +307,12 @@ class DealController extends Controller
 
     public function createEstimate(Request $request, Deal $deal)
     {
+        if ($deal->estimates()->exists()) {
+            return response()->json([
+                'message' => 'An estimate already exists for this deal.'
+            ], 422);
+        }
+
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $this->createEstimateFromDeal($deal);
@@ -344,7 +350,7 @@ class DealController extends Controller
         $estimate = Estimate::create([
             'customer_id' => $customerId,
             'deal_id' => $deal->id,
-            'reference_number' => 'EST-' . strtoupper(Str::random(6)),
+            'reference_number' => Estimate::generateReferenceNumber(),
             'date' => now(),
             'status' => 'draft',
             'total_amount' => $deal->revenue,

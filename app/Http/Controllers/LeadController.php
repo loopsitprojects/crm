@@ -57,7 +57,7 @@ class LeadController extends Controller
         // Create Draft Estimate
         Estimate::create([
             'customer_id' => $customer->id,
-            'reference_number' => 'EST-LEAD-' . $lead->id . '-' . rand(1000, 9999),
+            'reference_number' => Estimate::generateReferenceNumber(),
             'date' => now(),
             'total_amount' => 0, // Pending estimation
             'status' => 'draft',

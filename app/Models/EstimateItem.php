@@ -21,11 +21,19 @@ class EstimateItem extends Model
         'locations',
         'days',
         'department',
-        'revenue_category'
+        'revenue_category',
+        'position'
     ];
 
     public function estimate()
     {
         return $this->belongsTo(Estimate::class, 'quotation_id');
+    }
+
+    protected static function booted()
+    {
+        static::addGlobalScope('order', function ($builder) {
+            $builder->orderBy('position');
+        });
     }
 }

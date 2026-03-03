@@ -39,6 +39,7 @@
             font-family: 'Inter', sans-serif;
         }
     </style>
+    @stack('head')
 </head>
 
 <body class="bg-gray-100 text-gray-800">
@@ -113,7 +114,7 @@
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
                         <button type="submit" class="text-gray-400 hover:text-white" title="Logout">
-                            <i class="fas fa-sign-out-alt"></i>
+                            <i class="fas fa- sign-out-alt"></i>
                         </button>
                     </form>
                 </div>
@@ -198,6 +199,7 @@
             </main>
         </div>
     </div>
+    @stack('scripts')
 </body>
 
 </html>

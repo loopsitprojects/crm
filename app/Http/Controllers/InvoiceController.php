@@ -204,7 +204,7 @@ class InvoiceController extends Controller
         // Create new Estimate
         $newEstimate = Estimate::create([
             'customer_id' => $invoice->customer_id,
-            'reference_number' => $invoice->invoice_number . '-COPY',
+            'reference_number' => Estimate::generateReferenceNumber(),
             'date' => now(),
             'total_amount' => $invoice->total_amount,
             'status' => 'draft',

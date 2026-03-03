@@ -146,13 +146,22 @@
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="font-bold text-gray-800 text-sm line-clamp-1 flex-1">{{ $deal->title }}</h4>
                                             <div class="flex items-center gap-1 ml-2">
+                                                @php $hasEstimate = $deal->estimates->isNotEmpty(); @endphp
+                                                
                                                 @if($stage === 'Objection handling')
-                                                <button onclick="createEstimate({{ $deal->id }})"
-                                                    class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
-                                                    <i class="fas fa-file-invoice text-xs"></i>
-                                                </button>
+                                                    @if(!$hasEstimate)
+                                                    <button onclick="createEstimate({{ $deal->id }})"
+                                                        class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
+                                                        <i class="fas fa-file-invoice text-xs"></i>
+                                                    </button>
+                                                    @else
+                                                    <a href="{{ route('estimates.edit', $deal->estimates->first()->id) }}"
+                                                        class="text-purple-500 hover:text-purple-700 transition-colors" title="Edit Estimate">
+                                                        <i class="fas fa-file-invoice text-xs"></i>
+                                                    </a>
+                                                    @endif
                                                 @endif
-                                                @if(in_array($stage, ['Finalizing terms', 'Closed Won']) && $deal->estimates->isNotEmpty())
+                                                @if(in_array($stage, ['Finalizing terms', 'Closed Won']) && $hasEstimate)
                                                 <a href="{{ route('estimates.edit', $deal->estimates->first()->id) }}"
                                                     class="text-purple-500 hover:text-purple-700 transition-colors" title="Edit Estimate">
                                                     <i class="fas fa-file-invoice text-xs"></i>
