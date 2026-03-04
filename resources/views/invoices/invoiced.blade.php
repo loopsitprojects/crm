@@ -84,8 +84,13 @@
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 ${{ number_format($estimate->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-right text-sm">
+                                <a href="{{ route('estimates.show', $estimate) }}"
+                                    class="text-brand-blue hover:text-brand-purple mr-3" title="View Estimate">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+
                                 <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Invoiced</span>
+                                    class="px-2 ml-3 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Invoiced</span>
                             </td>
                         </tr>
                     @empty

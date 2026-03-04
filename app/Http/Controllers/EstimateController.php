@@ -21,7 +21,7 @@ class EstimateController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Estimate::with('customer');
+        $query = Estimate::with('customer')->whereIn('status', ['draft', 'ready_to_invoice']);
 
         // Search filter (Reference or Customer Name)
         if ($request->filled('search')) {
@@ -117,6 +117,7 @@ class EstimateController extends Controller
 
         $grandTotal = 0;
 
+        $positionCounter = 0;
         foreach ($request->items as $item) {
             $quantity = $item['quantity'];
             $unitPrice = $item['unit_price'];
@@ -144,7 +145,8 @@ class EstimateController extends Controller
                 'vat_amount' => $vat,
                 'sscl_amount' => $sscl,
                 'total_with_vat' => $totalWithVat,
-                'position' => $item['position'] ?? null,
+                // Use backend counter instead of JS timestamp to prevent INT(11) overflow
+                'position' => $positionCounter++,
                 'item_heading' => $item['item_heading'] ?? null,
                 'locations' => $item['locations'] ?? null,
                 'days' => $item['days'] ?? null,
@@ -186,6 +188,8 @@ class EstimateController extends Controller
             }
         }
 
+        $this->syncProformaInvoice($estimate);
+
         $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
@@ -226,7 +230,16 @@ class EstimateController extends Controller
         $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate);
 
         $message = "Estimate status updated to " . ucfirst($request->status) . ".";
-        return back()->with('success', $message);
+
+        if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
+            return redirect()->route('invoices.ready')->with('success', $message);
+        } elseif ($request->status === 'approved' || $request->status === 'invoiced') {
+            return redirect()->route('invoices.invoiced')->with('success', $message);
+        } elseif ($request->status === 'rejected') {
+            return redirect()->route('invoices.rejected')->with('success', $message);
+        }
+
+        return redirect()->route('estimates.index')->with('success', $message);
     }
 
     public function convertToInvoice(Estimate $estimate)
@@ -235,11 +248,24 @@ class EstimateController extends Controller
             return back()->with('error', 'Only accepted/ready to invoice estimates can be invoiced.');
         }
 
+        // Generate Invoice Number (YYMMM_LDSL_XXXXX)
+        $prefix = strtoupper(now()->format('yM')) . '_LDSL_';
+        $latestInvoice = \App\Models\Invoice::where('invoice_number', 'LIKE', '%_LDSL_%')
+                        ->orderBy('id', 'desc')
+                        ->first();
+
+        $sequence = 1;
+        if ($latestInvoice && preg_match('/_LDSL_(\d+)$/', $latestInvoice->invoice_number, $matches)) {
+            $sequence = intval($matches[1]) + 1;
+        }
+        
+        $newInvoiceNumber = $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
         // Create Invoice
         $invoice = Invoice::create([
             'quotation_id' => $estimate->id,
             'customer_id' => $estimate->customer_id,
-            'invoice_number' => 'INV-' . $estimate->reference_number,
+            'invoice_number' => $newInvoiceNumber,
             'date' => now(),
             'due_date' => now()->addDays(30),
             'total_amount' => $estimate->total_amount,
@@ -262,7 +288,7 @@ class EstimateController extends Controller
         $estimate->update(['status' => 'invoiced']);
         $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
 
-        return redirect()->route('invoices.index')->with('success', 'Estimate converted to Invoice successfully.');
+        return redirect()->route('invoices.invoiced')->with('success', 'Estimate converted to Invoice successfully.');
     }
 
 
@@ -285,8 +311,12 @@ class EstimateController extends Controller
         $estimate = Estimate::with(['items'])->findOrFail($id);
 
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management']) && $estimate->status !== 'draft') {
-            abort(403, 'You can only edit Draft estimates.');
+        if ($user->role !== 'Super Admin') {
+            if ($user->role === 'Management' && $estimate->status === 'invoiced') {
+                abort(403, 'Management cannot edit Invoiced estimates.');
+            } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
+                abort(403, 'You can only edit Draft estimates.');
+            }
         }
 
         $customers = Customer::all();
@@ -306,8 +336,12 @@ class EstimateController extends Controller
         $estimate = Estimate::findOrFail($id);
 
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management']) && $estimate->status !== 'draft') {
-            abort(403, 'You can only edit Draft estimates.');
+        if ($user->role !== 'Super Admin') {
+            if ($user->role === 'Management' && $estimate->status === 'invoiced') {
+                abort(403, 'Management cannot edit Invoiced estimates.');
+            } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
+                abort(403, 'You can only edit Draft estimates.');
+            }
         }
 
         $validated = $request->validate([
@@ -357,6 +391,7 @@ class EstimateController extends Controller
 
         $grandTotal = 0;
 
+        $positionCounter = 0;
         foreach ($request->items as $item) {
             $quantity = $item['quantity'];
             $unitPrice = $item['unit_price'];
@@ -383,7 +418,8 @@ class EstimateController extends Controller
                 'vat_amount' => $vat,
                 'sscl_amount' => $sscl,
                 'total_with_vat' => $totalWithVat,
-                'position' => $item['position'] ?? null,
+                // Use backend counter instead of JS timestamp to prevent INT(11) overflow
+                'position' => $positionCounter++,
                 'item_heading' => $item['item_heading'] ?? null,
                 'locations' => $item['locations'] ?? null,
                 'days' => $item['days'] ?? null,
@@ -438,6 +474,8 @@ class EstimateController extends Controller
             }
         }
 
+        $this->syncProformaInvoice($estimate);
+
         $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
 
         return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');
@@ -454,5 +492,66 @@ class EstimateController extends Controller
         $this->logAction("Deleted estimate: {$ref}");
 
         return redirect()->route('estimates.index')->with('success', 'Estimate deleted successfully.');
+    }
+
+    /**
+     * Synchronize the proforma invoice status based on Estimate settings.
+     */
+    private function syncProformaInvoice(Estimate $estimate)
+    {
+        if ($estimate->proforma_invoice === 'yes') {
+            $existingProforma = Invoice::where('quotation_id', $estimate->id)->where('is_proforma', true)->first();
+            
+            if ($existingProforma) {
+                // Delete old items and update
+                $existingProforma->items()->delete();
+                $invoice = $existingProforma;
+                $invoice->update([
+                    'total_amount' => $estimate->total_amount,
+                    'date' => now(), // Or $estimate->date
+                    // 'due_date' => now()->addDays(30),
+                ]);
+            } else {
+                // Generate Proforma Invoice Number (PROINV_YY_XXXX)
+                $prefix = 'PROINV_' . now()->format('y') . '_';
+                $latestInvoice = \App\Models\Invoice::where('invoice_number', 'LIKE', $prefix . '%')
+                                ->orderBy('id', 'desc')
+                                ->first();
+
+                $sequence = 1;
+                if ($latestInvoice && preg_match('/_(\d+)$/', $latestInvoice->invoice_number, $matches)) {
+                    $sequence = intval($matches[1]) + 1;
+                }
+                $newInvoiceNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+
+                // Create Proforma Invoice
+                $invoice = Invoice::create([
+                    'quotation_id' => $estimate->id,
+                    'customer_id' => $estimate->customer_id,
+                    'invoice_number' => $newInvoiceNumber,
+                    'date' => now(),
+                    'due_date' => now()->addDays(30),
+                    'total_amount' => $estimate->total_amount,
+                    'status' => 'unpaid',
+                    'is_proforma' => true,
+                ]);
+            }
+            
+            // Copy Items
+            foreach ($estimate->items as $item) {
+                $invoice->items()->create([
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                    'sscl_amount' => $item->sscl_amount,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->total_with_vat,
+                ]);
+            }
+        } else {
+            // Delete existing proforma if it was changed to 'no'
+            Invoice::where('quotation_id', $estimate->id)->where('is_proforma', true)->delete();
+        }
     }
 }

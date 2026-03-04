@@ -66,10 +66,11 @@
         <!-- Top Stats -->
         <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project Revenue</h4>
-                <p class="text-xl font-bold text-brand-purple mt-1">LKR
-                    {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}
-                </p>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project</h4>
+                <div class="mt-2 space-y-1">
+                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-purple">LKR {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}</span></p>
+                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-purple">LKR {{ number_format($totalProjectContribution, 2) }}</span></p>
+                </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Open Deals</h4>
@@ -78,16 +79,18 @@
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted Revenue</h4>
-                <p class="text-xl font-bold text-brand-blue mt-1">LKR
-                    {{ number_format($weightedDealAmount, 2) }}
-                </p>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted</h4>
+                <div class="mt-2 space-y-1">
+                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-blue">LKR {{ number_format($weightedDealAmount, 2) }}</span></p>
+                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-blue">LKR {{ number_format($weightedContributionAmount, 2) }}</span></p>
+                </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Closed Won Revenue</h4>
-                <p class="text-xl font-bold text-brand-pink mt-1">LKR
-                    {{ number_format($approvedDealRevenue, 2) }}
-                </p>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Closed Won</h4>
+                <div class="mt-2 space-y-1">
+                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-pink">LKR {{ number_format($approvedDealRevenue, 2) }}</span></p>
+                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-pink">LKR {{ number_format($approvedDealContribution, 2) }}</span></p>
+                </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New Revenue (30d)</h4>

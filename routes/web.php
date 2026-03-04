@@ -42,7 +42,6 @@ Route::middleware(['auth'])->group(function () {
     // Jobs
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
 
-    Route::resource('estimates', EstimateController::class);
     Route::post('estimates/{estimate}/accept', [EstimateController::class, 'markAsAccepted'])->name('estimates.accept');
     Route::post('estimates/{estimate}/reject', [EstimateController::class, 'markAsRejected'])->name('estimates.reject');
     Route::post('estimates/{estimate}/convert', [
@@ -50,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
         'convertToInvoice'
     ])->name('estimates.convert');
     Route::post('estimates/{estimate}/status', [EstimateController::class, 'updateStatus'])->name('estimates.updateStatus');
+    Route::resource('estimates', EstimateController::class);
 
     Route::get('invoices/ready', [InvoiceController::class, 'ready'])->name('invoices.ready');
     Route::get('invoices/invoiced', [InvoiceController::class, 'invoiced'])->name('invoices.invoiced');

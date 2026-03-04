@@ -114,7 +114,7 @@
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
                         <button type="submit" class="text-gray-400 hover:text-white" title="Logout">
-                            <i class="fas fa- sign-out-alt"></i>
+                            <i class="fas fa-sign-out-alt"></i>
                         </button>
                     </form>
                 </div>

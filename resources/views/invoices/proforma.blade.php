@@ -114,6 +114,11 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 @if(auth()->user()->role === 'Super Admin')
+                                    <a href="{{ route('invoices.edit', $invoice) }}" class="text-gray-600 hover:text-brand-blue mx-2" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                @endif
+                                @if(auth()->user()->role === 'Super Admin')
                                     <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
                                         @csrf
                                         <button type="submit" class="text-brand-purple hover:text-brand-pink"

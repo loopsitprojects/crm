@@ -42,7 +42,7 @@ class InvoiceController extends Controller
 
     public function ready(Request $request)
     {
-        $query = Estimate::with('customer')->where('status', 'accepted');
+        $query = Estimate::with('customer')->whereIn('status', ['accepted', 'ready_to_invoice']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -67,7 +67,7 @@ class InvoiceController extends Controller
 
     public function invoiced(Request $request)
     {
-        $query = Estimate::with('customer')->where('status', 'invoiced');
+        $query = Estimate::with('customer')->whereIn('status', ['invoiced', 'approved']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -167,7 +167,13 @@ class InvoiceController extends Controller
      */
     public function edit(string $id)
     {
-        //
+        $invoice = Invoice::findOrFail($id);
+        
+        if ($invoice->quotation_id) {
+            return redirect()->route('estimates.edit', $invoice->quotation_id);
+        }
+
+        return back()->with('error', 'This invoice cannot be edited directly.');
     }
 
     /**
@@ -245,6 +251,12 @@ class InvoiceController extends Controller
 
     public function destroy(string $id)
     {
-        //
+        $invoice = Invoice::findOrFail($id);
+        $num = $invoice->invoice_number;
+        $invoice->items()->delete();
+        $invoice->delete();
+        $this->logAction("Deleted invoice: {$num}");
+
+        return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
 }

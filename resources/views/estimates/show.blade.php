@@ -44,7 +44,7 @@
                     <div class="text-sm text-gray-600 space-y-1">
                         <p><span class="font-semibold text-gray-800">Date:</span>
                             {{ \Carbon\Carbon::parse($estimate->date)->format('M d, Y') }}</p>
-                        <p><span class="font-semibold text-gray-800">Ref No:</span> {{ $estimate->reference_number }}</p>
+                        <p><span class="font-semibold text-gray-800">Estimate No:</span> {{ $estimate->reference_number }}</p>
                         @if($estimate->currency)
                             <p><span class="font-semibold text-gray-800">Currency:</span> {{ $estimate->currency }}</p>
                         @endif
@@ -91,11 +91,9 @@
             <table class="w-full mb-8">
                 <thead>
                     <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b-2 border-brand-teal">
-                        <th class="py-3 text-left w-[35%]">Description</th>
-                        <th class="py-3 text-left w-[12%]">Dept</th>
-                        <th class="py-3 text-left w-[15%]">Rev Cat</th>
-                        <th class="py-3 text-center w-8">Qty</th>
-                        <th class="py-3 text-right w-24">Unit Price</th>
+                        <th class="py-3 text-left w-[52%]">Description</th>
+                        <th class="py-3 text-right w-24">Line Amount</th>
+                        <th class="py-3 text-right w-24">VAT</th>
                         <th class="py-3 text-right w-28">Amount</th>
                     </tr>
                 </thead>
@@ -108,10 +106,8 @@
                                     <p class="text-xs text-gray-500 mt-0.5"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
-                            <td class="py-4 text-sm text-gray-600">{{ ucfirst($item->department) }}</td>
-                            <td class="py-4 text-sm text-gray-600">{{ $item->revenue_category }}</td>
-                            <td class="py-4 text-center text-gray-600">{{ $item->quantity }}</td>
-                            <td class="py-4 text-right text-gray-600">{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="py-4 text-right text-gray-600">{{ number_format($item->unit_price + $item->sscl_amount, 2) }}</td>
+                            <td class="py-4 text-right text-gray-600">{{ number_format($item->vat_amount, 2) }}</td>
                             <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->total_with_vat, 2) }}
                             </td>
                         </tr>
@@ -150,22 +146,6 @@
                         </div>
                     @endif
 
-                    <div class="mt-12">
-                        <div class="flex items-end space-x-2">
-                            @if($estimate->senior_manager)
-                                <div class="text-center w-40">
-                                    <div class="border-b border-gray-400 pb-2 mb-2 h-10"></div>
-                                    <p class="text-xs font-bold text-gray-700">{{ $estimate->senior_manager }}</p>
-                                    <p class="text-[10px] text-gray-500">Senior Manager</p>
-                                </div>
-                            @endif
-                            <div class="text-center w-48 ml-auto">
-                                <div class="border-b border-gray-400 pb-2 mb-2 h-10"></div>
-                                <p class="text-xs font-bold text-gray-700">Client Acceptance</p>
-                                <p class="text-[10px] text-gray-500">Signature & Date</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Right: Summary -->
@@ -173,20 +153,12 @@
                     <div class="bg-gray-50 rounded-lg p-6">
                         <div class="flex justify-between mb-3 text-sm text-gray-600">
                             <span>Subtotal</span>
-                            <span class="font-medium">{{ number_format($estimate->items->sum('amount'), 2) }}</span>
+                            <span class="font-medium">{{ number_format($estimate->items->sum('amount') + $estimate->items->sum('sscl_amount'), 2) }}</span>
                         </div>
 
                         @php
-                            $totalSSCL = $estimate->items->sum('sscl_amount');
                             $totalVAT = $estimate->items->sum('vat_amount');
                         @endphp
-
-                        @if($totalSSCL > 0)
-                            <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                <span>SSCL ({{ \App\Models\Setting::get('sscl_rate', 2.5) }}%)</span>
-                                <span class="font-medium">{{ number_format($totalSSCL, 2) }}</span>
-                            </div>
-                        @endif
 
                         @if($totalVAT > 0)
                             <div class="flex justify-between mb-3 text-sm text-gray-600">

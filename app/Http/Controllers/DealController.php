@@ -63,8 +63,18 @@ class DealController extends Controller
             return $deal->revenue * $probability;
         });
 
+        // Weighted Contribution Amount
+        $weightedContributionAmount = $openDeals->sum(function ($deal) use ($stageProbabilities) {
+            $probability = $stageProbabilities[$deal->stage] ?? 0;
+            return ($deal->contribution ?? 0) * $probability;
+        });
+
         // Approved Deal Revenue: sum of revenue for approved deals
         $approvedDealRevenue = $allDeals->where('stage', 'Closed Won')->sum('revenue');
+        $approvedDealContribution = $allDeals->where('stage', 'Closed Won')->sum('contribution');
+
+        // Total Project Contribution
+        $totalProjectContribution = $allDeals->sum('contribution');
 
         // New Deal Revenue: sum of revenue for deals created in last 30 days
         $thirtyDaysAgo = now()->subDays(30);
@@ -94,7 +104,10 @@ class DealController extends Controller
             'users',
             'currencies',
             'weightedDealAmount',
+            'weightedContributionAmount',
             'approvedDealRevenue',
+            'approvedDealContribution',
+            'totalProjectContribution',
             'newDealRevenue',
             'averageDealAge',
             'invoicedAmount',

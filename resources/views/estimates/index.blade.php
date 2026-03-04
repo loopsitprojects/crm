@@ -93,12 +93,13 @@
                             <td class="px-6 py-4 white-space-nowrap">
                                 @if($isRestricted && $estimate->status != 'draft')
                                     <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
-                                                                                        @if($estimate->status == 'approved') bg-yellow-100 text-yellow-800
+                                                                                        @if($estimate->status == 'draft') bg-gray-100 text-gray-800
+                                                                                        @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
                                                                                         @elseif($estimate->status == 'accepted' || $estimate->status == 'ready_to_invoice') bg-green-100 text-green-800
                                                                                         @elseif($estimate->status == 'rejected') bg-red-100 text-red-800
                                                                                         @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
                                                                                         @endif">
-                                        {{ $estimate->status == 'ready_to_invoice' ? 'Ready to Invoice' : ucfirst($estimate->status == 'accepted' ? 'Ready to Invoice (Old)' : $estimate->status) }}
+                                        {{ $estimate->status == 'draft' ? 'Pending' : ($estimate->status == 'ready_to_invoice' ? 'Ready to Invoice' : ucfirst($estimate->status == 'accepted' ? 'Ready to Invoice (Old)' : $estimate->status)) }}
                                     </span>
                                 @else
                                     <form action="{{ route('estimates.updateStatus', $estimate) }}" method="POST">
@@ -112,22 +113,14 @@
                                                                                                     @endif">
                                             @if($isRestricted)
                                                 <!-- Restricted User Options (Draft -> Ready to Invoice only) -->
-                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
-                                                </option>
+                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending</option>
                                                 <option value="ready_to_invoice">Ready to Invoice</option>
                                             @else
                                                 <!-- Admin Options -->
-                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending (Draft)
-                                                </option>
-                                                <option value="approved" {{ $estimate->status == 'approved' ? 'selected' : '' }}>Approved
-                                                </option>
-                                                <option value="rejected" {{ $estimate->status == 'rejected' ? 'selected' : '' }}>Rejected
-                                                </option>
+                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending</option>
+                                                <option value="approved" {{ $estimate->status == 'approved' ? 'selected' : '' }}>Approved</option>
+                                                <option value="rejected" {{ $estimate->status == 'rejected' ? 'selected' : '' }}>Rejected</option>
                                                 <option value="ready_to_invoice" {{ $estimate->status == 'ready_to_invoice' ? 'selected' : '' }}>Ready to Invoice</option>
-                                                <option value="accepted" {{ $estimate->status == 'accepted' ? 'selected' : '' }}>Accepted
-                                                    (Legacy)</option>
-                                                <option value="invoiced" {{ $estimate->status == 'invoiced' ? 'selected' : '' }} disabled>
-                                                    Invoiced</option>
                                             @endif
                                         </select>
                                     </form>
@@ -141,16 +134,27 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                <!-- Edit (Restricted: Only if Draft) -->
-                                @if(!$isRestricted || $estimate->status == 'draft')
+                                @php
+                                    $canEditOrDelete = false;
+                                    if ($user->role === 'Super Admin') {
+                                        $canEditOrDelete = true;
+                                    } elseif ($user->role === 'Management') {
+                                        $canEditOrDelete = !in_array($estimate->status, ['invoiced']);
+                                    } else {
+                                        $canEditOrDelete = $estimate->status === 'draft';
+                                    }
+                                @endphp
+
+                                <!-- Edit -->
+                                @if($canEditOrDelete)
                                     <a href="{{ route('estimates.edit', $estimate) }}" class="text-gray-600 hover:text-brand-blue"
                                         title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 @endif
 
-                                <!-- Delete (Restricted: Only if Draft) -->
-                                @if(!$isRestricted || $estimate->status == 'draft')
+                                <!-- Delete -->
+                                @if($canEditOrDelete)
                                     <form action="{{ route('estimates.destroy', $estimate) }}" method="POST"
                                         onsubmit="return confirm('Are you sure you want to delete this estimate?');" class="inline">
                                         @csrf
@@ -161,18 +165,7 @@
                                     </form>
                                 @endif
 
-                                <!-- Convert Shortcut if Ready -->
-                                @if(in_array($estimate->status, ['accepted', 'ready_to_invoice']) && !$isRestricted)
-                                    <div class="h-4 w-px bg-gray-300 mx-1"></div>
-                                    <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
-                                        onsubmit="return confirm('Convert to Invoice?');">
-                                        @csrf
-                                        <button type="submit" class="text-blue-600 hover:text-blue-900" title="Convert to Invoice">
-                                            <i class="fas fa-file-invoice-dollar"></i>
-                                        </button>
-                                    </form>
-                                @endif
-                            </td>
+
                         </tr>
                     @empty
                         <tr>
