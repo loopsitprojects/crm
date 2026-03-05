@@ -58,8 +58,11 @@
         }
 
         .cust-column {
-
             border-radius: 0.5rem !important;
+        }
+
+        .metric-contribution {
+            display: none;
         }
     </style>
     <div class="h-full flex flex-col">
@@ -67,9 +70,13 @@
         <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project</h4>
-                <div class="mt-2 space-y-1">
-                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-purple">LKR {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}</span></p>
-                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-purple">LKR {{ number_format($totalProjectContribution, 2) }}</span></p>
+                <div class="mt-2">
+                    <p class="text-xl font-bold text-brand-purple mt-1 metric-revenue">
+                        LKR {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}
+                    </p>
+                    <p class="text-xl font-bold text-brand-purple mt-1 metric-contribution">
+                        LKR {{ number_format($totalProjectContribution, 2) }}
+                    </p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -80,23 +87,36 @@
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted</h4>
-                <div class="mt-2 space-y-1">
-                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-blue">LKR {{ number_format($weightedDealAmount, 2) }}</span></p>
-                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-blue">LKR {{ number_format($weightedContributionAmount, 2) }}</span></p>
+                <div class="mt-2">
+                    <p class="text-xl font-bold text-brand-blue mt-1 metric-revenue">
+                        LKR {{ number_format($weightedDealAmount, 2) }}
+                    </p>
+                    <p class="text-xl font-bold text-brand-blue mt-1 metric-contribution">
+                        LKR {{ number_format($weightedContributionAmount, 2) }}
+                    </p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Closed Won</h4>
-                <div class="mt-2 space-y-1">
-                    <p class="text-xs font-bold text-gray-400">REVENUE: <span class="text-brand-pink">LKR {{ number_format($approvedDealRevenue, 2) }}</span></p>
-                    <p class="text-xs font-bold text-gray-400">CONTRIBUTION: <span class="text-brand-pink">LKR {{ number_format($approvedDealContribution, 2) }}</span></p>
+                <div class="mt-2">
+                    <p class="text-xl font-bold text-brand-pink mt-1 metric-revenue">
+                        LKR {{ number_format($approvedDealRevenue, 2) }}
+                    </p>
+                    <p class="text-xl font-bold text-brand-pink mt-1 metric-contribution">
+                        LKR {{ number_format($approvedDealContribution, 2) }}
+                    </p>
                 </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New Revenue (30d)</h4>
-                <p class="text-xl font-bold text-brand-teal mt-1">LKR
-                    {{ number_format($newDealRevenue, 2) }}
-                </p>
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New (30d)</h4>
+                <div class="mt-2">
+                    <p class="text-xl font-bold text-brand-teal mt-1 metric-revenue">
+                        LKR {{ number_format($newDealRevenue, 2) }}
+                    </p>
+                    <p class="text-xl font-bold text-brand-teal mt-1 metric-contribution">
+                        LKR {{ number_format($newDealContribution, 2) }}
+                    </p>
+                </div>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Avg Deal Age</h4>
@@ -120,8 +140,15 @@
 
 
         <!-- Action Button -->
-        <div class="flex justify-end mb-4">
-
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-3">
+                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">View Metrics As:</label>
+                <select id="metric-toggle" onchange="toggleMetrics(this.value)"
+                    class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs font-bold py-1.5 px-3">
+                    <option value="revenue">Revenue</option>
+                    <option value="contribution">Contribution</option>
+                </select>
+            </div>
 
             <button onclick="document.getElementById('createDealModal').classList.remove('hidden')"
                 class="bg-brand-pink hover:bg-brand-purple text-white font-bold py-2 px-4 rounded shadow transition-colors">
@@ -345,13 +372,15 @@
 
                         <!-- Right Column -->
                         <div class="space-y-4">
+
+
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Deal Owner</label>
-                                <select name="user_id"
+                                <select name="senior_manager" id="create_senior_manager"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
-                                    <option value="">-- Unassigned --</option>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                    <option value="">-- Select Deal Owner --</option>
+                                    @foreach($seniorManagers as $manager)
+                                        <option value="{{ $manager->name }}">{{ $manager->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -555,12 +584,22 @@
                         <!-- Right Column -->
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Deal Owner</label>
                                 <select name="user_id" id="edit_user_id"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                                     <option value="">-- Unassigned --</option>
                                     @foreach($users as $user)
-                                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                        <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Deal Owner</label>
+                                <select name="senior_manager" id="edit_senior_manager"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
+                                    <option value="">-- Select Deal Owner --</option>
+                                    @foreach($seniorManagers as $manager)
+                                        <option value="{{ $manager->name }}">{{ $manager->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -680,6 +719,7 @@
             document.getElementById('edit_currency').value = deal.currency;
             document.getElementById('edit_close_date').value = deal.close_date;
             document.getElementById('edit_user_id').value = deal.user_id || '';
+            document.getElementById('edit_senior_manager').value = deal.senior_manager || '';
             document.getElementById('edit_type').value = deal.type || 'New Business';
             document.getElementById('edit_priority').value = deal.priority || 'Medium';
             document.getElementById('edit_winning_percentage').value = deal.winning_percentage || '';
@@ -1072,6 +1112,37 @@
             });
         });
 
+        // Auto-select Deal Owner based on Assigned User
+        document.addEventListener('DOMContentLoaded', function () {
+            function setupSeniorManagerSync(userIdSelectId, seniorManagerSelectId) {
+                const userIdSelect = document.getElementById(userIdSelectId);
+                const seniorManagerSelect = document.getElementById(seniorManagerSelectId);
+                
+                if (userIdSelect && seniorManagerSelect) {
+                    const sync = () => {
+                        const selectedOption = userIdSelect.options[userIdSelect.selectedIndex];
+                        if (selectedOption && selectedOption.dataset.name) {
+                            const userName = selectedOption.dataset.name;
+                            // Check if this user name is in the deal owner list
+                            for (let i = 0; i < seniorManagerSelect.options.length; i++) {
+                                if (seniorManagerSelect.options[i].value === userName) {
+                                    seniorManagerSelect.value = userName;
+                                    break;
+                                }
+                            }
+                        }
+                    };
+
+                    userIdSelect.addEventListener('change', sync);
+                    // Initial sync
+                    sync();
+                }
+            }
+
+
+            setupSeniorManagerSync('edit_user_id', 'edit_senior_manager');
+        });
+
         // Auto-open deal modal if deal_id is present in URL
         document.addEventListener('DOMContentLoaded', function () {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1088,27 +1159,19 @@
         });
 
         function createEstimate(dealId) {
-            if (confirm('Create Estimate? This will generate a draft estimate from this deal.')) {
-                fetch(`/deals/${dealId}/create-estimate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else if (data.message) {
-                        alert(data.message);
-                        window.location.reload();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while creating the estimate.');
-                });
+            window.location.href = `{{ route('estimates.create') }}?deal_id=${dealId}`;
+        }
+
+        function toggleMetrics(type) {
+            const revenueMetrics = document.querySelectorAll('.metric-revenue');
+            const contributionMetrics = document.querySelectorAll('.metric-contribution');
+            
+            if (type === 'revenue') {
+                revenueMetrics.forEach(el => el.style.display = 'block');
+                contributionMetrics.forEach(el => el.style.display = 'none');
+            } else {
+                revenueMetrics.forEach(el => el.style.display = 'none');
+                contributionMetrics.forEach(el => el.style.display = 'block');
             }
         }
     </script>

@@ -24,7 +24,8 @@ class Deal extends Model
         'winning_percentage',
         'close_date',
         'job_number',
-        'rejection_reason'
+        'rejection_reason',
+        'senior_manager'
     ];
 
     public function owner()

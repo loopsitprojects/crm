@@ -3,13 +3,59 @@
 @section('header', 'Estimates')
 
 @section('content')
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden" x-data="{ 
+        columns: $persist(['reference', 'customer', 'brand', 'date', 'amount', 'status', 'actions']).as('estimates_columns'),
+        showPicker: false,
+        isColumnVisible(col) { return this.columns.includes(col); },
+        toggleColumn(col) {
+            if (this.isColumnVisible(col)) {
+                this.columns = this.columns.filter(c => c !== col);
+            } else {
+                this.columns.push(col);
+            }
+        }
+    }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">Manage Estimates</h3>
-            <a href="{{ route('estimates.create') }}"
-                class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors">
-                <i class="fas fa-plus mr-2"></i>Create Estimate
-            </a>
+            <div class="flex items-center space-x-3">
+                <div class="relative" @click.away="showPicker = false">
+                    <button @click="showPicker = !showPicker" 
+                        class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                        <i class="fas fa-columns mr-2"></i>Columns
+                    </button>
+                    <div x-show="showPicker" 
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
+                        style="display: none;">
+                        <div class="p-4">
+                            <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Visible Columns</h5>
+                            <div class="space-y-3">
+                                @foreach([
+                                    'reference' => 'Reference',
+                                    'customer' => 'Customer',
+                                    'brand' => 'Brand',
+                                    'date' => 'Date',
+                                    'amount' => 'Amount',
+                                    'status' => 'Status',
+                                    'actions' => 'Actions'
+                                ] as $key => $label)
+                                    <label class="flex items-center group cursor-pointer">
+                                        <input type="checkbox" :checked="isColumnVisible('{{ $key }}')" @change="toggleColumn('{{ $key }}')"
+                                            class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
+                                        <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <a href="{{ route('estimates.create') }}"
+                    class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors">
+                    <i class="fas fa-plus mr-2"></i>Create Estimate
+                </a>
+            </div>
         </div>
 
 
@@ -51,18 +97,18 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference
+                        <th x-show="isColumnVisible('reference')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
+                        <th x-show="isColumnVisible('customer')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand
+                        <th x-show="isColumnVisible('brand')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount
+                        <th x-show="isColumnVisible('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th x-show="isColumnVisible('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
+                        <th x-show="isColumnVisible('status')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
                         </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                        <th x-show="isColumnVisible('actions')" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
                         </th>
                     </tr>
                 </thead>
@@ -73,11 +119,11 @@
                             $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
                         @endphp
                         <tr>
-                            <td class="px-6 py-4 white-space-nowrap text-sm font-medium text-gray-900">
+                            <td x-show="isColumnVisible('reference')" class="px-6 py-4 white-space-nowrap text-sm font-medium text-gray-900">
                                 {{ $estimate->reference_number }}
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
+                            <td x-show="isColumnVisible('customer')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
+                            <td x-show="isColumnVisible('brand')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
                                 @if($estimate->brand_name)
                                     <span
                                         class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -87,10 +133,10 @@
                                     <span class="text-gray-400 text-xs italic">No Brand</span>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
+                            <td x-show="isColumnVisible('date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
+                            <td x-show="isColumnVisible('amount')" class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 ${{ number_format($estimate->total_amount, 2) }}</td>
-                            <td class="px-6 py-4 white-space-nowrap">
+                            <td x-show="isColumnVisible('status')" class="px-6 py-4 white-space-nowrap">
                                 @if($isRestricted && $estimate->status != 'draft')
                                     <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
                                                                                         @if($estimate->status == 'draft') bg-gray-100 text-gray-800
@@ -126,7 +172,7 @@
                                     </form>
                                 @endif
                             </td>
-                            <td
+                            <td x-show="isColumnVisible('actions')"
                                 class="px-6 py-4 white-space-nowrap text-right text-sm font-medium flex justify-end gap-2 items-center">
                                 <!-- View -->
                                 <a href="{{ route('estimates.show', $estimate) }}"
@@ -164,8 +210,7 @@
                                         </button>
                                     </form>
                                 @endif
-
-
+                            </td>
                         </tr>
                     @empty
                         <tr>

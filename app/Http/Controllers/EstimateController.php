@@ -47,7 +47,7 @@ class EstimateController extends Controller
         return view('estimates.index', compact('estimates'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
@@ -56,7 +56,14 @@ class EstimateController extends Controller
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
         $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
         $nextReferenceNumber = Estimate::generateReferenceNumber();
-        return view('estimates.create', compact('customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'nextReferenceNumber'));
+        $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
+
+        $deal = null;
+        if ($request->has('deal_id')) {
+            $deal = \App\Models\Deal::with(['customer'])->find($request->deal_id);
+        }
+
+        return view('estimates.create', compact('customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'nextReferenceNumber', 'users', 'deal'));
     }
 
     public function store(Request $request)
@@ -78,6 +85,7 @@ class EstimateController extends Controller
             'third_party_cost' => 'nullable|string|in:yes,no',
             'proforma_percentage' => 'nullable|numeric|min:0|max:100',
             'proforma_tax' => 'nullable|string|in:with_tax,without_tax',
+            'advance_received_amount' => 'nullable|numeric|min:0',
         ]);
 
         if ($request->deal_id && Estimate::where('deal_id', $request->deal_id)->exists()) {
@@ -113,6 +121,7 @@ class EstimateController extends Controller
             'third_party_cost' => $request->third_party_cost ?? 'no',
             'proforma_percentage' => $request->proforma_percentage,
             'proforma_tax' => $request->proforma_tax ?? 'with_tax',
+            'advance_received_amount' => $request->advance_received_amount ?? 0,
         ]);
 
         $grandTotal = 0;
@@ -268,7 +277,7 @@ class EstimateController extends Controller
             'invoice_number' => $newInvoiceNumber,
             'date' => now(),
             'due_date' => now()->addDays(30),
-            'total_amount' => $estimate->total_amount,
+            'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
             'status' => 'unpaid',
         ]);
 
@@ -308,7 +317,7 @@ class EstimateController extends Controller
      */
     public function edit(string $id)
     {
-        $estimate = Estimate::with(['items'])->findOrFail($id);
+        $estimate = Estimate::with(['items', 'deal.owner'])->findOrFail($id);
 
         $user = auth()->user();
         if ($user->role !== 'Super Admin') {
@@ -325,7 +334,8 @@ class EstimateController extends Controller
         $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
         $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
-        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands'));
+        $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
+        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'users'));
     }
 
     /**
@@ -359,6 +369,7 @@ class EstimateController extends Controller
             'third_party_cost' => 'nullable|string|in:yes,no',
             'proforma_percentage' => 'nullable|numeric|min:0|max:100',
             'proforma_tax' => 'nullable|string|in:with_tax,without_tax',
+            'advance_received_amount' => 'nullable|numeric|min:0',
         ]);
 
         $estimate->update([
@@ -384,6 +395,7 @@ class EstimateController extends Controller
             'third_party_cost' => $request->third_party_cost ?? 'no',
             'proforma_percentage' => $request->proforma_percentage,
             'proforma_tax' => $request->proforma_tax ?? 'with_tax',
+            'advance_received_amount' => $request->advance_received_amount ?? 0,
         ]);
 
         // Delete existing items and recreate

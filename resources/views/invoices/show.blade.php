@@ -141,7 +141,8 @@
                     <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
                 </div>
                 @php
-                    $totalVat = $invoice->items->sum('vat_amount');
+                    $vatRate = \App\Models\Setting::get('vat_rate', 15);
+                    $totalVat = $totalExcludingVat * ($vatRate / 100);
                 @endphp
                 <div class="flex border-b border-black min-h-[35px] bg-white">
                     <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end">VAT Amount (Total Value of Supply @ {{ \App\Models\Setting::get('vat_rate', 15) }}%):</div>
@@ -149,18 +150,44 @@
                 </div>
                 <div class="flex border-b border-black min-h-[35px] bg-white">
                     <div class="w-[80%] border-r border-black p-2 text-right font-bold uppercase pr-3 flex items-center justify-end">TOTAL AMOUNT INCLUDING VAT:</div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">{{ number_format($invoice->total_amount, 2) }}</div>
+                    @php
+                        $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
+                    @endphp
+                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($grandTotalIncludingVat, 2) }}</div>
+                </div>
+                <div class="flex border-b border-black min-h-[35px] bg-white">
+                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end uppercase">Advance Received amount:</div>
+                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
+                </div>
+                <div class="flex border-b border-black min-h-[35px] bg-white">
+                    <div class="w-[80%] border-r border-black p-2 text-right font-bold uppercase pr-3 flex items-center justify-end">Balance Payable:</div>
+                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
                 </div>
             </div>
 
-            <!-- Amount in Words -->
-            <div class="border-b border-black p-3 min-h-[60px] bg-white">
-                <div class="font-bold mb-0.5">Total Amount in words:</div>
-                <div>
-                    {{-- Leaving static/placeholder per the user image style, as Laravel needs a helper library to autogenerate --}}
-                    Eighty-five thousand Rupees Only
+            <!-- Amount in Words / Advance Payable -->
+            @if($invoice->is_proforma)
+                @php
+                    $percentage = $invoice->estimate->proforma_percentage ?? 50;
+                    $isWithTax = ($invoice->estimate->proforma_tax ?? 'with_tax') === 'with_tax';
+                    $baseForAdvance = $isWithTax ? $invoice->total_amount : $totalExcludingVat;
+                    $advanceAmount = ($baseForAdvance * $percentage) / 100;
+                @endphp
+                <div class="flex border-b border-black min-h-[35px] bg-white">
+                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end">
+                        {{ (int)$percentage }}% Advance Payable {{ $isWithTax ? '(With Tax)' : '(Without Tax)' }}
+                    </div>
+                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($advanceAmount, 2) }}</div>
                 </div>
-            </div>
+            @else
+                <div class="border-b border-black p-3 min-h-[60px] bg-white">
+                    <div class="font-bold mb-0.5">Total Amount in words:</div>
+                    <div>
+                        {{-- Leaving static/placeholder per the user image style, as Laravel needs a helper library to autogenerate --}}
+                        Eighty-five thousand Rupees Only
+                    </div>
+                </div>
+            @endif
 
             <!-- Mode of Payment - NO BOTTOM BORDER as the grid border handles it -->
             <div class="p-3 min-h-[45px] bg-white">

@@ -27,6 +27,7 @@ class Estimate extends Model
         'special_terms',
         'advance_payment',
         'advance_percentage',
+        'advance_received_amount',
         'proforma_invoice',
         'third_party_cost',
         'proforma_percentage',

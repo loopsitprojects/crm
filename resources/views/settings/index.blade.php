@@ -24,11 +24,6 @@
                     id="btn-tax">
                     <i class="fas fa-percentage mr-2 text-green-600"></i> Tax Rates (VAT/SSCL)
                 </button>
-                <button onclick="showSection('managers')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-managers">
-                    <i class="fas fa-user-tie mr-2 text-brand-purple"></i> Senior Managers
-                </button>
                 <button onclick="showSection('terms')"
                     class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
                     id="btn-terms">
@@ -193,80 +188,6 @@
                     </form>
                 </section>
 
-                <!-- Senior Managers Section -->
-                <section id="section-managers" class="settings-section hidden space-y-6">
-                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                            <h3 class="text-lg font-bold text-gray-800">Senior Managers</h3>
-                        </div>
-                        <div class="p-6">
-                            <form action="{{ route('settings.storeManager') }}" method="POST" class="mb-6 flex gap-4">
-                                @csrf
-                                <input type="text" name="name" placeholder="Manager Name" required
-                                    class="flex-1 rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                <button type="submit"
-                                    class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
-                                    <i class="fas fa-plus mr-1"></i> Add
-                                </button>
-                            </form>
-
-                            <div class="divide-y divide-gray-100">
-                                @foreach($managers as $manager)
-                                    <div class="py-3 flex items-center justify-between">
-                                        <span class="font-medium text-gray-700">{{ $manager->name }}</span>
-                                        <div class="flex items-center gap-2">
-                                            <button
-                                                onclick="editManager('{{ route('settings.updateManager', $manager) }}', '{{ addslashes($manager->name) }}', '{{ addslashes($manager->designation ?? '') }}')"
-                                                class="text-blue-500 hover:text-blue-700 transition-colors">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <a href="{{ route('settings.destroyManager.get', $manager) }}"
-                                                onclick="return confirm('Are you sure you want to delete this manager?');"
-                                                class="text-red-500 hover:text-red-700 transition-colors inline-flex items-center gap-1 ml-2">
-                                                <i class="fas fa-trash-alt pointer-events-none"></i> Delete
-                                            </a>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-
-                        <!-- Edit Manager Modal -->
-                        <div id="editManagerModal"
-                            class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
-                            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-                                <div class="mt-3">
-                                    <h3 class="text-lg leading-6 font-medium text-gray-900 border-b pb-2">Edit Manager</h3>
-                                    <form id="editManagerForm" method="POST" class="mt-4">
-                                        @csrf
-                                        @method('PUT')
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 text-sm font-bold mb-2">Name</label>
-                                            <input type="text" name="name" id="edit_manager_name" required
-                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                        </div>
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 text-sm font-bold mb-2">Designation</label>
-                                            <input type="text" name="designation" id="edit_manager_designation"
-                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                        </div>
-                                        <div class="flex justify-end gap-2">
-                                            <button type="button"
-                                                onclick="document.getElementById('editManagerModal').classList.add('hidden')"
-                                                class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300">
-                                                Cancel
-                                            </button>
-                                            <button type="submit"
-                                                class="px-4 py-2 bg-brand-blue text-white text-base font-medium rounded-md hover:bg-brand-purple focus:outline-none focus:ring-2 focus:ring-blue-300">
-                                                Update
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
 
                 <!-- Standard Terms Section -->
                 <section id="section-terms" class="settings-section hidden space-y-6">
@@ -493,13 +414,6 @@
             document.getElementById('btn-' + id).classList.add('ring-2', 'ring-brand-blue', 'bg-blue-50');
         }
 
-        function editManager(url, name, designation) {
-            const form = document.getElementById('editManagerForm');
-            form.action = url;
-            document.getElementById('edit_manager_name').value = name;
-            document.getElementById('edit_manager_designation').value = designation;
-            document.getElementById('editManagerModal').classList.remove('hidden');
-        }
 
         function editTerm(url, content) {
             const form = document.getElementById('editTermForm');

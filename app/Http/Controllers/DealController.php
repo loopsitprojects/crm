@@ -53,6 +53,7 @@ class DealController extends Controller
         $users = \App\Models\User::all();
         $usersByDepartment = $users->groupBy('department');
         $currencies = \App\Models\SystemCurrency::all();
+        $seniorManagers = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
 
         // Calculate metrics
         $openDeals = $allDeals->whereNotIn('stage', ['Rejected', 'Closed Won']);
@@ -78,7 +79,9 @@ class DealController extends Controller
 
         // New Deal Revenue: sum of revenue for deals created in last 30 days
         $thirtyDaysAgo = now()->subDays(30);
-        $newDealRevenue = $allDeals->where('created_at', '>=', $thirtyDaysAgo)->sum('revenue');
+        $newDeals = $allDeals->where('created_at', '>=', $thirtyDaysAgo);
+        $newDealRevenue = $newDeals->sum('revenue');
+        $newDealContribution = $newDeals->sum('contribution');
 
         // Average Deal Age: average days since creation for open deals
         $averageDealAge = $openDeals->count() > 0
@@ -109,10 +112,12 @@ class DealController extends Controller
             'approvedDealContribution',
             'totalProjectContribution',
             'newDealRevenue',
+            'newDealContribution',
             'averageDealAge',
             'invoicedAmount',
             'paymentCollected',
-            'usersByDepartment'
+            'usersByDepartment',
+            'seniorManagers'
         ));
     }
 
@@ -135,6 +140,7 @@ class DealController extends Controller
             'customer_email' => 'nullable|email',
             'customer_phone' => 'nullable|string',
             'rejection_reason' => 'nullable|string',
+            'senior_manager' => 'nullable|string|max:255',
         ]);
 
         if ($request->customer_id) {
@@ -198,6 +204,7 @@ class DealController extends Controller
             'customer_email' => 'nullable|email',
             'customer_phone' => 'nullable|string',
             'rejection_reason' => 'nullable|string',
+            'senior_manager' => 'nullable|string|max:255',
         ]);
 
         if ($request->customer_id) {
@@ -359,7 +366,6 @@ class DealController extends Controller
             $deal->update(['customer_id' => $customerId]);
         }
 
-        // Create Draft Estimate
         $estimate = Estimate::create([
             'customer_id' => $customerId,
             'deal_id' => $deal->id,
@@ -369,6 +375,7 @@ class DealController extends Controller
             'total_amount' => $deal->revenue,
             'currency' => 'LKR',
             'heading' => 'Estimate for ' . $deal->title,
+            'senior_manager' => $deal->senior_manager ?? ($deal->owner->name ?? null),
             'terms' => Setting::get('standard_terms', 'Standard business terms apply.')
         ]);
 

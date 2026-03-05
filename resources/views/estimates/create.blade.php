@@ -38,6 +38,9 @@
     <div class="max-w-7xl mx-auto my-8 px-4 sm:px-6 lg:px-8">
         <form action="{{ route('estimates.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
+            @if(isset($deal))
+                <input type="hidden" name="deal_id" value="{{ $deal->id }}">
+            @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 
@@ -59,7 +62,7 @@
                                         class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm shadow-sm py-2">
                                         <option value="">-- Select Customer --</option>
                                         @foreach($customers as $customer)
-                                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                            <option value="{{ $customer->id }}" {{ (isset($deal) && $deal->customer_id == $customer->id) ? 'selected' : '' }}>{{ $customer->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -288,13 +291,20 @@
                                     </label>
                                 </div>
                                 <div id="proforma_details" class="space-y-3">
-                                    <input type="number" step="0.01" name="proforma_percentage" placeholder="Percentage %"
+                                    <input type="number" step="1" name="proforma_percentage" placeholder="Percentage %"
                                         class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
                                     <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
                                         <option value="with_tax">With Tax</option>
                                         <option value="without_tax">Without Tax</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <!-- Advance Received Amount -->
+                            <div class="pt-4 border-t border-gray-50">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Advance Received Amount</label>
+                                <input type="number" step="0.01" name="advance_received_amount" placeholder="0.00"
+                                    class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 shadow-sm">
                             </div>
 
                             <!-- Third Party Costs? -->
@@ -355,14 +365,23 @@
                             <i class="fas fa-signature text-gray-400"></i>
                         </div>
                         <div class="p-6 space-y-6">
-                            <!-- Manager -->
+                            <!-- Senior Manager -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Senior Manager <span class="text-red-500">*</span></label>
                                 <select name="senior_manager" required
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
-                                    <option value="">-- Select Manager --</option>
-                                    @foreach(\App\Models\SeniorManager::all() as $manager)
-                                        <option value="{{ $manager->name }}" {{ old('senior_manager') == $manager->name ? 'selected' : '' }}>{{ $manager->name }}</option>
+                                    <option value="">-- Select Senior Manager --</option>
+                                    @foreach($users as $user)
+                                        @php
+                                            $isSelected = old('senior_manager') == $user->name;
+                                            if (!$isSelected && isset($deal)) {
+                                                $dealOwner = $deal->senior_manager ?? ($deal->owner->name ?? null);
+                                                if ($dealOwner == $user->name) {
+                                                    $isSelected = true;
+                                                }
+                                            }
+                                        @endphp
+                                        <option value="{{ $user->name }}" {{ $isSelected ? 'selected' : '' }}>{{ $user->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

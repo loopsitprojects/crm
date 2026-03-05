@@ -343,13 +343,20 @@
                                     </label>
                                 </div>
                                 <div id="proforma_details" class="{{ ($estimate->proforma_invoice ?? 'yes') == 'no' ? 'hidden' : '' }} space-y-3">
-                                    <input type="number" step="0.01" name="proforma_percentage" value="{{ old('proforma_percentage', $estimate->proforma_percentage) }}" placeholder="Percentage %"
+                                    <input type="number" step="1" name="proforma_percentage" value="{{ old('proforma_percentage', (int)$estimate->proforma_percentage) }}" placeholder="Percentage %"
                                         class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
                                     <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
                                         <option value="with_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'with_tax' ? 'selected' : '' }}>With Tax</option>
                                         <option value="without_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'without_tax' ? 'selected' : '' }}>Without Tax</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <!-- Advance Received Amount -->
+                            <div class="pt-4 border-t border-gray-50">
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Advance Received Amount</label>
+                                <input type="number" step="0.01" name="advance_received_amount" value="{{ old('advance_received_amount', $estimate->advance_received_amount) }}" placeholder="0.00"
+                                    class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 shadow-sm">
                             </div>
 
                             <!-- Third Party Costs? -->
@@ -441,14 +448,23 @@
                             <i class="fas fa-signature text-gray-400"></i>
                         </div>
                         <div class="p-6 space-y-6">
-                            <!-- Manager -->
+                            <!-- Senior Manager -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Senior Manager <span class="text-red-500">*</span></label>
                                 <select name="senior_manager" required
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
-                                    <option value="">-- Select Manager --</option>
-                                    @foreach(\App\Models\SeniorManager::all() as $manager)
-                                        <option value="{{ $manager->name }}" {{ old('senior_manager', $estimate->senior_manager) == $manager->name ? 'selected' : '' }}>{{ $manager->name }}</option>
+                                    <option value="">-- Select Senior Manager --</option>
+                                    @foreach($users as $user)
+                                        @php
+                                            $isSelected = old('senior_manager', $estimate->senior_manager) == $user->name;
+                                            if (!$estimate->senior_manager && $estimate->deal) {
+                                                $dealOwner = $estimate->deal->senior_manager ?? ($estimate->deal->owner->name ?? null);
+                                                if ($dealOwner == $user->name) {
+                                                    $isSelected = true;
+                                                }
+                                            }
+                                        @endphp
+                                        <option value="{{ $user->name }}" {{ $isSelected ? 'selected' : '' }}>{{ $user->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

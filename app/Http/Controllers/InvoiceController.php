@@ -92,6 +92,10 @@ class InvoiceController extends Controller
 
     public function proforma(Request $request)
     {
+        if (auth()->user()->role !== 'Super Admin') {
+            return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
+        }
+
         $query = Invoice::with('customer', 'estimate')->where('is_proforma', true);
 
         if ($request->filled('search')) {

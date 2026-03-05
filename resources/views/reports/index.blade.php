@@ -3,7 +3,24 @@
 @section('header', 'Business Intelligence Reports')
 
 @section('content')
-<div class="flex flex-col space-y-8">
+<div class="flex flex-col space-y-8" x-data="{ 
+    columns: $persist({
+        deals: ['date', 'title', 'customer', 'owner', 'type', 'stage', 'revenue'],
+        invoices: ['date', 'invoice_no', 'customer', 'deal', 'status', 'amount'],
+        contribution: ['month', 'net_revenue', 'sscl', 'vat', 'total_income']
+    }).as('report_columns'),
+    showPicker: false,
+    isColumnVisible(type, col) {
+        return this.columns[type].includes(col);
+    },
+    toggleColumn(type, col) {
+        if (this.isColumnVisible(type, col)) {
+            this.columns[type] = this.columns[type].filter(c => c !== col);
+        } else {
+            this.columns[type].push(col);
+        }
+    }
+}">
     <!-- Professional Filter Grid (Matching Reference Style) -->
     <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <form action="{{ route('reports.index') }}" method="GET" class="space-y-6">
@@ -123,6 +140,75 @@
                 Detailed Report: <span class="ml-1 text-blue-600">{{ str_replace('_', ' ', ucwords($activeTab, '_')) }}</span>
             </h4>
             <div class="flex items-center space-x-3">
+                <div class="relative" @click.away="showPicker = false">
+                    <button @click="showPicker = !showPicker" 
+                        class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-50 transition-all shadow-sm flex items-center">
+                        <i class="fas fa-columns mr-2"></i> Columns
+                    </button>
+                    
+                    <div x-show="showPicker" 
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="transform opacity-0 scale-95"
+                        x-transition:enter-end="transform opacity-100 scale-100"
+                        class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
+                        style="display: none;">
+                        <div class="p-4">
+                            <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Visible Columns</h5>
+                            <div class="space-y-3">
+                                @if(in_array($activeTab, ['total_deals', 'open_deals', 'weighted_amount', 'approved_amount', 'new_deals']))
+                                    @foreach([
+                                        'date' => 'Date',
+                                        'title' => 'Title',
+                                        'customer' => 'Customer',
+                                        'owner' => 'Owner',
+                                        'type' => 'Type',
+                                        'stage' => 'Stage',
+                                        'revenue' => 'Revenue'
+                                    ] as $key => $label)
+                                        <label class="flex items-center group cursor-pointer">
+                                            <input type="checkbox" :checked="isColumnVisible('deals', '{{ $key }}')" @change="toggleColumn('deals', '{{ $key }}')"
+                                                class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
+                                            <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
+                                        </label>
+                                    @endforeach
+                                @elseif(in_array($activeTab, ['invoiced', 'payment_collected']))
+                                    @foreach([
+                                        'date' => 'Date',
+                                        'invoice_no' => 'Invoice #',
+                                        'customer' => 'Customer',
+                                        'deal' => 'Deal',
+                                        'status' => 'Status',
+                                        'amount' => 'Amount'
+                                    ] as $key => $label)
+                                        <label class="flex items-center group cursor-pointer">
+                                            <input type="checkbox" :checked="isColumnVisible('invoices', '{{ $key }}')" @change="toggleColumn('invoices', '{{ $key }}')"
+                                                class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
+                                            <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
+                                        </label>
+                                    @endforeach
+                                @elseif($activeTab == 'contribution')
+                                    @foreach([
+                                        'month' => 'Month',
+                                        'net_revenue' => 'Net Revenue',
+                                        'sscl' => 'SSCL (2.5%)',
+                                        'vat' => 'VAT (18%)',
+                                        'total_income' => 'Total Income'
+                                    ] as $key => $label)
+                                        <label class="flex items-center group cursor-pointer">
+                                            <input type="checkbox" :checked="isColumnVisible('contribution', '{{ $key }}')" @change="toggleColumn('contribution', '{{ $key }}')"
+                                                class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
+                                            <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
+                                        </label>
+                                    @endforeach
+                                @endif
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-3 border-t border-gray-100 flex justify-end">
+                            <button @click="showPicker = false" class="text-[10px] font-black uppercase tracking-widest text-brand-blue hover:text-brand-purple">Close</button>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => in_array($activeTab, ['invoiced', 'payment_collected']) ? 'invoices' : 'deals'])) }}" 
                     class="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all shadow-sm flex items-center">
                     <i class="fas fa-file-excel mr-2"></i> Generate Excel
@@ -137,29 +223,29 @@
                 <table class="w-full text-left">
                     <thead>
                         <tr class="bg-blue-600 text-white">
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Date</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Title</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Customer</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Owner</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Type</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Stage</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Revenue (LKR)</th>
+                            <th x-show="isColumnVisible('deals', 'date')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Date</th>
+                            <th x-show="isColumnVisible('deals', 'title')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Title</th>
+                            <th x-show="isColumnVisible('deals', 'customer')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Customer</th>
+                            <th x-show="isColumnVisible('deals', 'owner')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Owner</th>
+                            <th x-show="isColumnVisible('deals', 'type')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Type</th>
+                            <th x-show="isColumnVisible('deals', 'stage')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Stage</th>
+                            <th x-show="isColumnVisible('deals', 'revenue')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Revenue (LKR)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
                         @forelse($detailedData as $deal)
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 text-xs font-medium text-slate-500">{{ $deal->created_at->format('Y-m-d') }}</td>
-                                <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ $deal->title }}</td>
-                                <td class="px-6 py-4 text-xs text-slate-600">{{ $deal->customer->name ?? 'N/A' }}</td>
-                                <td class="px-6 py-4 text-xs text-slate-600">{{ $deal->owner->name ?? 'N/A' }}</td>
-                                <td class="px-6 py-4 text-[10px] uppercase font-black tracking-widest text-gray-400">{{ $deal->type }}</td>
-                                <td class="px-6 py-4">
+                                <td x-show="isColumnVisible('deals', 'date')" class="px-6 py-4 text-xs font-medium text-slate-500">{{ $deal->created_at->format('Y-m-d') }}</td>
+                                <td x-show="isColumnVisible('deals', 'title')" class="px-6 py-4 text-xs font-bold text-slate-800">{{ $deal->title }}</td>
+                                <td x-show="isColumnVisible('deals', 'customer')" class="px-6 py-4 text-xs text-slate-600">{{ $deal->customer->name ?? 'N/A' }}</td>
+                                <td x-show="isColumnVisible('deals', 'owner')" class="px-6 py-4 text-xs text-slate-600">{{ $deal->owner->name ?? 'N/A' }}</td>
+                                <td x-show="isColumnVisible('deals', 'type')" class="px-6 py-4 text-[10px] uppercase font-black tracking-widest text-gray-400">{{ $deal->type }}</td>
+                                <td x-show="isColumnVisible('deals', 'stage')" class="px-6 py-4">
                                     <span class="text-[10px] font-black py-1 px-2 uppercase rounded-full bg-blue-50 text-brand-blue">
                                         {{ $deal->stage }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-right">
+                                <td x-show="isColumnVisible('deals', 'revenue')" class="px-6 py-4 text-right">
                                     <span class="text-xs font-black text-slate-900">{{ number_format($deal->revenue, 2) }}</span>
                                 </td>
                             </tr>
@@ -174,27 +260,27 @@
                 <table class="w-full text-left">
                     <thead>
                         <tr class="bg-blue-600 text-white">
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Date</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Invoice #</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Customer</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Deal</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Status</th>
-                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Amount (LKR)</th>
+                            <th x-show="isColumnVisible('invoices', 'date')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Date</th>
+                            <th x-show="isColumnVisible('invoices', 'invoice_no')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Invoice #</th>
+                            <th x-show="isColumnVisible('invoices', 'customer')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Customer</th>
+                            <th x-show="isColumnVisible('invoices', 'deal')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Deal</th>
+                            <th x-show="isColumnVisible('invoices', 'status')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700">Status</th>
+                            <th x-show="isColumnVisible('invoices', 'amount')" class="px-6 py-4 text-[10px] font-black uppercase tracking-widest border-b border-blue-700 text-right">Amount (LKR)</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-50">
                         @forelse($detailedData as $invoice)
                             <tr class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 text-xs font-medium text-slate-500">{{ $invoice->created_at->format('Y-m-d') }}</td>
-                                <td class="px-6 py-4 text-xs font-bold text-slate-800">{{ $invoice->invoice_number }}</td>
-                                <td class="px-6 py-4 text-xs text-slate-600">{{ $invoice->customer->name ?? 'N/A' }}</td>
-                                <td class="px-6 py-4 text-xs text-slate-600">{{ $invoice->estimate->deal->title ?? 'N/A' }}</td>
-                                <td class="px-6 py-4">
+                                <td x-show="isColumnVisible('invoices', 'date')" class="px-6 py-4 text-xs font-medium text-slate-500">{{ $invoice->created_at->format('Y-m-d') }}</td>
+                                <td x-show="isColumnVisible('invoices', 'invoice_no')" class="px-6 py-4 text-xs font-bold text-slate-800">{{ $invoice->invoice_number }}</td>
+                                <td x-show="isColumnVisible('invoices', 'customer')" class="px-6 py-4 text-xs text-slate-600">{{ $invoice->customer->name ?? 'N/A' }}</td>
+                                <td x-show="isColumnVisible('invoices', 'deal')" class="px-6 py-4 text-xs text-slate-600">{{ $invoice->estimate->deal->title ?? 'N/A' }}</td>
+                                <td x-show="isColumnVisible('invoices', 'status')" class="px-6 py-4">
                                     <span class="text-[10px] font-black py-1 px-2 uppercase rounded-full {{ $invoice->status == 'paid' ? 'bg-green-50 text-green-600' : 'bg-yellow-50 text-yellow-600' }}">
                                         {{ $invoice->status }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-right">
+                                <td x-show="isColumnVisible('invoices', 'amount')" class="px-6 py-4 text-right">
                                     <span class="text-xs font-black text-slate-900">{{ number_format($invoice->total_amount, 2) }}</span>
                                 </td>
                             </tr>
@@ -211,21 +297,21 @@
                     <table class="w-full text-left mb-8 border border-gray-100 rounded-xl overflow-hidden">
                         <thead>
                             <tr class="bg-brand-blue text-white">
-                                <th class="px-6 py-3 text-[10px] font-black uppercase tracking-widest">Month</th>
-                                <th class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Net Revenue</th>
-                                <th class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">SSCL (2.5%)</th>
-                                <th class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">VAT (18%)</th>
-                                <th class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Total Income</th>
+                                <th x-show="isColumnVisible('contribution', 'month')" class="px-6 py-3 text-[10px] font-black uppercase tracking-widest">Month</th>
+                                <th x-show="isColumnVisible('contribution', 'net_revenue')" class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Net Revenue</th>
+                                <th x-show="isColumnVisible('contribution', 'sscl')" class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">SSCL (2.5%)</th>
+                                <th x-show="isColumnVisible('contribution', 'vat')" class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">VAT (18%)</th>
+                                <th x-show="isColumnVisible('contribution', 'total_income')" class="px-6 py-3 text-[10px] font-black uppercase tracking-widest text-right">Total Income</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
                             @foreach($incomeBreakdown as $row)
                                 <tr class="hover:bg-gray-50/50">
-                                    <td class="px-6 py-3 text-xs font-bold text-slate-800">{{ Carbon\Carbon::parse($row->month . '-01')->format('F Y') }}</td>
-                                    <td class="px-6 py-3 text-xs font-black text-slate-700 text-right">{{ number_format($row->net_revenue, 2) }}</td>
-                                    <td class="px-6 py-3 text-xs font-black text-brand-purple text-right">{{ number_format($row->sscl_total, 2) }}</td>
-                                    <td class="px-6 py-3 text-xs font-black text-brand-pink text-right">{{ number_format($row->vat_total, 2) }}</td>
-                                    <td class="px-6 py-3 text-xs font-black text-emerald-600 text-right">{{ number_format($row->gross_revenue, 2) }}</td>
+                                    <td x-show="isColumnVisible('contribution', 'month')" class="px-6 py-3 text-xs font-bold text-slate-800">{{ Carbon\Carbon::parse($row->month . '-01')->format('F Y') }}</td>
+                                    <td x-show="isColumnVisible('contribution', 'net_revenue')" class="px-6 py-3 text-xs font-black text-slate-700 text-right">{{ number_format($row->net_revenue, 2) }}</td>
+                                    <td x-show="isColumnVisible('contribution', 'sscl')" class="px-6 py-3 text-xs font-black text-brand-purple text-right">{{ number_format($row->sscl_total, 2) }}</td>
+                                    <td x-show="isColumnVisible('contribution', 'vat')" class="px-6 py-3 text-xs font-black text-brand-pink text-right">{{ number_format($row->vat_total, 2) }}</td>
+                                    <td x-show="isColumnVisible('contribution', 'total_income')" class="px-6 py-3 text-xs font-black text-emerald-600 text-right">{{ number_format($row->gross_revenue, 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -318,7 +404,7 @@
                         </div>
                         <div class="overflow-hidden h-2 text-xs flex rounded-full bg-gray-100">
                             @php 
-                                $percentage = $totalDealAmount > 0 ? ($stage->total / $totalDealAmount) * 100 : 0;
+                                $percentage = $totalDealRevenue > 0 ? ($stage->total / $totalDealRevenue) * 100 : 0;
                             @endphp
                             <div style="width:{{ $percentage }}%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-brand-blue transition-all duration-1000"></div>
                         </div>

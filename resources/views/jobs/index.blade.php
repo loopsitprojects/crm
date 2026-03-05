@@ -3,9 +3,52 @@
 @section('header', 'Jobs')
 
 @section('content')
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
+    <div class="bg-white rounded-lg shadow-md overflow-hidden" x-data="{ 
+        columns: $persist(['job_id', 'deal_name', 'customer', 'stage', 'revenue', 'actions']).as('jobs_columns'),
+        showPicker: false,
+        isColumnVisible(col) { return this.columns.includes(col); },
+        toggleColumn(col) {
+            if (this.isColumnVisible(col)) {
+                this.columns = this.columns.filter(c => c !== col);
+            } else {
+                this.columns.push(col);
+            }
+        }
+    }">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">Jobs</h3>
+            <div class="relative" @click.away="showPicker = false">
+                <button @click="showPicker = !showPicker" 
+                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                    <i class="fas fa-columns mr-2"></i>Columns
+                </button>
+                <div x-show="showPicker" 
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="transform opacity-0 scale-95"
+                    x-transition:enter-end="transform opacity-100 scale-100"
+                    class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
+                    style="display: none;">
+                    <div class="p-4">
+                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Visible Columns</h5>
+                        <div class="space-y-3">
+                            @foreach([
+                                'job_id' => 'Job ID',
+                                'deal_name' => 'Deal Name',
+                                'customer' => 'Customer',
+                                'stage' => 'Stage',
+                                'revenue' => 'Project Revenue',
+                                'actions' => 'Actions'
+                            ] as $key => $label)
+                                <label class="flex items-center group cursor-pointer">
+                                    <input type="checkbox" :checked="isColumnVisible('{{ $key }}')" @change="toggleColumn('{{ $key }}')"
+                                        class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
+                                    <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Filter Bar -->
@@ -69,37 +112,37 @@
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-slate-800 border-b border-slate-700">
                     <tr>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Job ID
+                        <th x-show="isColumnVisible('job_id')" class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Job ID
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Deal Name
+                        <th x-show="isColumnVisible('deal_name')" class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Deal Name
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Customer
+                        <th x-show="isColumnVisible('customer')" class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Customer
                         </th>
-                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Stage
+                        <th x-show="isColumnVisible('stage')" class="px-6 py-4 text-left text-xs font-bold text-slate-200 uppercase tracking-wider">Stage
                         </th>
-                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Project
+                        <th x-show="isColumnVisible('revenue')" class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Project
                             Revenue
                         </th>
-                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Actions
+                        <th x-show="isColumnVisible('actions')" class="px-6 py-4 text-right text-xs font-bold text-slate-200 uppercase tracking-wider">Actions
                         </th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($jobs as $job)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-6 py-4 white-space-nowrap">
+                            <td x-show="isColumnVisible('job_id')" class="px-6 py-4 white-space-nowrap">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-brand-purple text-white">
                                     {{ $job->job_number }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap">
+                            <td x-show="isColumnVisible('deal_name')" class="px-6 py-4 white-space-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $job->title }}</div>
                                 <div class="text-xs text-gray-500">{{ $job->pipeline ?? 'Sales Pipeline' }}</div>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap">
+                            <td x-show="isColumnVisible('customer')" class="px-6 py-4 white-space-nowrap">
                                 <div class="text-sm text-gray-900">{{ $job->customer->name ?? '-' }}</div>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap">
+                            <td x-show="isColumnVisible('stage')" class="px-6 py-4 white-space-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                                                                     @if($job->stage == 'Won' || $job->stage == 'Approved') bg-green-100 text-green-800 
                                                                     @elseif($job->stage == 'Lost' || $job->stage == 'Rejected') bg-red-100 text-red-800 
@@ -108,12 +151,12 @@
                                     {{ $job->stage }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap text-right">
+                            <td x-show="isColumnVisible('revenue')" class="px-6 py-4 white-space-nowrap text-right">
                                 <div class="text-sm font-medium text-gray-900">
                                     {{ $job->currency }} {{ number_format($job->revenue, 2) }}
                                 </div>
                             </td>
-                            <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
+                            <td x-show="isColumnVisible('actions')" class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
                                 <a href="{{ route('deals.index', ['deal_id' => $job->id]) }}"
                                     class="px-3 py-1 bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded-lg text-xs font-bold transition-all inline-flex items-center">
                                     <i class="fas fa-eye mr-1.5"></i> View Details
