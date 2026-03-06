@@ -17,7 +17,23 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with('customer', 'estimate')->where('is_proforma', false);
+        $query = Invoice::with('customer', 'estimate.deal')->where('is_proforma', false);
+
+        // RBAC Access Control
+        $user = auth()->user();
+        if ($user->role === 'HOD' && $user->department) {
+            $query->whereHas('estimate.deal', function ($q) use ($user) {
+                $q->where('department_split', 'like', '%' . $user->department . '%');
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->whereHas('estimate.deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->whereHas('estimate.deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -42,7 +58,23 @@ class InvoiceController extends Controller
 
     public function ready(Request $request)
     {
-        $query = Estimate::with('customer')->whereIn('status', ['accepted', 'ready_to_invoice']);
+        $query = Estimate::with('customer', 'deal')->whereIn('status', ['accepted', 'ready_to_invoice']);
+
+        // RBAC Access Control
+        $user = auth()->user();
+        if ($user->role === 'HOD' && $user->department) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('department_split', 'like', '%' . $user->department . '%');
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -67,7 +99,23 @@ class InvoiceController extends Controller
 
     public function invoiced(Request $request)
     {
-        $query = Estimate::with('customer')->whereIn('status', ['invoiced', 'approved']);
+        $query = Estimate::with('customer', 'deal')->whereIn('status', ['invoiced', 'approved']);
+
+        // RBAC Access Control
+        $user = auth()->user();
+        if ($user->role === 'HOD' && $user->department) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('department_split', 'like', '%' . $user->department . '%');
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -121,7 +169,23 @@ class InvoiceController extends Controller
 
     public function rejected(Request $request)
     {
-        $query = Estimate::with('customer')->where('status', 'rejected');
+        $query = Estimate::with('customer', 'deal')->where('status', 'rejected');
+
+        // RBAC Access Control
+        $user = auth()->user();
+        if ($user->role === 'HOD' && $user->department) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('department_split', 'like', '%' . $user->department . '%');
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;

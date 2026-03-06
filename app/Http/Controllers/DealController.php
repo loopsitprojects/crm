@@ -42,9 +42,38 @@ class DealController extends Controller
             'Closed Won' => 1.00
         ];
 
-        // Group all deals by stage for display
-        $allDeals = Deal::with(['customer', 'owner', 'teamMembers', 'estimates'])->orderBy('updated_at', 'desc')->get();
+        $user = auth()->user();
+        $userRole = $user->role;
+        $userDept = $user->department;
 
+        // Group all deals by stage for display
+        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates'])->orderBy('updated_at', 'desc');
+
+        // RBAC Filtering
+        if ($userRole === 'HOD' && $userDept) {
+            $query->where('department_split', 'like', '%' . $userDept . '%');
+        } elseif ($userRole === 'Manager') {
+            $query->where('user_id', $user->id);
+        }
+
+        $allDeals = $query->get();
+
+        // If HOD, we need to adjust contribution sums for metrics
+        if ($userRole === 'HOD' && $userDept) {
+            $allDeals->transform(function($deal) use ($userDept) {
+                $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                if (is_array($splits)) {
+                    $deptContribution = 0;
+                    foreach ($splits as $split) {
+                        if (($split['department'] ?? '') === $userDept) {
+                            $deptContribution += (float)($split['contribution_amount'] ?? 0);
+                        }
+                    }
+                    $deal->contribution = $deptContribution; // Temporarily override for index metrics
+                }
+                return $deal;
+            });
+        }
 
         // Group all deals by stage for counts
         $dealsByStage = $allDeals->groupBy('stage');

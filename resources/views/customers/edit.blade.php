@@ -32,7 +32,7 @@
                         <h4 class="text-lg font-bold text-gray-800">Customer Information</h4>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Name of Customer <span class="text-red-500">*</span>
@@ -53,6 +53,18 @@
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
                                 placeholder="Billing Address">
                             @error('billing_address') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="brand" class="block text-sm font-semibold text-gray-700 mb-2">
+                                Brand
+                            </label>
+                            <input type="text" name="brand" id="brand"
+                                value="{{ old('brand', $customer->brand) }}"
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
+                                placeholder="Brand Name">
+                            @error('brand') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -187,73 +199,73 @@
                     </div>
                 </div>
 
-                <!-- Promo Point of Contact Section -->
+                <!-- Finance Point of Contact Section -->
                 <div class="mb-8">
                     <div class="flex items-center mb-4 pb-2 border-b-2 border-brand-teal">
                         <div class="w-10 h-10 bg-brand-teal/10 rounded-lg flex items-center justify-center mr-3">
-                            <i class="fas fa-bullhorn text-brand-teal"></i>
+                            <i class="fas fa-file-invoice-dollar text-brand-teal"></i>
                         </div>
-                        <h4 class="text-lg font-bold text-gray-800">Promo Point of Contact</h4>
+                        <h4 class="text-lg font-bold text-gray-800">Finance Point of Contact</h4>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="promo_contact_name" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="finance_contact_name" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Name
                             </label>
-                            <input type="text" name="promo_contact_name" id="promo_contact_name"
-                                value="{{ old('promo_contact_name', $customer->promo_contact_name) }}"
+                            <input type="text" name="finance_contact_name" id="finance_contact_name"
+                                value="{{ old('finance_contact_name', $customer->finance_contact_name) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
                                 placeholder="Name">
-                            @error('promo_contact_name') <p class="mt-2 text-sm text-red-600"><i
+                            @error('finance_contact_name') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="promo_contact_designation" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="finance_contact_designation" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Designation
                             </label>
-                            <input type="text" name="promo_contact_designation" id="promo_contact_designation"
-                                value="{{ old('promo_contact_designation', $customer->promo_contact_designation) }}"
+                            <input type="text" name="finance_contact_designation" id="finance_contact_designation"
+                                value="{{ old('finance_contact_designation', $customer->finance_contact_designation) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
                                 placeholder="Designation">
-                            @error('promo_contact_designation') <p class="mt-2 text-sm text-red-600"><i
+                            @error('finance_contact_designation') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="promo_contact_mobile" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="finance_contact_mobile" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Mobile
                             </label>
-                            <input type="text" name="promo_contact_mobile" id="promo_contact_mobile"
-                                value="{{ old('promo_contact_mobile', $customer->promo_contact_mobile) }}"
+                            <input type="text" name="finance_contact_mobile" id="finance_contact_mobile"
+                                value="{{ old('finance_contact_mobile', $customer->finance_contact_mobile) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
                                 placeholder="Mobile">
-                            @error('promo_contact_mobile') <p class="mt-2 text-sm text-red-600"><i
+                            @error('finance_contact_mobile') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
                         <div>
-                            <label for="promo_contact_office" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="finance_contact_office" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Office
                             </label>
-                            <input type="text" name="promo_contact_office" id="promo_contact_office"
-                                value="{{ old('promo_contact_office', $customer->promo_contact_office) }}"
+                            <input type="text" name="finance_contact_office" id="finance_contact_office"
+                                value="{{ old('finance_contact_office', $customer->finance_contact_office) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
                                 placeholder="Office">
-                            @error('promo_contact_office') <p class="mt-2 text-sm text-red-600"><i
+                            @error('finance_contact_office') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
                         <div class="md:col-span-2">
-                            <label for="promo_contact_email" class="block text-sm font-semibold text-gray-700 mb-2">
+                            <label for="finance_contact_email" class="block text-sm font-semibold text-gray-700 mb-2">
                                 Email Address
                             </label>
-                            <input type="email" name="promo_contact_email" id="promo_contact_email"
-                                value="{{ old('promo_contact_email', $customer->promo_contact_email) }}"
+                            <input type="email" name="finance_contact_email" id="finance_contact_email"
+                                value="{{ old('finance_contact_email', $customer->finance_contact_email) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
                                 placeholder="Email Address">
-                            @error('promo_contact_email') <p class="mt-2 text-sm text-red-600"><i
+                            @error('finance_contact_email') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
                     </div>

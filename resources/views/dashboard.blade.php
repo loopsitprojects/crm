@@ -1,190 +1,530 @@
 @extends('layouts.app')
 
-@section('header', 'System Dashboard')
+@section('header', '')
+
+@push('head')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<style>
+    :root {
+        --primary: #2563eb;
+        --primary-light: #eff6ff;
+        --secondary: #64748b;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --background: #f8fafc;
+        --card-bg: rgba(255, 255, 255, 0.9);
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    }
+
+    body {
+        background-color: var(--background);
+        font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        color: var(--text-main);
+    }
+
+    .dashboard-container {
+        max-width: 1550px;
+        margin: 0 auto;
+        padding: 24px;
+        min-height: 100vh;
+    }
+
+    /* Glassmorphism Card Style */
+    .glass-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        box-shadow: var(--glass-shadow);
+        padding: 20px;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+    }
+
+    .glass-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.12);
+    }
+
+    /* Filters Section */
+    .filters-bar {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: flex-end;
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 140px;
+    }
+
+    .filter-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .filter-select {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text-main);
+        background-color: #fff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        outline: none;
+    }
+
+    .filter-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: white;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .kpi-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+
+    /* Chart Elements */
+    .chart-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chart-title i {
+        color: var(--primary);
+    }
+
+    /* Table Styling */
+    .custom-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .custom-table th {
+        background: var(--primary-light);
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        padding: 12px;
+        text-align: left;
+    }
+
+    .custom-table td {
+        padding: 12px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .custom-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .custom-table tr:hover td {
+        background-color: var(--primary-light);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in {
+        animation: fadeIn 0.5s ease onwards;
+    }
+</style>
+@endpush
 
 @section('content')
-    <div class="flex flex-col space-y-8">
-        <!-- Filtering Bar -->
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <form action="{{ route('dashboard') }}" method="GET" class="flex flex-wrap items-end gap-4">
-                <div class="flex-1 min-w-[200px]">
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Date Range</label>
-                    <div class="flex items-center space-x-2">
-                        <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" 
-                            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
-                        <span class="text-gray-400">to</span>
-                        <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" 
-                            class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
-                    </div>
-                </div>
+<div class="dashboard-container relative">
+    
 
-                <div>
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Type</label>
-                    <select name="type" class="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-white min-w-[150px]">
-                        <option value="all" {{ $type == 'all' ? 'selected' : '' }}>All Departments</option>
-                        <option value="creative" {{ $type == 'creative' ? 'selected' : '' }}>Creative</option>
-                        <option value="digital" {{ $type == 'digital' ? 'selected' : '' }}>Digital</option>
-                        <option value="play" {{ $type == 'play' ? 'selected' : '' }}>Play</option>
-                        <option value="tech" {{ $type == 'tech' ? 'selected' : '' }}>Tech</option>
-                    </select>
-                </div>
-
-                <div class="flex space-x-2">
-                    <button type="submit" class="px-6 py-2 bg-brand-blue text-white text-sm font-bold rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95">
-                        Apply Filters
-                    </button>
-                    <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-bold rounded-lg hover:bg-gray-200 transition-all">
-                        Reset
-                    </a>
-                </div>
-            </form>
-        </div>
-
-        <!-- Primary Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <!-- Revenue Card -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                <div class="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-green-50 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
-                <div class="relative">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-green-100 rounded-xl text-green-600">
-                            <i class="fas fa-hand-holding-usd text-xl"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full uppercase">Revenue</span>
-                    </div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Collected</p>
-                    <h3 class="text-2xl font-black text-slate-800">LKR {{ number_format($revenue, 2) }}</h3>
-                    <p class="text-[11px] text-gray-500 mt-2">Paid Invoices in selected period</p>
-                </div>
+    <!-- Filters & KPI Header -->
+    <div class="flex gap-6 mb-6">
+        <form id="filterForm" action="{{ route('dashboard') }}" method="GET" class="filters-bar flex-1 mb-0">
+            <div class="filter-group">
+                <label class="filter-label">Month</label>
+                <select name="month" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">All Months</option>
+                    @foreach($months as $val => $lbl)
+                        <option value="{{ $val }}" {{ $month == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                    @endforeach
+                </select>
             </div>
 
-            <!-- Pipeline Card -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                <div class="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-brand-purple bg-opacity-5 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
-                <div class="relative">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-brand-purple bg-opacity-10 rounded-xl text-brand-purple">
-                            <i class="fas fa-project-diagram text-xl"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-brand-purple bg-brand-purple bg-opacity-5 px-2 py-0.5 rounded-full uppercase">Pipeline</span>
-                    </div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Open Deals Revenue</p>
-                    <h3 class="text-2xl font-black text-slate-800">LKR {{ number_format($pipelineRevenue, 2) }}</h3>
-                    <p class="text-[11px] text-gray-500 mt-2">{{ $dealCount }} new deals created</p>
-                </div>
+            <div class="filter-group">
+                <label class="filter-label">Brand</label>
+                <select name="brand" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">All Brands</option>
+                    @foreach($brands as $b)
+                        <option value="{{ $b }}" {{ $brandFilter == $b ? 'selected' : '' }}>{{ $b }}</option>
+                    @endforeach
+                </select>
             </div>
 
-            <!-- Conversion Card -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                <div class="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-blue-50 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
-                <div class="relative">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-blue-100 rounded-xl text-blue-600">
-                            <i class="fas fa-percentage text-xl"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase">Conversion</span>
-                    </div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Estimate to Invoice</p>
-                    <h3 class="text-2xl font-black text-slate-800">{{ $conversionRate }}%</h3>
-                    <p class="text-[11px] text-gray-500 mt-2">{{ $estimateCount }} estimates issued</p>
-                </div>
+            <div class="filter-group">
+                <label class="filter-label">Manager</label>
+                <select name="manager" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">All Managers</option>
+                    @foreach($managers as $id => $name)
+                        <option value="{{ $id }}" {{ $managerFilter == $id ? 'selected' : '' }}>{{ $name }}</option>
+                    @endforeach
+                </select>
             </div>
 
-            <!-- Pending Payments -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                <div class="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 bg-red-50 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
-                <div class="relative">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 bg-red-100 rounded-xl text-red-600">
-                            <i class="fas fa-exclamation-circle text-xl"></i>
-                        </div>
-                        <span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full uppercase">Receivables</span>
-                    </div>
-                    <p class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Outstanding Amount</p>
-                    <h3 class="text-2xl font-black text-slate-800">LKR {{ number_format($pendingPayments, 2) }}</h3>
-                    <p class="text-[11px] text-gray-500 mt-2">Unpaid & Overdue Invoices</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Performance Chart -->
-            <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-black text-slate-800 flex items-center">
-                        <i class="fas fa-chart-line mr-3 text-brand-pink"></i> Performance Overview
-                    </h3>
-                    <div class="flex space-x-2">
-                        <span class="flex items-center text-[10px] font-bold text-gray-500">
-                            <span class="w-2 h-2 rounded-full bg-brand-pink mr-1.5"></span> Revenue
-                        </span>
-                        <span class="flex items-center text-[10px] font-bold text-gray-500">
-                            <span class="w-2 h-2 rounded-full bg-brand-blue mr-1.5"></span> Deals
-                        </span>
-                    </div>
-                </div>
-                <div class="h-[300px] flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                    <p class="text-gray-400 text-sm italic">Growth visualization will appear here as more data is collected</p>
-                </div>
+            <div class="filter-group">
+                <label class="filter-label">Department</label>
+                <select name="department" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">All Depts</option>
+                    @foreach($departments as $d)
+                        <option value="{{ $d }}" {{ $departmentFilter == $d ? 'selected' : '' }}>{{ $d }}</option>
+                    @endforeach
+                </select>
             </div>
 
-            <!-- Recent Activity -->
-            <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-                <h3 class="text-lg font-black text-slate-800 mb-6 flex items-center">
-                    <i class="fas fa-history mr-3 text-brand-teal"></i> Recent Updates
-                </h3>
-                <div class="space-y-6">
-                    <div>
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 border-b border-gray-50 pb-1">Latest Invoices</h4>
-                        <div class="space-y-3">
-                            @forelse($recentInvoices as $invoice)
-                                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">
-                                            <i class="fas fa-file-invoice"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-bold text-slate-800">{{ $invoice->customer->name ?? 'N/A' }}</p>
-                                            <p class="text-[10px] text-gray-500">{{ $invoice->created_at->format('M d, Y') }}</p>
-                                        </div>
-                                    </div>
-                                    <p class="text-xs font-black text-slate-900">LKR {{ number_format($invoice->total_amount, 0) }}</p>
-                                </div>
-                            @empty
-                                <p class="text-xs text-gray-400 italic">No recent invoices found</p>
-                            @endforelse
-                        </div>
-                    </div>
+            <div class="filter-group">
+                <label class="filter-label">Stages</label>
+                <select name="stage" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">All Stages</option>
+                    @foreach($stages as $s)
+                        <option value="{{ $s }}" {{ $stageFilter == $s ? 'selected' : '' }}>{{ $s }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </form>
 
-                    <div>
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3 border-b border-gray-50 pb-1">Latest Deals</h4>
-                        <div class="space-y-3">
-                            @forelse($recentDeals as $deal)
-                                <div class="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
-                                            <i class="fas fa-briefcase"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-bold text-slate-800 truncate max-w-[120px]">{{ $deal->title }}</p>
-                                            <p class="text-[10px] text-gray-500">{{ $deal->stage }}</p>
-                                        </div>
-                                    </div>
-                                    <p class="text-xs font-black text-slate-900">LKR {{ number_format($deal->revenue, 0) }}</p>
-                                </div>
-                            @empty
-                                <p class="text-xs text-gray-400 italic">No recent deals found</p>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-8 pt-6 border-t border-gray-100">
-                    <a href="{{ route('activities.index') }}" class="block text-center text-xs font-bold text-brand-blue hover:text-brand-purple transition-colors">
-                        View Full Activity Log <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
+        <div class="kpi-card min-w-[240px]">
+            <div class="kpi-title">Total Contribution</div>
+            <div class="kpi-value">
+                <span class="text-primary-light/50 text-xl font-medium">LKR</span> 
+                {{ number_format($totalContribution / 1000000, 2) }}M
             </div>
         </div>
     </div>
+
+    <!-- Top Charts Row -->
+    <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="glass-card">
+            <h3 class="chart-title"><i class="fas fa-users"></i> Account Manager Contribution</h3>
+            <div class="h-[300px]">
+                <canvas id="managerChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 class="chart-title"><i class="fas fa-tag"></i> Top Brands Contribution</h3>
+            <div class="h-[300px]">
+                <canvas id="brandChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Charts Row -->
+    <div class="grid grid-cols-3 gap-6 mb-6">
+        <div class="glass-card">
+            <h3 class="chart-title"><i class="fas fa-building"></i> Department Split</h3>
+            <div class="h-[250px]">
+                <canvas id="deptChart"></canvas>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3 class="chart-title"><i class="fas fa-chart-pie"></i> Revenue Categories</h3>
+            <div class="flex flex-col h-full">
+                <div class="h-[200px] mb-4">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div id="revenueLegend" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-[100px]">
+                    <!-- Legend dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card flex flex-col">
+            <h3 class="chart-title"><i class="fas fa-trophy"></i> Key Campaigns</h3>
+            <div class="flex-1 overflow-y-auto">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th class="text-right">Contribution</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($keyCampaigns->take(10) as $campaign)
+                        <tr>
+                            <td class="truncate max-w-[150px]" title="{{ $campaign['description'] }}">
+                                {{ $campaign['description'] ?: 'Untitled' }}
+                            </td>
+                            <td class="text-right font-semibold">
+                                {{ number_format($campaign['contribution'] / 1000, 0) }}k
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+
+</div>
+
+@push('scripts')
+<script>
+    // Premium Color Palette
+    const colors = {
+        primary: '#2563eb',
+        secondary: '#64748b',
+        success: '#10b981',
+        warning: '#f59e0b',
+        danger: '#ef4444',
+        info: '#06b6d4',
+        violet: '#7c3aed',
+        pink: '#db2777',
+        orange: '#ea580c',
+        chart: [
+            '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', 
+            '#0891b2', '#4f46e5', '#9333ea', '#c026d3', '#e11d48'
+        ]
+    };
+
+    // Common Chart Configuration
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "'Inter', 'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.plugins.datalabels.display = true;
+    
+    const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+            duration: 1500,
+            easing: 'easeOutQuart'
+        },
+        plugins: {
+            legend: { display: false }
+        }
+    };
+
+    // 1. Manager Chart (Horizontal)
+    const managerData = @json($managerContribution);
+    const mgrLabels = Object.keys(managerData);
+    const mgrValues = Object.values(managerData);
+    
+    new Chart(document.getElementById('managerChart'), {
+        type: 'bar',
+        data: {
+            labels: mgrLabels,
+            datasets: [{
+                data: mgrValues,
+                backgroundColor: colors.primary,
+                borderRadius: 6,
+                barThickness: 18,
+            }]
+        },
+        options: {
+            ...baseOptions,
+            indexAxis: 'y',
+            plugins: {
+                ...baseOptions.plugins,
+                datalabels: {
+                    color: '#fff',
+                    anchor: 'end',
+                    align: 'start',
+                    offset: 8,
+                    font: { size: 10, weight: 'bold' },
+                    formatter: (v) => (v / 1000000).toFixed(1) + 'M'
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: { callback: (v) => (v / 1000000) + 'M', font: { size: 10 } }
+                },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+
+    // 2. Brand Chart (Horizontal)
+    const brandData = @json($brandContribution);
+    const brLabels = Object.keys(brandData).slice(0, 10);
+    const brValues = Object.values(brandData).slice(0, 10);
+
+    new Chart(document.getElementById('brandChart'), {
+        type: 'bar',
+        data: {
+            labels: brLabels,
+            datasets: [{
+                data: brValues,
+                backgroundColor: colors.violet,
+                borderRadius: 4,
+                barThickness: 12,
+            }]
+        },
+        options: {
+            ...baseOptions,
+            indexAxis: 'y',
+            plugins: {
+                ...baseOptions.plugins,
+                datalabels: {
+                    color: (ctx) => ctx.dataset.data[ctx.dataIndex] < 2000000 ? colors.secondary : '#fff',
+                    anchor: 'end',
+                    align: (ctx) => ctx.dataset.data[ctx.dataIndex] < 2000000 ? 'end' : 'start',
+                    font: { size: 9, weight: '600' },
+                    formatter: (v) => (v / 1000000).toFixed(1) + 'M'
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: { callback: (v) => (v / 1000000) + 'M', font: { size: 10 } }
+                },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+
+    // 3. Department Chart (Vertical)
+    const deptData = @json($departmentContribution);
+    const deptLabels = Object.keys(deptData);
+    const deptValues = Object.values(deptData);
+
+    new Chart(document.getElementById('deptChart'), {
+        type: 'bar',
+        data: {
+            labels: deptLabels,
+            datasets: [{
+                data: deptValues,
+                backgroundColor: colors.chart[5],
+                borderRadius: 8,
+                barThickness: 32,
+            }]
+        },
+        options: {
+            ...baseOptions,
+            plugins: {
+                ...baseOptions.plugins,
+                datalabels: {
+                    color: colors.secondary,
+                    anchor: 'end',
+                    align: 'top',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: (v) => (v / 1000000).toFixed(1) + 'M'
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: { callback: (v) => (v / 1000000) + 'M', font: { size: 10 } }
+                },
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+
+    // 4. Revenue Category (Donut)
+    const revDataRaw = @json($revenueCategoryContribution);
+    const revLabels = Object.keys(revDataRaw);
+    const revValues = Object.values(revDataRaw);
+    const revTotal = revValues.reduce((a, b) => a + b, 0);
+
+    const revChart = new Chart(document.getElementById('revenueChart'), {
+        type: 'doughnut',
+        data: {
+            labels: revLabels,
+            datasets: [{
+                data: revValues,
+                backgroundColor: colors.chart,
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 15
+            }]
+        },
+        options: {
+            ...baseOptions,
+            cutout: '72%',
+            plugins: {
+                ...baseOptions.plugins,
+                datalabels: {
+                    display: (ctx) => (ctx.dataset.data[ctx.dataIndex] / revTotal) > 0.1,
+                    color: '#fff',
+                    font: { size: 10, weight: 'bold' },
+                    formatter: (v) => ((v / revTotal) * 100).toFixed(0) + '%'
+                }
+            }
+        }
+    });
+
+    // Custom Legend
+    const legendContainer = document.getElementById('revenueLegend');
+    revLabels.forEach((label, i) => {
+        const pct = ((revValues[i] / revTotal) * 100).toFixed(1);
+        const itemHtml = `
+            <div class="flex items-center gap-2 p-1 hover:bg-slate-50 rounded transition-colors cursor-default">
+                <div class="w-2.5 h-2.5 rounded-sm shrink-0" style="background-color: ${colors.chart[i % colors.chart.length]}"></div>
+                <div class="flex flex-col min-w-0">
+                    <span class="text-[10px] font-semibold text-slate-700 truncate">${label}</span>
+                    <span class="text-[9px] text-slate-400">${pct}%</span>
+                </div>
+            </div>
+        `;
+        legendContainer.insertAdjacentHTML('beforeend', itemHtml);
+    });
+
+</script>
+@endpush
 @endsection

@@ -21,7 +21,23 @@ class EstimateController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Estimate::with('customer')->whereIn('status', ['draft', 'ready_to_invoice']);
+        $query = Estimate::with('customer', 'deal')->whereIn('status', ['draft', 'ready_to_invoice']);
+
+        // RBAC Access Control
+        $user = auth()->user();
+        if ($user->role === 'HOD' && $user->department) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('department_split', 'like', '%' . $user->department . '%');
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->whereHas('deal', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
 
         // Search filter (Reference or Customer Name)
         if ($request->filled('search')) {
@@ -291,6 +307,8 @@ class EstimateController extends Controller
                 'sscl_amount' => $item->sscl_amount,
                 'vat_amount' => $item->vat_amount,
                 'total_with_vat' => $item->total_with_vat,
+                'department' => $item->department,
+                'revenue_category' => $item->revenue_category,
             ]);
         }
 

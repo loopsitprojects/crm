@@ -13,7 +13,12 @@ class JobController extends Controller
 
         // Access Control
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management'])) {
+        if ($user->role === 'HOD' && $user->department) {
+            $query->where('department_split', 'like', '%' . $user->department . '%');
+        } elseif ($user->role === 'Manager') {
+            $query->where('user_id', $user->id);
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            // Fallback for any other restricted roles
             $query->where('user_id', $user->id);
         }
 

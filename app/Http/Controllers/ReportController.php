@@ -50,12 +50,16 @@ class ReportController extends Controller
             }
 
             if ($isRestricted) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
-                        ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                            $tm->where('users.id', $user->id);
-                        });
-                });
+                if ($user->role === 'HOD' && $user->department) {
+                    $query->where('department_split', 'like', '%' . $user->department . '%');
+                } else {
+                    $query->where(function ($q) use ($user) {
+                        $q->where('user_id', $user->id)
+                            ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                $tm->where('users.id', $user->id);
+                            });
+                    });
+                }
             }
             return $query;
         };
@@ -84,10 +88,14 @@ class ReportController extends Controller
         if ($isRestricted) {
             $invoiceQuery->where(function ($q) use ($user) {
                 $q->whereHas('estimate.deal', function ($dq) use ($user) {
-                    $dq->where('user_id', $user->id)
-                        ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                            $tm->where('users.id', $user->id);
-                        });
+                    if ($user->role === 'HOD' && $user->department) {
+                        $dq->where('department_split', 'like', '%' . $user->department . '%');
+                    } else {
+                        $dq->where('user_id', $user->id)
+                            ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                $tm->where('users.id', $user->id);
+                            });
+                    }
                 });
             });
         }
@@ -147,57 +155,52 @@ class ReportController extends Controller
             ->groupBy('deals.type')
             ->get();
 
-        // Handle Tabs and Detailed Data
-        $activeTab = $request->input('tab', 'total_deals');
-        $detailedData = null;
+        // Handle Detailed Data
+        $detailedData = \App\Models\InvoiceItem::with([
+            'invoice.customer',
+            'invoice.estimate.deal.owner',
+            'invoice.estimate'
+        ])
+        ->whereHas('invoice', function ($q) use ($startDate, $endDate, $customerName, $department, $isRestricted, $user) {
+            $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+              ->where('is_proforma', false);
 
-        switch ($activeTab) {
-            case 'total_deals':
-                $detailedData = (clone $dealQuery)->with(['customer', 'owner'])->latest()->paginate(15);
-                break;
-            case 'open_deals':
-                $detailedData = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->with(['customer', 'owner'])->latest()->paginate(15);
-                break;
-            case 'weighted_amount':
-                $detailedData = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->with(['customer', 'owner'])->latest()->paginate(15);
-                break;
-            case 'approved_amount':
-                $detailedData = (clone $dealQuery)->where('stage', 'Approved')->with(['customer', 'owner'])->latest()->paginate(15);
-                break;
-            case 'new_deals':
-                $detailedData = Deal::where('created_at', '>=', now()->subDays(30))->with(['customer', 'owner']);
-                if ($isRestricted)
-                    $detailedData->where('type', $user->department);
-                $detailedData = $detailedData->latest()->paginate(15);
-                break;
-            case 'invoiced':
-                $detailedData = (clone $invoiceQuery)->with(['customer', 'estimate.deal'])->latest()->paginate(15);
-                break;
-            case 'payment_collected':
-                $detailedData = (clone $invoiceQuery)->where('status', 'paid')->with(['customer', 'estimate.deal'])->latest()->paginate(15);
-                break;
-            case 'contribution':
-                $detailedData = (clone $invoiceQuery)->where('status', 'paid')->with(['customer', 'estimate.deal'])->latest()->paginate(15);
-                break;
+            if ($customerName) {
+                $q->whereHas('customer', function ($cq) use ($customerName) {
+                    $cq->where('name', 'LIKE', "%{$customerName}%");
+                });
+            }
+
+            if ($department || $isRestricted) {
+                $q->whereHas('estimate.deal', function ($dq) use ($department, $isRestricted, $user) {
+                    if ($department) {
+                        $dq->where('type', $department);
+                    }
+                    if ($isRestricted) {
+                        $dq->where(function ($sq) use ($user) {
+                            if ($user->role === 'HOD' && $user->department) {
+                                $sq->where('department_split', 'like', '%' . $user->department . '%');
+                            } else {
+                                $sq->where('user_id', $user->id)
+                                    ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                        $tm->where('users.id', $user->id);
+                                    });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+
+        if ($stageFilter) {
+            $detailedData->whereHas('invoice.estimate.deal', function ($dq) use ($stageFilter) {
+                $dq->where('stage', $stageFilter);
+            });
         }
 
-        // Consolidated Company Income Breakdown (Net, SSCL, VAT)
+        $detailedData = $detailedData->latest()->paginate(25);
+
         $incomeBreakdown = [];
-        if (!$isRestricted) {
-            $incomeBreakdown = Invoice::where('status', 'paid')
-                ->whereBetween('invoices.created_at', [$startDate->startOfDay(), $endDate->endOfDay()])
-                ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
-                ->select(
-                    DB::raw("DATE_FORMAT(invoices.created_at, '%Y-%m') as month"),
-                    DB::raw('SUM(invoice_items.amount) as net_revenue'),
-                    DB::raw('SUM(invoice_items.sscl_amount) as sscl_total'),
-                    DB::raw('SUM(invoice_items.vat_amount) as vat_total'),
-                    DB::raw('SUM(invoice_items.total_with_vat) as gross_revenue')
-                )
-                ->groupBy('month')
-                ->orderBy('month', 'desc')
-                ->get();
-        }
 
         return view('reports.index', compact(
             'startDate',
@@ -218,7 +221,7 @@ class ReportController extends Controller
             'dailyRevenue',
             'dealsByStage',
             'revenueByDept',
-            'activeTab',
+            'revenueByDept',
             'detailedData',
             'customerName',
             'stageFilter',
@@ -237,7 +240,79 @@ class ReportController extends Controller
         $user = auth()->user();
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
-        if ($type === 'invoices') {
+        if ($type === 'detailed') {
+            $query = \App\Models\InvoiceItem::with([
+                'invoice.customer',
+                'invoice.estimate.deal.owner',
+                'invoice.estimate' // Ensure estimate is loaded for advance_received_amount and reference_number
+            ])
+            ->whereHas('invoice', function ($q) use ($startDate, $endDate, $isRestricted, $user, $department) {
+                $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                  ->where('is_proforma', false);
+
+                if ($isRestricted) {
+                    $q->whereHas('estimate.deal', function ($dq) use ($user) {
+                        $dq->where(function ($sq) use ($user) {
+                            $sq->where('user_id', $user->id)
+                                ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                    $tm->where('users.id', $user->id);
+                                });
+                        });
+                    });
+                } elseif ($department) {
+                    $q->whereHas('estimate.deal', function ($dq) use ($department) {
+                        $dq->where('type', $department);
+                    });
+                }
+            });
+
+            $data = $query->get();
+            $filename = "detailed_report_" . now()->format('YmdHis') . ".csv";
+            $headers = [
+                'Inv Date/ Est Date', 'Est/Inv No', 'Job No', 'Invoiced Month/ Closing month', 
+                'Client Name', 'TIN', 'Brand', 'Description', 'Line Amount', 'SSCL', 'VAT', 
+                'Total Amount', 'Con Confirmed', 'Revenue Category', 'Department', 'Data Inputter', 
+                'Stages', 'Advance payment Status', 'Payment Status', 'Balance Due'
+            ];
+
+            $callback = function () use ($data, $headers) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $headers);
+                foreach ($data as $item) {
+                    $invoice = $item->invoice;
+                    $estimate = $invoice->estimate ?? null;
+                    $deal = $estimate->deal ?? null;
+                    
+                    $total = $invoice->total_amount ?? 0;
+                    $balanceDue = ($invoice->status === 'paid') ? 0 : $total;
+                    $advanceStatus = ($estimate && $estimate->advance_received_amount > 0) ? 'RECEIVED' : 'PENDING';
+
+                    fputcsv($file, [
+                        $invoice->date ?? ($estimate->date ?? 'N/A'),
+                        $invoice->invoice_number ?? ($estimate->reference_number ?? 'N/A'),
+                        $deal->job_number ?? 'N/A',
+                        $invoice->date ? date('M Y', strtotime($invoice->date)) : 'N/A',
+                        $invoice->customer->name ?? 'N/A',
+                        $invoice->customer->customer_tax_number ?? 'N/A',
+                        $estimate->brand_name ?? 'N/A',
+                        $item->description,
+                        $item->amount,
+                        $item->sscl_amount,
+                        $item->vat_amount,
+                        $item->total_with_vat,
+                        $deal->contribution ?? 'N/A',
+                        $item->revenue_category ?? 'N/A',
+                        $item->department ?? 'N/A',
+                        $deal->owner->name ?? 'N/A',
+                        $deal->stage ?? 'N/A',
+                        $advanceStatus,
+                        strtoupper($invoice->status ?? 'pending'),
+                        $balanceDue
+                    ]);
+                }
+                fclose($file);
+            };
+        } elseif ($type === 'invoices') {
             $query = Invoice::whereBetween('created_at', [$startDate, $endDate])->with('customer', 'estimate.deal');
 
             if ($isRestricted) {
@@ -280,10 +355,14 @@ class ReportController extends Controller
 
             if ($isRestricted) {
                 $query->where(function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
-                        ->orWhereHas('teamMembers', function ($sq) use ($user) {
-                            $sq->where('users.id', $user->id);
-                        });
+                    if ($user->role === 'HOD' && $user->department) {
+                        $q->where('department_split', 'like', '%' . $user->department . '%');
+                    } else {
+                        $q->where('user_id', $user->id)
+                            ->orWhereHas('teamMembers', function ($sq) use ($user) {
+                                $sq->where('users.id', $user->id);
+                            });
+                    }
                 });
             } elseif ($department) {
                 $query->where('type', $department);
