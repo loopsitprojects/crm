@@ -3,106 +3,188 @@
 @section('header', 'Edit User')
 
 @section('content')
-    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-700">User Details</h3>
-            <a href="{{ route('users.index') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-                <i class="fas fa-arrow-left mr-1"></i> Back to List
-            </a>
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="px-8 py-6 bg-gradient-to-r from-brand-pink to-brand-purple border-b border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white">Edit User</h3>
+                        <p class="text-sm text-white/80 mt-1">Modify team member details and permissions</p>
+                    </div>
+                    <a href="{{ route('users.index') }}"
+                        class="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-all backdrop-blur-sm">
+                        <i class="fas fa-arrow-left mr-2"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <form action="{{ route('users.update', $user) }}" method="POST" class="p-8">
+                @csrf
+                @method('PUT')
+
+                <!-- Personal Information Section -->
+                <div class="mb-8">
+                    <div class="flex items-center mb-4 pb-2 border-b-2 border-brand-blue">
+                        <div class="w-10 h-10 bg-brand-blue/10 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-user text-brand-blue"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800">Personal Information</h4>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-id-card text-brand-blue mr-2"></i>Full Name <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" required
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
+                                placeholder="Enter full name">
+                            @error('name') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-envelope text-brand-blue mr-2"></i>Email Address <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
+                                placeholder="user@example.com">
+                            @error('email') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role & Hierarchy Section -->
+                <div class="mb-8">
+                    <div class="flex items-center mb-4 pb-2 border-b-2 border-brand-purple">
+                        <div class="w-10 h-10 bg-brand-purple/10 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-user-shield text-brand-purple"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800">Role & Hierarchy</h4>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="role" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-briefcase text-brand-purple mr-2"></i>User Role <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <select name="role" id="role" required
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
+                                <option value="">-- Select Role --</option>
+                                @foreach(\App\Models\User::ROLES as $role)
+                                    @if($role !== 'Super Admin')
+                                        <option value="{{ $role }}" {{ old('role', $user->role) == $role ? 'selected' : '' }}>{{ $role }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('role') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="supervisor_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-sitemap text-brand-purple mr-2"></i>Assigned Supervisor
+                            </label>
+                            <select name="supervisor_id" id="supervisor_id"
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
+                                <option value="">-- No Supervisor --</option>
+                                @foreach($users as $availableUser)
+                                    <option value="{{ $availableUser->id }}" {{ old('supervisor_id', $user->supervisor_id) == $availableUser->id ? 'selected' : '' }}>
+                                        {{ $availableUser->name }} ({{ $availableUser->role }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('supervisor_id') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label for="department" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-building text-brand-purple mr-2"></i>Department <span
+                                    class="text-red-500">*</span>
+                            </label>
+                            <select name="department" id="department" required
+                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
+                                <option value="">-- Select Department --</option>
+                                <option value="creative" {{ old('department', $user->department) == 'creative' ? 'selected' : '' }}>Creative</option>
+                                <option value="digital" {{ old('department', $user->department) == 'digital' ? 'selected' : '' }}>Digital</option>
+                                <option value="IT" {{ old('department', $user->department) == 'IT' ? 'selected' : '' }}>IT</option>
+                                <option value="AM" {{ old('department', $user->department) == 'AM' ? 'selected' : '' }}>AM</option>
+                                <option value="BD" {{ old('department', $user->department) == 'BD' ? 'selected' : '' }}>BD</option>
+                            </select>
+                            @error('department') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Section -->
+                <div class="mb-8">
+                    <div class="flex items-center mb-4 pb-2 border-b-2 border-brand-pink">
+                        <div class="w-10 h-10 bg-brand-pink/10 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-lock text-brand-pink"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800">Security Credentials</h4>
+                    </div>
+
+                    <div class="mt-2 mb-6 p-4 bg-blue-50 border-l-4 border-brand-blue rounded-r-lg">
+                        <p class="text-sm text-blue-800">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Leave password fields **blank** if you do not wish to change the current password.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div x-data="{ show: false }">
+                            <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-key text-brand-pink mr-2"></i>New Password
+                            </label>
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" name="password" id="password"
+                                    class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all pr-12"
+                                    placeholder="Minimum 8 characters">
+                                <button type="button" @click="show = !show" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-pink focus:outline-none transition-colors">
+                                    <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                </button>
+                            </div>
+                            @error('password') <p class="mt-2 text-sm text-red-600"><i
+                            class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
+                        </div>
+
+                        <div x-data="{ show: false }">
+                            <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-2">
+                                <i class="fas fa-check-double text-brand-pink mr-2"></i>Confirm New Password
+                            </label>
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" name="password_confirmation" id="password_confirmation"
+                                    class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all pr-12"
+                                    placeholder="Re-enter new password">
+                                <button type="button" @click="show = !show" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-pink focus:outline-none transition-colors">
+                                    <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                    <a href="{{ route('users.index') }}"
+                        class="px-6 py-3 rounded-lg border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50 font-medium transition-all">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                    <button type="submit"
+                        class="px-8 py-3 rounded-lg bg-gradient-to-r from-brand-pink to-brand-purple text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
+                        <i class="fas fa-save mr-2"></i>Update User
+                    </button>
+                </div>
+            </form>
         </div>
-
-        <form action="{{ route('users.update', $user) }}" method="POST" class="p-6">
-            @csrf
-            @method('PUT')
-
-            <div class="space-y-4">
-                <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700">Full Name</label>
-                    <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                    @error('name') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
-                    <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                    @error('email') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label for="role" class="block text-sm font-medium text-gray-700">User Role</label>
-                    <select name="role" id="role" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                        <option value="">-- Select Role --</option>
-                        @foreach(\App\Models\User::ROLES as $role)
-                            @if($role !== 'Super Admin')
-                                <option value="{{ $role }}" {{ old('role', $user->role) == $role ? 'selected' : '' }}>{{ $role }}
-                                </option>
-                            @endif
-                        @endforeach
-                    </select>
-                    @error('role') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label for="supervisor_id" class="block text-sm font-medium text-gray-700">Assigned Supervisor</label>
-                    <select name="supervisor_id" id="supervisor_id"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                        <option value="">-- No Supervisor --</option>
-                        @foreach($users as $availableUser)
-                            <option value="{{ $availableUser->id }}" {{ old('supervisor_id', $user->supervisor_id) == $availableUser->id ? 'selected' : '' }}>{{ $availableUser->name }}
-                                ({{ $availableUser->role }})</option>
-                        @endforeach
-                    </select>
-                    @error('supervisor_id') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div>
-                    <label for="department" class="block text-sm font-medium text-gray-700">Department</label>
-                    <select name="department" id="department" required
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                        <option value="">-- Select Department --</option>
-                        <option value="creative" {{ old('department', $user->department) == 'creative' ? 'selected' : '' }}>
-                            Creative</option>
-                        <option value="digital" {{ old('department', $user->department) == 'digital' ? 'selected' : '' }}>
-                            Digital</option>
-                        <option value="play" {{ old('department', $user->department) == 'play' ? 'selected' : '' }}>Play
-                        </option>
-                        <option value="tech" {{ old('department', $user->department) == 'tech' ? 'selected' : '' }}>Tech
-                        </option>
-                    </select>
-                    @error('department') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                </div>
-
-                <div class="bg-blue-50 p-4 rounded-md mb-4 border-l-4 border-brand-blue">
-                    <p class="text-xs text-blue-700 font-medium">Leave password fields blank if you don't want to change the
-                        password.</p>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700">New Password</label>
-                        <input type="password" name="password" id="password"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                        @error('password') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div>
-                        <label for="password_confirmation" class="block text-sm font-medium text-gray-700">Confirm New
-                            Password</label>
-                        <input type="password" name="password_confirmation" id="password_confirmation"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 flex justify-end">
-                <button type="submit"
-                    class="px-6 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5">
-                    <i class="fas fa-save mr-2"></i>Update User
-                </button>
-            </div>
-        </form>
     </div>
 @endsection

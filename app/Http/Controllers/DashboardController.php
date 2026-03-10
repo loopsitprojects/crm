@@ -27,9 +27,13 @@ class DashboardController extends Controller
             '9' => 'September', '10' => 'October', '11' => 'November', '12' => 'December'
         ];
         
-        // Populate brands from Customer brand field
-        $brands = Customer::whereNotNull('brand')->where('brand', '!=', '')->distinct()->pluck('brand', 'brand')->toArray();
-        asort($brands);
+        // Populate brands from Estimate brand_name field
+        $brands = Estimate::whereNotNull('brand_name')
+            ->where('brand_name', '!=', '')
+            ->distinct()
+            ->orderBy('brand_name')
+            ->pluck('brand_name', 'brand_name')
+            ->toArray();
 
         $user = auth()->user();
         $userRole = $user->role;
@@ -38,21 +42,18 @@ class DashboardController extends Controller
         $managers = \App\Models\User::where('role', 'Manager');
         if ($userRole === 'Manager') {
             $managers->where('id', $user->id);
+        } elseif ($userRole === 'HOD' && $userDept) {
+            $managers->where('department', $userDept);
         }
         $managers = $managers->pluck('name', 'id');
 
         $departments = ['Corporate', 'Creative', 'Digital', 'Play', 'Tech'];
-        if ($userRole === 'HOD' && $userDept) {
+        if (in_array($userRole, ['HOD', 'Manager']) && $userDept) {
             $departments = [$userDept];
         }
         
-        $stages = Deal::whereNotNull('stage')->distinct();
-        if ($userRole === 'HOD' && $userDept) {
-            $stages->where('department_split', 'like', '%' . $userDept . '%');
-        } elseif ($userRole === 'Manager') {
-            $stages->where('user_id', $user->id);
-        }
-        $stages = $stages->pluck('stage', 'stage');
+        $stages = ['Objection handling', 'Finalizing terms', 'Closed Won'];
+        $stages = array_combine($stages, $stages);
 
         // 2. Base Query context
         $query = Deal::with(['owner', 'customer', 'estimates' => function($q) {
@@ -79,8 +80,8 @@ class DashboardController extends Controller
             $query->where('stage', $stageFilter);
         }
         if ($brandFilter !== 'all') {
-            $query->whereHas('customer', function($q) use ($brandFilter) {
-                $q->where('brand', $brandFilter);
+            $query->whereHas('estimates', function($q) use ($brandFilter) {
+                $q->where('brand_name', $brandFilter);
             });
         }
 
@@ -154,10 +155,18 @@ class DashboardController extends Controller
         // Horizontal Bar: Brandwise Contribution
         $brandContribution = [];
         foreach ($deals as $deal) {
-            // Use customer's brand, fallback to 'Unknown'
-            $brand = ($deal->customer && $deal->customer->brand) 
-                ? $deal->customer->brand 
-                : 'Unknown';
+            // Use estimate's brand_name, fallback to customer brand, then 'Unknown'
+            $brand = 'Unknown';
+            if ($deal->estimates->isNotEmpty()) {
+                $firstWithBrand = $deal->estimates->first(fn($e) => !empty($e->brand_name));
+                if ($firstWithBrand) {
+                    $brand = $firstWithBrand->brand_name;
+                }
+            }
+            
+            if ($brand === 'Unknown' && $deal->customer && $deal->customer->brand) {
+                $brand = $deal->customer->brand;
+            }
             
             $contribution = $deal->contribution;
             if ($userRole === 'HOD' && $userDept) {

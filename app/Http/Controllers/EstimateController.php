@@ -25,17 +25,29 @@ class EstimateController extends Controller
 
         // RBAC Access Control
         $user = auth()->user();
-        if ($user->role === 'HOD' && $user->department) {
+        if (!in_array($user->role, ['Super Admin', 'Management'])) {
             $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('department_split', 'like', '%' . $user->department . '%');
-            });
-        } elseif ($user->role === 'Manager') {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            });
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+                $q->where(function ($inner) use ($user) {
+                    // Own deals
+                    $inner->where('user_id', $user->id)
+                      // Team member deals
+                      ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                          $tm->where('users.id', $user->id);
+                      });
+                    
+                    // HOD specific
+                    if ($user->role === 'HOD') {
+                        if ($user->department) {
+                            $inner->orWhere('department_split', 'like', '%' . $user->department . '%');
+                        }
+                        
+                        // Subordinates
+                        $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                        if ($subordinateIds->isNotEmpty()) {
+                            $inner->orWhereIn('user_id', $subordinateIds);
+                        }
+                    }
+                });
             });
         }
 

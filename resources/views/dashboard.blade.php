@@ -215,7 +215,9 @@
             <div class="filter-group">
                 <label class="filter-label">Manager</label>
                 <select name="manager" class="filter-select" onchange="this.form.submit()">
-                    <option value="all">All Managers</option>
+                    @if(count($managers) > 1)
+                        <option value="all">All Managers</option>
+                    @endif
                     @foreach($managers as $id => $name)
                         <option value="{{ $id }}" {{ $managerFilter == $id ? 'selected' : '' }}>{{ $name }}</option>
                     @endforeach
@@ -225,7 +227,9 @@
             <div class="filter-group">
                 <label class="filter-label">Department</label>
                 <select name="department" class="filter-select" onchange="this.form.submit()">
-                    <option value="all">All Depts</option>
+                    @if(count($departments) > 1)
+                        <option value="all">All Depts</option>
+                    @endif
                     @foreach($departments as $d)
                         <option value="{{ $d }}" {{ $departmentFilter == $d ? 'selected' : '' }}>{{ $d }}</option>
                     @endforeach

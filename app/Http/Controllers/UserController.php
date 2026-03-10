@@ -32,7 +32,7 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:creative,digital,play,tech',
+            'department' => 'nullable|string|in:creative,digital,IT,AM,BD',
         ]);
 
         $user = User::create([
@@ -64,7 +64,7 @@ class UserController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:creative,digital,play,tech',
+            'department' => 'nullable|string|in:creative,digital,IT,AM,BD',
         ]);
 
         $user->name = $request->name;
@@ -173,7 +173,7 @@ class UserController extends Controller
                     'email' => $email,
                     'role' => $role,
                     'supervisor_id' => $supervisorId,
-                    'department' => strtolower($department), // Ensure lowercase for enum-like values
+                    'department' => $department, // Use casing from CSV, matching validation
                     'password' => Hash::make($password),
                 ]);
                 $successCount++;

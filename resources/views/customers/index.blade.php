@@ -90,12 +90,16 @@
                             <td x-show="isColumnVisible('actions')" class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
                                 <a href="{{ route('customers.edit', $customer) }}"
                                     class="text-brand-blue hover:text-brand-purple mr-3">Edit</a>
+                                @if(auth()->user()->role === 'Super Admin')
                                 <form action="{{ route('customers.destroy', $customer) }}" method="POST" class="inline-block"
                                     onsubmit="return confirm('Are you sure?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                                    <button type="submit" class="text-red-400 hover:text-red-700 transition-colors">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

@@ -380,7 +380,9 @@
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                                     <option value="">-- Select Deal Owner --</option>
                                     @foreach($seniorManagers as $manager)
-                                        <option value="{{ $manager->name }}">{{ $manager->name }}</option>
+                                        <option value="{{ $manager->name }}" {{ (old('senior_manager') ?? $currentSupervisor) == $manager->name ? 'selected' : '' }}>
+                                            {{ $manager->name }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
@@ -583,16 +585,6 @@
 
                         <!-- Right Column -->
                         <div class="space-y-4">
-                            <div>
-                                <select name="user_id" id="edit_user_id"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
-                                    <option value="">-- Unassigned --</option>
-                                    @foreach($users as $user)
-                                        <option value="{{ $user->id }}" data-name="{{ $user->name }}">{{ $user->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Deal Owner</label>
                                 <select name="senior_manager" id="edit_senior_manager"

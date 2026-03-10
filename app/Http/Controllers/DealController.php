@@ -45,15 +45,34 @@ class DealController extends Controller
         $user = auth()->user();
         $userRole = $user->role;
         $userDept = $user->department;
+        $currentSupervisor = $user->supervisor ? $user->supervisor->name : null;
 
         // Group all deals by stage for display
         $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates'])->orderBy('updated_at', 'desc');
 
         // RBAC Filtering
-        if ($userRole === 'HOD' && $userDept) {
-            $query->where('department_split', 'like', '%' . $userDept . '%');
-        } elseif ($userRole === 'Manager') {
-            $query->where('user_id', $user->id);
+        if (!in_array($userRole, ['Super Admin', 'Management'])) {
+            $query->where(function ($q) use ($user, $userDept) {
+                // Own deals
+                $q->where('user_id', $user->id)
+                  // Team member deals
+                  ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                      $tm->where('users.id', $user->id);
+                  });
+                
+                // HOD specific: Department split and subordinates
+                if ($user->role === 'HOD') {
+                    if ($userDept) {
+                        $q->orWhere('department_split', 'like', '%' . $userDept . '%');
+                    }
+                    
+                    // Deals owned by subordinates
+                    $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                    if ($subordinateIds->isNotEmpty()) {
+                        $q->orWhereIn('user_id', $subordinateIds);
+                    }
+                }
+            });
         }
 
         $allDeals = $query->get();
@@ -82,7 +101,9 @@ class DealController extends Controller
         $users = \App\Models\User::all();
         $usersByDepartment = $users->groupBy('department');
         $currencies = \App\Models\SystemCurrency::all();
-        $seniorManagers = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
+        $seniorManagers = \App\Models\User::whereIn('role', ['HOD', 'Management'])
+            ->where('id', '!=', $user->id)
+            ->get();
 
         // Calculate metrics
         $openDeals = $allDeals->whereNotIn('stage', ['Rejected', 'Closed Won']);
@@ -146,7 +167,8 @@ class DealController extends Controller
             'invoicedAmount',
             'paymentCollected',
             'usersByDepartment',
-            'seniorManagers'
+            'seniorManagers',
+            'currentSupervisor'
         ));
     }
 
@@ -200,6 +222,7 @@ class DealController extends Controller
             'Closed Won' => 100
         ];
         $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
+        $validated['user_id'] = auth()->id();
 
         $deal = Deal::create($validated);
 
@@ -216,6 +239,9 @@ class DealController extends Controller
 
     public function update(Request $request, Deal $deal)
     {
+        if (!$this->checkDealAccess($deal)) {
+            abort(403, 'Unauthorized action.');
+        }
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'revenue' => 'required|numeric|min:0',
@@ -301,6 +327,9 @@ class DealController extends Controller
 
     public function destroy(Deal $deal)
     {
+        if (!$this->checkDealAccess($deal)) {
+            abort(403, 'Unauthorized action.');
+        }
         $title = $deal->title;
         $deal->delete();
         $this->logAction("Deleted deal: {$title}");
@@ -310,6 +339,9 @@ class DealController extends Controller
 
     public function updateStage(Request $request, Deal $deal)
     {
+        if (!$this->checkDealAccess($deal)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
         $validated = $request->validate([
             'stage' => 'required|string',
             'rejection_reason' => 'nullable|string'
@@ -356,6 +388,9 @@ class DealController extends Controller
 
     public function createEstimate(Request $request, Deal $deal)
     {
+        if (!$this->checkDealAccess($deal)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
         if ($deal->estimates()->exists()) {
             return response()->json([
                 'message' => 'An estimate already exists for this deal.'
@@ -418,6 +453,46 @@ class DealController extends Controller
             'total_with_vat' => $deal->revenue,
             'sscl_amount' => 0
         ]);
+    }
+
+    private function checkDealAccess(Deal $deal)
+    {
+        $user = auth()->user();
+        if (in_array($user->role, ['Super Admin', 'Management'])) {
+            return true;
+        }
+
+        // Check if owner
+        if ($deal->user_id === $user->id) {
+            return true;
+        }
+
+        // Check if team member
+        if ($deal->teamMembers()->where('users.id', $user->id)->exists()) {
+            return true;
+        }
+
+        // HOD specific
+        if ($user->role === 'HOD') {
+            // Department split check
+            if ($user->department) {
+                $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                if (is_array($splits)) {
+                    foreach ($splits as $split) {
+                        if (($split['department'] ?? '') === $user->department) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // Subordinate owner check
+            if ($deal->owner && $deal->owner->supervisor_id === $user->id) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }

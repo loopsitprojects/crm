@@ -64,7 +64,19 @@ class CustomerController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        if (auth()->user()->role !== 'Super Admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $customer = Customer::findOrFail($id);
+        $name = $customer->name;
+        
+        // Deleting customer will cascade delete quotations and invoices due to DB constraints
+        $customer->delete();
+        
+        $this->logAction("Deleted customer: {$name}");
+
+        return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
     }
 
     // Admin Review Methods

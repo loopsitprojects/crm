@@ -13,13 +13,28 @@ class JobController extends Controller
 
         // Access Control
         $user = auth()->user();
-        if ($user->role === 'HOD' && $user->department) {
-            $query->where('department_split', 'like', '%' . $user->department . '%');
-        } elseif ($user->role === 'Manager') {
-            $query->where('user_id', $user->id);
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            // Fallback for any other restricted roles
-            $query->where('user_id', $user->id);
+        if (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->where(function ($q) use ($user) {
+                // Own jobs
+                $q->where('user_id', $user->id)
+                  // Team member jobs
+                  ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                      $tm->where('users.id', $user->id);
+                  });
+                
+                // HOD specific: Department split and subordinates
+                if ($user->role === 'HOD') {
+                    if ($user->department) {
+                        $q->orWhere('department_split', 'like', '%' . $user->department . '%');
+                    }
+                    
+                    // Jobs owned by subordinates
+                    $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                    if ($subordinateIds->isNotEmpty()) {
+                        $q->orWhereIn('user_id', $subordinateIds);
+                    }
+                }
+            });
         }
 
         // Filters
@@ -48,7 +63,15 @@ class JobController extends Controller
         $jobs = $query->orderBy('job_number', 'desc')->get();
 
         // Data for dropdowns
-        $users = \App\Models\User::all();
+        if (in_array($user->role, ['Super Admin', 'Management'])) {
+            $users = \App\Models\User::all();
+        } elseif ($user->role === 'HOD') {
+            $users = \App\Models\User::where('id', $user->id)
+                ->orWhere('supervisor_id', $user->id)
+                ->get();
+        } else {
+            $users = \App\Models\User::where('id', $user->id)->get();
+        }
         $departments = ['Creative', 'Digital', 'Play', 'Tech']; // Default departments
 
         return view('jobs.index', compact('jobs', 'users', 'departments'));

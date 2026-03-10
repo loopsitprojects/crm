@@ -111,12 +111,11 @@
                             <select name="department" id="department" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
                                 <option value="">-- Select Department --</option>
-                                <option value="creative" {{ old('department') == 'creative' ? 'selected' : '' }}>Creative
-                                </option>
-                                <option value="digital" {{ old('department') == 'digital' ? 'selected' : '' }}>Digital
-                                </option>
-                                <option value="play" {{ old('department') == 'play' ? 'selected' : '' }}>Play</option>
-                                <option value="tech" {{ old('department') == 'tech' ? 'selected' : '' }}>Tech</option>
+                                <option value="creative" {{ old('department') == 'creative' ? 'selected' : '' }}>Creative</option>
+                                <option value="digital" {{ old('department') == 'digital' ? 'selected' : '' }}>Digital</option>
+                                <option value="IT" {{ old('department') == 'IT' ? 'selected' : '' }}>IT</option>
+                                <option value="AM" {{ old('department') == 'AM' ? 'selected' : '' }}>AM</option>
+                                <option value="BD" {{ old('department') == 'BD' ? 'selected' : '' }}>BD</option>
                             </select>
                             @error('department') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
@@ -134,25 +133,35 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                        <div x-data="{ show: false }">
                             <label for="password" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-key text-brand-pink mr-2"></i>Password <span class="text-red-500">*</span>
                             </label>
-                            <input type="password" name="password" id="password" required
-                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all"
-                                placeholder="Minimum 8 characters">
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" name="password" id="password" required
+                                    class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all pr-12"
+                                    placeholder="Minimum 8 characters">
+                                <button type="button" @click="show = !show" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-pink focus:outline-none transition-colors">
+                                    <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                </button>
+                            </div>
                             @error('password') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
-                        <div>
+                        <div x-data="{ show: false }">
                             <label for="password_confirmation" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-check-double text-brand-pink mr-2"></i>Confirm Password <span
                                     class="text-red-500">*</span>
                             </label>
-                            <input type="password" name="password_confirmation" id="password_confirmation" required
-                                class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all"
-                                placeholder="Re-enter password">
+                            <div class="relative">
+                                <input :type="show ? 'text' : 'password'" name="password_confirmation" id="password_confirmation" required
+                                    class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all pr-12"
+                                    placeholder="Re-enter password">
+                                <button type="button" @click="show = !show" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-pink focus:outline-none transition-colors">
+                                    <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
