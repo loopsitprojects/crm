@@ -29,6 +29,11 @@
                     id="btn-terms">
                     <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
                 </button>
+                <button onclick="showSection('targets')"
+                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
+                    id="btn-targets">
+                    <i class="fas fa-bullseye mr-2 text-red-500"></i> Monthly Targets
+                </button>
                 @if(auth()->user()->hasRole('super_admin'))
                     <button onclick="showSection('currencies')"
                         class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
@@ -262,6 +267,38 @@
                         </div>
                     </div>
 
+                </section>
+                
+                <!-- Monthly Targets Section -->
+                <section id="section-targets" class="settings-section hidden space-y-6">
+                    <form action="{{ route('settings.updateGeneral') }}" method="POST">
+                        @csrf
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <h3 class="text-lg font-bold text-gray-800">Monthly Revenue Targets</h3>
+                                <button type="submit"
+                                    class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
+                                    Save Targets
+                                </button>
+                            </div>
+                            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">SBU Target (LKR)</label>
+                                    <input type="number" name="target_sbu"
+                                        value="{{ \App\Models\Setting::get('target_sbu', 0) }}"
+                                        class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    <p class="mt-1 text-xs text-gray-500">Target for Creative, Digital, and Tech departments.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sales Target (LKR)</label>
+                                    <input type="number" name="target_sales"
+                                        value="{{ \App\Models\Setting::get('target_sales', 0) }}"
+                                        class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    <p class="mt-1 text-xs text-gray-500">Target for AM and BD departments.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </section>
 
                 <!-- Currency Management Section (Super Admin Only) -->

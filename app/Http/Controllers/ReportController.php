@@ -35,12 +35,30 @@ class ReportController extends Controller
         $user = auth()->user();
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
+        // Category Mappings
+        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $salesDepts = ['AM', 'BD'];
+
         // Base Query with RBAC & Filters
-        $applyFilters = function ($query) use ($startDate, $endDate, $department, $customerName, $isRestricted, $user) {
+        $applyFilters = function ($query) use ($startDate, $endDate, $department, $customerName, $isRestricted, $user, $sbuDepts, $salesDepts) {
             $query->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
 
             if ($department) {
-                $query->where('type', $department);
+                if ($department === 'SBU') {
+                    $query->where(function($q) use ($sbuDepts) {
+                        foreach ($sbuDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } elseif ($department === 'Sales') {
+                    $query->where(function($q) use ($salesDepts) {
+                        foreach ($salesDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } else {
+                    $query->whereJsonContains('department_split', [['department' => $department]]);
+                }
             }
 
             if ($customerName) {
@@ -51,7 +69,7 @@ class ReportController extends Controller
 
             if ($isRestricted) {
                 if ($user->role === 'HOD' && $user->department) {
-                    $query->where('department_split', 'like', '%' . $user->department . '%');
+                    $query->whereJsonContains('department_split', [['department' => $user->department]]);
                 } else {
                     $query->where(function ($q) use ($user) {
                         $q->where('user_id', $user->id)
@@ -74,8 +92,22 @@ class ReportController extends Controller
             ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
 
         if ($department) {
-            $invoiceQuery->whereHas('estimate.deal', function ($q) use ($department) {
-                $q->where('type', $department);
+            $invoiceQuery->whereHas('estimate.deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
+                if ($department === 'SBU') {
+                    $q->where(function($sq) use ($sbuDepts) {
+                        foreach ($sbuDepts as $dept) {
+                            $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } elseif ($department === 'Sales') {
+                    $q->where(function($sq) use ($salesDepts) {
+                        foreach ($salesDepts as $dept) {
+                            $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } else {
+                    $q->whereJsonContains('department_split', [['department' => $department]]);
+                }
             });
         }
 
@@ -89,7 +121,7 @@ class ReportController extends Controller
             $invoiceQuery->where(function ($q) use ($user) {
                 $q->whereHas('estimate.deal', function ($dq) use ($user) {
                     if ($user->role === 'HOD' && $user->department) {
-                        $dq->where('department_split', 'like', '%' . $user->department . '%');
+                        $dq->whereJsonContains('department_split', [['department' => $user->department]]);
                     } else {
                         $dq->where('user_id', $user->id)
                             ->orWhereHas('teamMembers', function ($tm) use ($user) {
@@ -145,10 +177,24 @@ class ReportController extends Controller
             ->whereBetween('invoices.created_at', [$startDate, $endDate])
             ->where('invoices.status', 'paid');
 
-        if ($isRestricted) {
-            $revenueByDeptQuery->where('deals.type', $user->department);
+        if ($isRestricted && $user->role === 'HOD' && $user->department) {
+            $revenueByDeptQuery->whereJsonContains('deals.department_split', [['department' => $user->department]]);
         } elseif ($department) {
-            $revenueByDeptQuery->where('deals.type', $department);
+            if ($department === 'SBU') {
+                $revenueByDeptQuery->where(function($q) use ($sbuDepts) {
+                    foreach ($sbuDepts as $dept) {
+                        $q->orWhereJsonContains('deals.department_split', [['department' => $dept]]);
+                    }
+                });
+            } elseif ($department === 'Sales') {
+                $revenueByDeptQuery->where(function($q) use ($salesDepts) {
+                    foreach ($salesDepts as $dept) {
+                        $q->orWhereJsonContains('deals.department_split', [['department' => $dept]]);
+                    }
+                });
+            } else {
+                $revenueByDeptQuery->whereJsonContains('deals.department_split', [['department' => $department]]);
+            }
         }
 
         $revenueByDept = $revenueByDeptQuery->select('deals.type', DB::raw('SUM(invoices.total_amount) as total'))
@@ -161,7 +207,7 @@ class ReportController extends Controller
             'invoice.estimate.deal.owner',
             'invoice.estimate'
         ])
-        ->whereHas('invoice', function ($q) use ($startDate, $endDate, $customerName, $department, $isRestricted, $user) {
+        ->whereHas('invoice', function ($q) use ($startDate, $endDate, $customerName, $department, $isRestricted, $user, $sbuDepts, $salesDepts) {
             $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
               ->where('is_proforma', false);
 
@@ -172,14 +218,28 @@ class ReportController extends Controller
             }
 
             if ($department || $isRestricted) {
-                $q->whereHas('estimate.deal', function ($dq) use ($department, $isRestricted, $user) {
+                $q->whereHas('estimate.deal', function ($dq) use ($department, $isRestricted, $user, $sbuDepts, $salesDepts) {
                     if ($department) {
-                        $dq->where('type', $department);
+                        if ($department === 'SBU') {
+                            $dq->where(function($sq) use ($sbuDepts) {
+                                foreach ($sbuDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } elseif ($department === 'Sales') {
+                            $dq->where(function($sq) use ($salesDepts) {
+                                foreach ($salesDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } else {
+                            $dq->whereJsonContains('department_split', [['department' => $department]]);
+                        }
                     }
                     if ($isRestricted) {
                         $dq->where(function ($sq) use ($user) {
                             if ($user->role === 'HOD' && $user->department) {
-                                $sq->where('department_split', 'like', '%' . $user->department . '%');
+                                $sq->whereJsonContains('department_split', [['department' => $user->department]]);
                             } else {
                                 $sq->where('user_id', $user->id)
                                     ->orWhereHas('teamMembers', function ($tm) use ($user) {
@@ -246,22 +306,42 @@ class ReportController extends Controller
                 'invoice.estimate.deal.owner',
                 'invoice.estimate' // Ensure estimate is loaded for advance_received_amount and reference_number
             ])
-            ->whereHas('invoice', function ($q) use ($startDate, $endDate, $isRestricted, $user, $department) {
+            ->whereHas('invoice', function ($q) use ($startDate, $endDate, $isRestricted, $user, $department, $sbuDepts, $salesDepts) {
                 $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
                   ->where('is_proforma', false);
 
                 if ($isRestricted) {
                     $q->whereHas('estimate.deal', function ($dq) use ($user) {
                         $dq->where(function ($sq) use ($user) {
-                            $sq->where('user_id', $user->id)
-                                ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                                    $tm->where('users.id', $user->id);
-                                });
+                            if ($user->role === 'HOD' && $user->department) {
+                                $sq->whereJsonContains('department_split', [['department' => $user->department]]);
+                            } else {
+                                $sq->where('user_id', $user->id)
+                                    ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                        $tm->where('users.id', $user->id);
+                                    });
+                            }
                         });
                     });
-                } elseif ($department) {
-                    $q->whereHas('estimate.deal', function ($dq) use ($department) {
-                        $dq->where('type', $department);
+                }
+                
+                if ($department) {
+                    $q->whereHas('estimate.deal', function ($dq) use ($department, $sbuDepts, $salesDepts) {
+                        if ($department === 'SBU') {
+                            $dq->where(function($sq) use ($sbuDepts) {
+                                foreach ($sbuDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } elseif ($department === 'Sales') {
+                            $dq->where(function($sq) use ($salesDepts) {
+                                foreach ($salesDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } else {
+                            $dq->whereJsonContains('department_split', [['department' => $department]]);
+                        }
                     });
                 }
             });
@@ -318,15 +398,35 @@ class ReportController extends Controller
             if ($isRestricted) {
                 $query->whereHas('estimate.deal', function ($q) use ($user) {
                     $q->where(function ($sq) use ($user) {
-                        $sq->where('user_id', $user->id)
-                            ->orWhereHas('teamMembers', function ($ssq) use ($user) {
-                                $ssq->where('users.id', $user->id);
-                            });
+                        if ($user->role === 'HOD' && $user->department) {
+                            $sq->whereJsonContains('department_split', [['department' => $user->department]]);
+                        } else {
+                            $sq->where('user_id', $user->id)
+                                ->orWhereHas('teamMembers', function ($ssq) use ($user) {
+                                    $ssq->where('users.id', $user->id);
+                                });
+                        }
                     });
                 });
-            } elseif ($department) {
-                $query->whereHas('estimate.deal', function ($q) use ($department) {
-                    $q->where('type', $department);
+            }
+            
+            if ($department) {
+                $query->whereHas('estimate.deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
+                    if ($department === 'SBU') {
+                        $q->where(function($sq) use ($sbuDepts) {
+                            foreach ($sbuDepts as $dept) {
+                                $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                            }
+                        });
+                    } elseif ($department === 'Sales') {
+                        $q->where(function($sq) use ($salesDepts) {
+                            foreach ($salesDepts as $dept) {
+                                $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                            }
+                        });
+                    } else {
+                        $q->whereJsonContains('department_split', [['department' => $department]]);
+                    }
                 });
             }
 
@@ -356,7 +456,7 @@ class ReportController extends Controller
             if ($isRestricted) {
                 $query->where(function ($q) use ($user) {
                     if ($user->role === 'HOD' && $user->department) {
-                        $q->where('department_split', 'like', '%' . $user->department . '%');
+                        $q->whereJsonContains('department_split', [['department' => $user->department]]);
                     } else {
                         $q->where('user_id', $user->id)
                             ->orWhereHas('teamMembers', function ($sq) use ($user) {
@@ -364,8 +464,24 @@ class ReportController extends Controller
                             });
                     }
                 });
-            } elseif ($department) {
-                $query->where('type', $department);
+            }
+            
+            if ($department) {
+                if ($department === 'SBU') {
+                    $query->where(function($q) use ($sbuDepts) {
+                        foreach ($sbuDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } elseif ($department === 'Sales') {
+                    $query->where(function($q) use ($salesDepts) {
+                        foreach ($salesDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } else {
+                    $query->whereJsonContains('department_split', [['department' => $department]]);
+                }
             }
 
             $data = $query->get();

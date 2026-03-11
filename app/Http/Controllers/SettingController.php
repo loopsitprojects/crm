@@ -26,7 +26,7 @@ class SettingController extends Controller
         $data = $request->except('_token');
 
         foreach ($data as $key => $value) {
-            Setting::where('key', $key)->update(['value' => $value]);
+            Setting::set($key, $value);
         }
 
         return redirect()->route('settings.index')->with('success', 'General settings updated successfully.');

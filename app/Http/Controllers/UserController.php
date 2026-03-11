@@ -32,7 +32,7 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:creative,digital,IT,AM,BD',
+            'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD',
         ]);
 
         $user = User::create([
@@ -64,7 +64,7 @@ class UserController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:creative,digital,IT,AM,BD',
+            'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD',
         ]);
 
         $user->name = $request->name;

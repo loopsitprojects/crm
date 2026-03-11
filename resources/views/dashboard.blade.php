@@ -173,6 +173,48 @@
         background-color: var(--primary-light);
     }
 
+    /* Tab Styling */
+    .dashboard-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 2px;
+    }
+
+    .tab-btn {
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-muted);
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .tab-btn:hover {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    .tab-content {
+        transition: opacity 0.3s ease;
+    }
+
+    .tab-content.hidden {
+        display: none;
+        opacity: 0;
+    }
+
     /* Animations */
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
@@ -189,134 +231,186 @@
 <div class="dashboard-container relative">
     
 
-    <!-- Filters & KPI Header -->
-    <div class="flex gap-6 mb-6">
-        <form id="filterForm" action="{{ route('dashboard') }}" method="GET" class="filters-bar flex-1 mb-0">
-            <div class="filter-group">
-                <label class="filter-label">Month</label>
-                <select name="month" class="filter-select" onchange="this.form.submit()">
-                    <option value="all">All Months</option>
-                    @foreach($months as $val => $lbl)
-                        <option value="{{ $val }}" {{ $month == $val ? 'selected' : '' }}>{{ $lbl }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Brand</label>
-                <select name="brand" class="filter-select" onchange="this.form.submit()">
-                    <option value="all">All Brands</option>
-                    @foreach($brands as $b)
-                        <option value="{{ $b }}" {{ $brandFilter == $b ? 'selected' : '' }}>{{ $b }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Manager</label>
-                <select name="manager" class="filter-select" onchange="this.form.submit()">
-                    @if(count($managers) > 1)
-                        <option value="all">All Managers</option>
-                    @endif
-                    @foreach($managers as $id => $name)
-                        <option value="{{ $id }}" {{ $managerFilter == $id ? 'selected' : '' }}>{{ $name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Department</label>
-                <select name="department" class="filter-select" onchange="this.form.submit()">
-                    @if(count($departments) > 1)
-                        <option value="all">All Depts</option>
-                    @endif
-                    @foreach($departments as $d)
-                        <option value="{{ $d }}" {{ $departmentFilter == $d ? 'selected' : '' }}>{{ $d }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">Stages</label>
-                <select name="stage" class="filter-select" onchange="this.form.submit()">
-                    <option value="all">All Stages</option>
-                    @foreach($stages as $s)
-                        <option value="{{ $s }}" {{ $stageFilter == $s ? 'selected' : '' }}>{{ $s }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </form>
-
-        <div class="kpi-card min-w-[240px]">
-            <div class="kpi-title">Total Contribution</div>
-            <div class="kpi-value">
-                <span class="text-primary-light/50 text-xl font-medium">LKR</span> 
-                {{ number_format($totalContribution / 1000000, 2) }}M
-            </div>
-        </div>
+    <div class="dashboard-tabs">
+        <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+        @if(auth()->user()->role === 'Super Admin')
+            <button class="tab-btn" onclick="switchTab('target-type')">Target Type</button>
+        @endif
     </div>
 
-    <!-- Top Charts Row -->
-    <div class="grid grid-cols-2 gap-6 mb-6">
-        <div class="glass-card">
-            <h3 class="chart-title"><i class="fas fa-users"></i> Account Manager Contribution</h3>
-            <div class="h-[300px]">
-                <canvas id="managerChart"></canvas>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <h3 class="chart-title"><i class="fas fa-tag"></i> Top Brands Contribution</h3>
-            <div class="h-[300px]">
-                <canvas id="brandChart"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bottom Charts Row -->
-    <div class="grid grid-cols-3 gap-6 mb-6">
-        <div class="glass-card">
-            <h3 class="chart-title"><i class="fas fa-building"></i> Department Split</h3>
-            <div class="h-[250px]">
-                <canvas id="deptChart"></canvas>
-            </div>
-        </div>
-
-        <div class="glass-card">
-            <h3 class="chart-title"><i class="fas fa-chart-pie"></i> Revenue Categories</h3>
-            <div class="flex flex-col h-full">
-                <div class="h-[200px] mb-4">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-                <div id="revenueLegend" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-[100px]">
-                    <!-- Legend dynamically populated -->
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-card flex flex-col">
-            <h3 class="chart-title"><i class="fas fa-trophy"></i> Key Campaigns</h3>
-            <div class="flex-1 overflow-y-auto">
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th class="text-right">Contribution</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($keyCampaigns->take(10) as $campaign)
-                        <tr>
-                            <td class="truncate max-w-[150px]" title="{{ $campaign['description'] }}">
-                                {{ $campaign['description'] ?: 'Untitled' }}
-                            </td>
-                            <td class="text-right font-semibold">
-                                {{ number_format($campaign['contribution'] / 1000, 0) }}k
-                            </td>
-                        </tr>
+    <!-- Overview Tab Content -->
+    <div id="overview-tab" class="tab-content transition-all duration-300">
+        <!-- Filters & KPI Header -->
+        <div class="flex gap-6 mb-6">
+            <form id="filterForm" action="{{ route('dashboard') }}" method="GET" class="filters-bar flex-1 mb-0">
+                <div class="filter-group">
+                    <label class="filter-label">Month</label>
+                    <select name="month" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Months</option>
+                        @foreach($months as $val => $lbl)
+                            <option value="{{ $val }}" {{ $month == $val ? 'selected' : '' }}>{{ $lbl }}</option>
                         @endforeach
-                    </tbody>
-                </table>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Brand</label>
+                    <select name="brand" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Brands</option>
+                        @foreach($brands as $b)
+                            <option value="{{ $b }}" {{ $brandFilter == $b ? 'selected' : '' }}>{{ $b }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Manager</label>
+                    <select name="manager" class="filter-select" onchange="this.form.submit()">
+                        @if(count($managers) > 1)
+                            <option value="all">All Managers</option>
+                        @endif
+                        @foreach($managers as $id => $name)
+                            <option value="{{ $id }}" {{ $managerFilter == $id ? 'selected' : '' }}>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Department</label>
+                    <select name="department" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Depts</option>
+                        @foreach($departments as $d)
+                            <option value="{{ $d }}" {{ $departmentFilter == $d ? 'selected' : '' }}>{{ $d }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Stages</label>
+                    <select name="stage" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Stages</option>
+                        @foreach($stages as $s)
+                            <option value="{{ $s }}" {{ $stageFilter == $s ? 'selected' : '' }}>{{ $s }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </form>
+
+            <div class="kpi-card min-w-[240px]">
+                <div class="kpi-title">Total Contribution</div>
+                <div class="kpi-value">
+                    <span class="text-primary-light/50 text-xl font-medium">LKR</span> 
+                    {{ number_format($totalContribution / 1000000, 2) }}M
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Charts Row -->
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="glass-card">
+                <h3 class="chart-title"><i class="fas fa-users"></i> Account Manager Contribution</h3>
+                <div class="h-[300px]">
+                    <canvas id="managerChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 class="chart-title"><i class="fas fa-tag"></i> Top Brands Contribution</h3>
+                <div class="h-[300px]">
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Charts Row -->
+        <div class="grid grid-cols-3 gap-6 mb-6">
+            <div class="glass-card">
+                <h3 class="chart-title"><i class="fas fa-building"></i> Department Split</h3>
+                <div class="h-[250px]">
+                    <canvas id="deptChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3 class="chart-title"><i class="fas fa-chart-pie"></i> Revenue Categories</h3>
+                <div class="flex flex-col h-full">
+                    <div class="h-[200px] mb-4">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div id="revenueLegend" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-[100px]">
+                        <!-- Legend dynamically populated -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card flex flex-col">
+                <h3 class="chart-title"><i class="fas fa-trophy"></i> Key Campaigns</h3>
+                <div class="flex-1 overflow-y-auto">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-right">Contribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($keyCampaigns->take(10) as $campaign)
+                            <tr>
+                                <td class="truncate max-w-[150px]" title="{{ $campaign['description'] }}">
+                                    {{ $campaign['description'] ?: 'Untitled' }}
+                                </td>
+                                <td class="text-right font-semibold">
+                                    {{ number_format($campaign['contribution'] / 1000, 0) }}k
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Target Type Tab Content -->
+    <div id="target-type-tab" class="tab-content hidden transition-all duration-300">
+        <div class="flex justify-between items-center mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+                <div class="kpi-card">
+                    <div class="kpi-title">SBU Actual</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-lg font-medium">LKR</span> 
+                        {{ number_format($sbuActual / 1000000, 2) }}M
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-title">Sales Actual</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-lg font-medium">LKR</span> 
+                        {{ number_format($salesActual / 1000000, 2) }}M
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ml-6 flex items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                <label class="text-[10px] font-black uppercase tracking-widest text-slate-400">View Mode</label>
+                <select id="targetViewMode" onchange="updateTargetChart(this.value)" 
+                    class="text-xs font-bold border-none focus:ring-0 cursor-pointer bg-slate-50 rounded-lg px-3 py-1.5 min-w-[140px]">
+                    <option value="sbu">SBU Only</option>
+                    <option value="sales">Sales Only</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="chart-title mb-0"><i class="fas fa-bullseye"></i> <span id="targetChartTitle">SBU vs Sales: Actual vs Target</span></h3>
+                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#2563eb]"></span> Actual</div>
+                    <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full border-2 border-[#db2777]"></span> Target</div>
+                </div>
+            </div>
+            <div class="h-[400px]">
+                <canvas id="targetChart"></canvas>
             </div>
         </div>
     </div>
@@ -328,6 +422,23 @@
 
 @push('scripts')
 <script>
+    function switchTab(tabId) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        document.getElementById(tabId + '-tab').classList.remove('hidden');
+
+        // Trigger resize to fix any chart rendering issues sometimes caused by hidden containers
+        window.dispatchEvent(new Event('resize'));
+    }
+
     // Premium Color Palette
     const colors = {
         primary: '#2563eb',
@@ -365,15 +476,12 @@
 
     // 1. Manager Chart (Horizontal)
     const managerData = @json($managerContribution);
-    const mgrLabels = Object.keys(managerData);
-    const mgrValues = Object.values(managerData);
-    
     new Chart(document.getElementById('managerChart'), {
         type: 'bar',
         data: {
-            labels: mgrLabels,
+            labels: Object.keys(managerData),
             datasets: [{
-                data: mgrValues,
+                data: Object.values(managerData),
                 backgroundColor: colors.primary,
                 borderRadius: 6,
                 barThickness: 18,
@@ -405,15 +513,12 @@
 
     // 2. Brand Chart (Horizontal)
     const brandData = @json($brandContribution);
-    const brLabels = Object.keys(brandData).slice(0, 10);
-    const brValues = Object.values(brandData).slice(0, 10);
-
     new Chart(document.getElementById('brandChart'), {
         type: 'bar',
         data: {
-            labels: brLabels,
+            labels: Object.keys(brandData).slice(0, 10),
             datasets: [{
-                data: brValues,
+                data: Object.values(brandData).slice(0, 10),
                 backgroundColor: colors.violet,
                 borderRadius: 4,
                 barThickness: 12,
@@ -444,15 +549,12 @@
 
     // 3. Department Chart (Vertical)
     const deptData = @json($departmentContribution);
-    const deptLabels = Object.keys(deptData);
-    const deptValues = Object.values(deptData);
-
     new Chart(document.getElementById('deptChart'), {
         type: 'bar',
         data: {
-            labels: deptLabels,
+            labels: Object.keys(deptData),
             datasets: [{
-                data: deptValues,
+                data: Object.values(deptData),
                 backgroundColor: colors.chart[5],
                 borderRadius: 8,
                 barThickness: 32,
@@ -486,7 +588,7 @@
     const revValues = Object.values(revDataRaw);
     const revTotal = revValues.reduce((a, b) => a + b, 0);
 
-    const revChart = new Chart(document.getElementById('revenueChart'), {
+    new Chart(document.getElementById('revenueChart'), {
         type: 'doughnut',
         data: {
             labels: revLabels,
@@ -504,30 +606,135 @@
             plugins: {
                 ...baseOptions.plugins,
                 datalabels: {
-                    display: (ctx) => (ctx.dataset.data[ctx.dataIndex] / revTotal) > 0.1,
+                    display: (ctx) => (ctx.dataset.data[ctx.dataIndex] / (revTotal || 1)) > 0.1,
                     color: '#fff',
                     font: { size: 10, weight: 'bold' },
-                    formatter: (v) => ((v / revTotal) * 100).toFixed(0) + '%'
+                    formatter: (v) => ((v / (revTotal || 1)) * 100).toFixed(0) + '%'
                 }
             }
         }
     });
 
-    // Custom Legend
+    // Custom Legend for Revenue
     const legendContainer = document.getElementById('revenueLegend');
-    revLabels.forEach((label, i) => {
-        const pct = ((revValues[i] / revTotal) * 100).toFixed(1);
-        const itemHtml = `
-            <div class="flex items-center gap-2 p-1 hover:bg-slate-50 rounded transition-colors cursor-default">
-                <div class="w-2.5 h-2.5 rounded-sm shrink-0" style="background-color: ${colors.chart[i % colors.chart.length]}"></div>
-                <div class="flex flex-col min-w-0">
-                    <span class="text-[10px] font-semibold text-slate-700 truncate">${label}</span>
-                    <span class="text-[9px] text-slate-400">${pct}%</span>
+    if (legendContainer) {
+        revLabels.forEach((label, i) => {
+            const pct = ((revValues[i] / (revTotal || 1)) * 100).toFixed(1);
+            const itemHtml = `
+                <div class="flex items-center gap-2 p-1 hover:bg-slate-50 rounded transition-colors cursor-default">
+                    <div class="w-2.5 h-2.5 rounded-sm shrink-0" style="background-color: ${colors.chart[i % colors.chart.length]}"></div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-[10px] font-semibold text-slate-700 truncate">${label}</span>
+                        <span class="text-[9px] text-slate-400">${pct}%</span>
+                    </div>
                 </div>
-            </div>
-        `;
-        legendContainer.insertAdjacentHTML('beforeend', itemHtml);
-    });
+            `;
+            legendContainer.insertAdjacentHTML('beforeend', itemHtml);
+        });
+    }
+
+    // 5. Target Chart (Actual vs Target Logic)
+    let targetChart = null;
+    const targetData = {
+        sbuActual: {{ $sbuActual }},
+        salesActual: {{ $salesActual }},
+        sbuTarget: {{ $sbuTarget }},
+        salesTarget: {{ $salesTarget }},
+        sbuBreakdown: @json($sbuDeptActuals),
+        salesBreakdown: @json($salesDeptActuals)
+    };
+
+    function updateTargetChart(mode) {
+        const ctx = document.getElementById('targetChart');
+        if (!ctx) return;
+
+        let labels = [];
+        let actuals = [];
+        let targets = [];
+        let title = "";
+
+        if (mode === 'both') {
+            labels = ['SBU', 'Sales'];
+            actuals = [targetData.sbuActual, targetData.salesActual];
+            targets = [targetData.sbuTarget, targetData.salesTarget];
+            title = "SBU vs Sales: Actual vs Target";
+        } else if (mode === 'sbu') {
+            labels = Object.keys(targetData.sbuBreakdown);
+            actuals = Object.values(targetData.sbuBreakdown);
+            // In SBU only mode, we show the overall SBU target as a separate bar or just comparison
+            // For now, let's keep it simple: breakdown of departments vs overall target
+            targets = labels.map(() => 0); // No per-dept targets yet
+            title = "SBU Department Breakdown";
+        } else {
+            labels = Object.keys(targetData.salesBreakdown);
+            actuals = Object.values(targetData.salesBreakdown);
+            targets = labels.map(() => 0);
+            title = "Sales Department Breakdown";
+        }
+
+        document.getElementById('targetChartTitle').innerText = title;
+
+        const chartData = {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Actual',
+                    data: actuals,
+                    backgroundColor: colors.primary,
+                    borderRadius: 6,
+                }
+            ]
+        };
+
+        // Only add target dataset if it's the "both" view
+        if (mode === 'both') {
+            chartData.datasets.push({
+                label: 'Target',
+                data: targets,
+                backgroundColor: colors.pink + '44',
+                borderColor: colors.pink,
+                borderWidth: 2,
+                borderRadius: 6,
+            });
+        }
+
+        if (targetChart) {
+            targetChart.data = chartData;
+            targetChart.update();
+        } else {
+            targetChart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    ...baseOptions,
+                    plugins: {
+                        ...baseOptions.plugins,
+                        legend: { display: mode === 'both', position: 'top' },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4,
+                            formatter: (v) => v > 0 ? 'LKR ' + (v / 1000000).toFixed(1) + 'M' : '',
+                            font: { weight: 'bold', size: 10 }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: '#f1f5f9' },
+                            ticks: { 
+                                callback: (v) => (v / 1000000) + 'M',
+                                font: { size: 10 }
+                            }
+                        },
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+    }
+
+    // Initialize Target Chart
+    updateTargetChart('sbu');
 
 </script>
 @endpush

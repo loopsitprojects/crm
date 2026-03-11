@@ -47,13 +47,17 @@ class DashboardController extends Controller
         }
         $managers = $managers->pluck('name', 'id');
 
-        $departments = ['Corporate', 'Creative', 'Digital', 'Play', 'Tech'];
+        $departments = ['Creative', 'Digital', 'Tech'];
         if (in_array($userRole, ['HOD', 'Manager']) && $userDept) {
             $departments = [$userDept];
         }
         
         $stages = ['Objection handling', 'Finalizing terms', 'Closed Won'];
         $stages = array_combine($stages, $stages);
+
+        // Define Category Mappings
+        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $salesDepts = ['AM', 'BD'];
 
         // 2. Base Query context
         $query = Deal::with(['owner', 'customer', 'estimates' => function($q) {
@@ -62,19 +66,34 @@ class DashboardController extends Controller
 
         // Role-based filtering
         if ($userRole === 'HOD' && $userDept) {
-            $query->where('department_split', 'like', '%' . $userDept . '%');
+            $query->whereJsonContains('department_split', [['department' => $userDept]]);
         } elseif ($userRole === 'Manager') {
             $query->where('user_id', $user->id);
         }
 
         if ($month !== 'all') {
-            $query->whereMonth('created_at', $month);
+            $query->whereMonth('close_date', $month);
         }
         if ($managerFilter !== 'all') {
             $query->where('user_id', $managerFilter);
         }
+        
         if ($departmentFilter !== 'all') {
-            $query->where('department_split', 'like', '%' . $departmentFilter . '%');
+            if ($departmentFilter === 'SBU') {
+                $query->where(function($q) use ($sbuDepts) {
+                    foreach ($sbuDepts as $dept) {
+                        $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                    }
+                });
+            } elseif ($departmentFilter === 'Sales') {
+                $query->where(function($q) use ($salesDepts) {
+                    foreach ($salesDepts as $dept) {
+                        $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                    }
+                });
+            } else {
+                $query->whereJsonContains('department_split', [['department' => $departmentFilter]]);
+            }
         }
         if ($stageFilter !== 'all') {
             $query->where('stage', $stageFilter);
@@ -90,12 +109,52 @@ class DashboardController extends Controller
         // 3. Calculate KPIs and Chart Data
         $totalContribution = 0;
         foreach ($deals as $deal) {
+            $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+            
             if ($userRole === 'HOD' && $userDept) {
                 // For HOD, only sum their department's share
-                $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
                 if (is_array($splits)) {
                     foreach ($splits as $split) {
                         if (($split['department'] ?? '') === $userDept) {
+                            $totalContribution += (float)($split['contribution_amount'] ?? 0);
+                        }
+                    }
+                }
+            } elseif ($departmentFilter === 'SBU' || $departmentFilter === 'Sales') {
+                // For category filters, sum only depts in that category
+                $targetDepts = ($departmentFilter === 'SBU') ? $sbuDepts : $salesDepts;
+                if (is_array($splits)) {
+                    foreach ($splits as $split) {
+                        if (in_array($split['department'] ?? '', $targetDepts)) {
+                            $totalContribution += (float)($split['contribution_amount'] ?? 0);
+                        }
+                    }
+                }
+            } else {
+                $totalContribution += $deal->contribution;
+            }
+        }
+
+        // Determine active department/category filter depts
+        $targetDepts = null;
+        if ($userRole === 'HOD' && $userDept) {
+            $targetDepts = [$userDept];
+        } elseif ($departmentFilter === 'SBU') {
+            $targetDepts = $sbuDepts;
+        } elseif ($departmentFilter === 'Sales') {
+            $targetDepts = $salesDepts;
+        } elseif ($departmentFilter !== 'all') {
+            $targetDepts = [$departmentFilter];
+        }
+
+        // 3. Calculate KPIs and Chart Data
+        $totalContribution = 0;
+        foreach ($deals as $deal) {
+            if ($targetDepts) {
+                $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                if (is_array($splits)) {
+                    foreach ($splits as $split) {
+                        if (in_array($split['department'] ?? '', $targetDepts)) {
                             $totalContribution += (float)($split['contribution_amount'] ?? 0);
                         }
                     }
@@ -108,23 +167,23 @@ class DashboardController extends Controller
         // Horizontal Bar: Contribution - Account Manager
         $managerContribution = $deals->groupBy(function($d) {
             return $d->owner->name ?? 'Unknown';
-        })->map(function($group) use ($userRole, $userDept) {
-            if ($userRole === 'HOD' && $userDept) {
-                // For HOD, filter contribution by department within the manager group
-                $sum = 0;
-                foreach ($group as $deal) {
+        })->map(function($group) use ($targetDepts) {
+            $sum = 0;
+            foreach ($group as $deal) {
+                if ($targetDepts) {
                     $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
                     if (is_array($splits)) {
                         foreach ($splits as $split) {
-                            if (($split['department'] ?? '') === $userDept) {
+                            if (in_array($split['department'] ?? '', $targetDepts)) {
                                 $sum += (float)($split['contribution_amount'] ?? 0);
                             }
                         }
                     }
+                } else {
+                    $sum += $deal->contribution;
                 }
-                return $sum;
             }
-            return $group->sum('contribution');
+            return $sum;
         })->sortDesc();
 
         // Vertical Bar: Departmentwise Contribution
@@ -140,8 +199,8 @@ class DashboardController extends Controller
                     foreach ($splits as $split) {
                         $deptName = $split['department'] ?? null;
                         if ($deptName && isset($departmentContribution[$deptName])) {
-                            // If HOD, only show their own department data in the chart
-                            if ($userRole === 'HOD' && $userDept && $deptName !== $userDept) {
+                            // If targetDepts is set, only show depts in that list
+                            if ($targetDepts && !in_array($deptName, $targetDepts)) {
                                 continue;
                             }
                             $departmentContribution[$deptName] += (float)($split['contribution_amount'] ?? 0);
@@ -155,7 +214,6 @@ class DashboardController extends Controller
         // Horizontal Bar: Brandwise Contribution
         $brandContribution = [];
         foreach ($deals as $deal) {
-            // Use estimate's brand_name, fallback to customer brand, then 'Unknown'
             $brand = 'Unknown';
             if ($deal->estimates->isNotEmpty()) {
                 $firstWithBrand = $deal->estimates->first(fn($e) => !empty($e->brand_name));
@@ -163,25 +221,29 @@ class DashboardController extends Controller
                     $brand = $firstWithBrand->brand_name;
                 }
             }
-            
-            if ($brand === 'Unknown' && $deal->customer && $deal->customer->brand) {
-                $brand = $deal->customer->brand;
+            if ($brand === 'Unknown' || empty($brand)) { 
+                if ($deal->customer && !empty($deal->customer->brand)) {
+                    $brand = $deal->customer->brand;
+                }
             }
             
-            $contribution = $deal->contribution;
-            if ($userRole === 'HOD' && $userDept) {
+            $contribution = 0;
+            if ($targetDepts) {
                 $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
-                $contribution = 0;
                 if (is_array($splits)) {
                     foreach ($splits as $split) {
-                        if (($split['department'] ?? '') === $userDept) {
+                        if (in_array($split['department'] ?? '', $targetDepts)) {
                             $contribution += (float)($split['contribution_amount'] ?? 0);
                         }
                     }
                 }
+            } else {
+                $contribution = $deal->contribution;
             }
                 
-            $brandContribution[$brand] = ($brandContribution[$brand] ?? 0) + $contribution;
+            if ($brand !== 'Unknown') {
+                $brandContribution[$brand] = ($brandContribution[$brand] ?? 0) + $contribution;
+            }
         }
         arsort($brandContribution);
 
@@ -192,9 +254,11 @@ class DashboardController extends Controller
             if ($approvedEstimate && $approvedEstimate->items) {
                 foreach ($approvedEstimate->items as $item) {
                     $category = $item->revenue_category ?? 'Uncategorized';
-                    
                     $amount = $item->amount;
-                    if ($userRole === 'HOD' && $userDept && ($item->department ?? '') !== $userDept) {
+                    $itemDept = $item->department ?? '';
+
+                    // Filter by targetDepts if active
+                    if ($targetDepts && !in_array($itemDept, $targetDepts)) {
                         continue;
                     }
 
@@ -205,37 +269,70 @@ class DashboardController extends Controller
         arsort($revenueCategoryContribution);
 
         // Key Campaigns Table
-        $keyCampaigns = $deals->map(function($d) use ($userRole, $userDept) {
+        $keyCampaigns = $deals->map(function($d) use ($targetDepts) {
             $approvedEstimate = $d->estimates->first();
             $title = $d->title;
             if ($approvedEstimate && $approvedEstimate->description) {
                 $title = $approvedEstimate->description;
             }
 
-            $contribution = $d->contribution;
-            if ($userRole === 'HOD' && $userDept) {
+            $contribution = 0;
+            if ($targetDepts) {
                 $splits = is_string($d->department_split) ? json_decode($d->department_split, true) : $d->department_split;
-                $contribution = 0;
                 if (is_array($splits)) {
                     foreach ($splits as $split) {
-                        if (($split['department'] ?? '') === $userDept) {
+                        if (in_array($split['department'] ?? '', $targetDepts)) {
                             $contribution += (float)($split['contribution_amount'] ?? 0);
                         }
                     }
                 }
+            } else {
+                $contribution = $d->contribution;
             }
 
             return [
                 'description' => $title,
                 'contribution' => $contribution
             ];
-        })->sortByDesc('contribution')->values();
+        })->filter(fn($item) => $item['contribution'] > 0)->sortByDesc('contribution')->values();
+        
+        // Target Type Logic
+        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $salesDepts = ['AM', 'BD'];
+        
+        $sbuActual = 0;
+        $salesActual = 0;
+        $sbuDeptActuals = array_fill_keys($sbuDepts, 0);
+        $salesDeptActuals = array_fill_keys($salesDepts, 0);
+
+        foreach ($deals as $deal) {
+            $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+            if (is_array($splits)) {
+                foreach ($splits as $split) {
+                    $deptName = $split['department'] ?? '';
+                    $amount = (float)($split['contribution_amount'] ?? 0);
+                    
+                    if (in_array($deptName, $sbuDepts)) {
+                        $sbuActual += $amount;
+                        $sbuDeptActuals[$deptName] += $amount;
+                    } elseif (in_array($deptName, $salesDepts)) {
+                        $salesActual += $amount;
+                        $salesDeptActuals[$deptName] += $amount;
+                    }
+                }
+            }
+        }
+
+        $sbuTarget = (float)\App\Models\Setting::get('target_sbu', 0);
+        $salesTarget = (float)\App\Models\Setting::get('target_sales', 0);
 
         return view('dashboard', compact(
             'month', 'brandFilter', 'managerFilter', 'departmentFilter', 'stageFilter',
             'months', 'brands', 'managers', 'departments', 'stages',
             'totalContribution', 'managerContribution', 'departmentContribution',
-            'brandContribution', 'revenueCategoryContribution', 'keyCampaigns'
+            'brandContribution', 'revenueCategoryContribution', 'keyCampaigns',
+            'sbuActual', 'salesActual', 'sbuTarget', 'salesTarget',
+            'sbuDeptActuals', 'salesDeptActuals'
         ));
     }
 }

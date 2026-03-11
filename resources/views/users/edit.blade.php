@@ -112,11 +112,11 @@
                             <select name="department" id="department" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
                                 <option value="">-- Select Department --</option>
-                                <option value="creative" {{ old('department', $user->department) == 'creative' ? 'selected' : '' }}>Creative</option>
-                                <option value="digital" {{ old('department', $user->department) == 'digital' ? 'selected' : '' }}>Digital</option>
-                                <option value="IT" {{ old('department', $user->department) == 'IT' ? 'selected' : '' }}>IT</option>
-                                <option value="AM" {{ old('department', $user->department) == 'AM' ? 'selected' : '' }}>AM</option>
-                                <option value="BD" {{ old('department', $user->department) == 'BD' ? 'selected' : '' }}>BD</option>
+                                @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
+                                    @foreach($departments as $key => $label)
+                                        <option value="{{ $key }}" {{ old('department', $user->department) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                @endforeach
                             </select>
                             @error('department') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror

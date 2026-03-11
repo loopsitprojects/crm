@@ -19,6 +19,18 @@ class User extends Authenticatable
         'Manager',
     ];
 
+    const DEPARTMENT_HIERARCHY = [
+        'SBU' => [
+            'Creative' => 'Creative',
+            'Digital' => 'Digital',
+            'Tech' => 'Tech',
+        ],
+        'Sales' => [
+            'AM' => 'AM',
+            'BD' => 'BD',
+        ]
+    ];
+
     /**
      * The attributes that are mass assignable.
      *

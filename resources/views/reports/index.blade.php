@@ -23,35 +23,60 @@
     <!-- Professional Filter Grid (Matching Reference Style) -->
     <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
         <form action="{{ route('reports.index') }}" method="GET" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                 <!-- Column 1: Period -->
-                <div class="space-y-4">
-                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400">Analysis Period</label>
-                    <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-2 col-span-1 md:col-span-1">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Analysis Period</label>
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">From</span>
                             <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" 
-                                class="w-full px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
+                                class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">To</span>
                             <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" 
-                                class="w-full px-4 py-2.5 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
+                                class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                     </div>
                 </div>
 
-                <!-- Column 2: Actions -->
-                <div class="flex items-end space-x-2 h-full pt-10">
-                    <button type="submit" class="flex-1 px-6 py-2.5 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-brand-purple transition-all shadow-lg hover:shadow-brand-purple/20 active:scale-95">
-                        <i class="fas fa-sync-alt mr-2"></i> Update Report
+                <!-- Column 2: Department -->
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Department / Category</label>
+                    <select name="department" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
+                        <option value="">All Departments</option>
+                        @foreach(['Creative', 'Digital', 'Tech'] as $d)
+                            <option value="{{ $d }}" {{ $department == $d ? 'selected' : '' }}>{{ $d }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <!-- Column 3: Customer & Stage -->
+                <div class="space-y-2">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Stage / Customer</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select name="stage" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
+                            <option value="">All Stages</option>
+                            @foreach($stages as $s)
+                                <option value="{{ $s }}" {{ $stageFilter == $s ? 'selected' : '' }}>{{ $s }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" name="customer_name" value="{{ $customerName }}" placeholder="Customer..."
+                            class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
+                    </div>
+                </div>
+
+                <!-- Column 4: Actions -->
+                <div class="flex space-x-2">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95 h-[38px]">
+                        <i class="fas fa-sync-alt mr-1"></i> Update
                     </button>
-                    <a href="{{ route('reports.index') }}" class="px-6 py-2.5 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-200 transition-all text-center">
+                    <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all text-center flex items-center h-[38px]">
                         Reset
                     </a>
                 </div>
             </div>
-            
         </form>
     </div>
 

@@ -69,9 +69,9 @@
 
                             <!-- Brand Name -->
                             <div class="grid grid-cols-12 gap-4 items-center">
-                                <label class="col-span-12 sm:col-span-3 text-right text-sm font-medium text-gray-600">Brand Name</label>
+                                <label class="col-span-12 sm:col-span-3 text-right text-sm font-medium text-gray-600">Brand Name <span class="text-red-500">*</span></label>
                                 <div class="col-span-12 sm:col-span-9 brand-name-tom-select">
-                                    <select name="brand_name" id="brand_name_select"
+                                    <select name="brand_name" id="brand_name_select" required
                                         class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm shadow-sm py-2">
                                         <option value="">-- No Brand / Select Brand --</option>
                                         @foreach($brands as $brand)
@@ -704,9 +704,36 @@
                 }
             });
 
-            new TomSelect('#brand_name_select', {
+            const brandSelectInstance = new TomSelect('#brand_name_select', {
                 create: true
             });
+
+            // Customer Data for auto-populating brand
+            const customersData = @json($customers->mapWithKeys(function($item) {
+                return [$item['id'] => ['brand' => $item['brand']]];
+            }));
+
+            const customerSelect = document.querySelector('select[name="customer_id"]');
+            
+            if (customerSelect) {
+                customerSelect.addEventListener('change', function() {
+                    const customerId = this.value;
+                    if (customerId && customersData[customerId] && customersData[customerId].brand) {
+                        const brand = customersData[customerId].brand;
+                        if (brandSelectInstance) {
+                            brandSelectInstance.addOption({value: brand, text: brand});
+                            brandSelectInstance.setValue(brand);
+                        }
+                    } else if (brandSelectInstance) {
+                        brandSelectInstance.clear();
+                    }
+                });
+                
+                // Trigger change immediately in case a customer is pre-selected
+                if (customerSelect.value) {
+                    customerSelect.dispatchEvent(new Event('change'));
+                }
+            }
         });
 
         function toggleProformaFields(value) {

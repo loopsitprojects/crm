@@ -198,7 +198,7 @@
                                                 </a>
                                                 @endif
                                                 @if(!in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won']))
-                                                <button onclick="editDeal({{ json_encode($deal) }})"
+                                                <button data-deal="{{ base64_encode($deal->toJson()) }}" onclick="editDeal(JSON.parse(atob(this.dataset.deal)))"
                                                     class="text-blue-400 hover:text-blue-600 transition-colors" title="Edit Deal">
                                                     <i class="fas fa-edit text-xs"></i>
                                                 </button>
@@ -442,11 +442,15 @@
                                 <div class="w-full md:w-3/12">
                                     <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
                                         <option value="">Department</option>
-                                        <option value="Corporate">Corporate</option>
-                                        <option value="Creative">Creative</option>
-                                        <option value="Digital">Digital</option>
+                                        @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
+                                            @foreach($departments as $key => $label)
+                                                @if(!in_array($key, ['AM', 'BD']))
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endif
+                                            @endforeach
+                                        @endforeach
                                         <option value="Play">Play</option>
-                                        <option value="Tech">Tech</option>
+                                        <option value="Corporate">Corporate</option>
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
@@ -651,11 +655,15 @@
                                 <div class="w-full md:w-3/12">
                                     <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
                                         <option value="">Department</option>
-                                        <option value="Corporate">Corporate</option>
-                                        <option value="Creative">Creative</option>
-                                        <option value="Digital">Digital</option>
+                                        @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
+                                            @foreach($departments as $key => $label)
+                                                @if(!in_array($key, ['AM', 'BD']))
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endif
+                                            @endforeach
+                                        @endforeach
                                         <option value="Play">Play</option>
-                                        <option value="Tech">Tech</option>
+                                        <option value="Corporate">Corporate</option>
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
@@ -709,8 +717,7 @@
             document.getElementById('edit_revenue').value = deal.revenue;
             document.getElementById('edit_contribution').value = deal.contribution || '';
             document.getElementById('edit_currency').value = deal.currency;
-            document.getElementById('edit_close_date').value = deal.close_date;
-            document.getElementById('edit_user_id').value = deal.user_id || '';
+            document.getElementById('edit_close_date').value = deal.close_date || '';
             document.getElementById('edit_senior_manager').value = deal.senior_manager || '';
             document.getElementById('edit_type').value = deal.type || 'New Business';
             document.getElementById('edit_priority').value = deal.priority || 'Medium';
@@ -797,7 +804,7 @@
                             evt.from.appendChild(item);
                             
                             // Trigger edit modal
-                            const editBtn = item.querySelector('button[onclick^="editDeal"]');
+                            const editBtn = item.querySelector('button[onclick*="editDeal"]');
                             if (editBtn) {
                                 editBtn.click();
                                 // Set stage to Rejected and trigger change event after modal opens
@@ -1107,32 +1114,8 @@
         // Auto-select Deal Owner based on Assigned User
         document.addEventListener('DOMContentLoaded', function () {
             function setupSeniorManagerSync(userIdSelectId, seniorManagerSelectId) {
-                const userIdSelect = document.getElementById(userIdSelectId);
-                const seniorManagerSelect = document.getElementById(seniorManagerSelectId);
-                
-                if (userIdSelect && seniorManagerSelect) {
-                    const sync = () => {
-                        const selectedOption = userIdSelect.options[userIdSelect.selectedIndex];
-                        if (selectedOption && selectedOption.dataset.name) {
-                            const userName = selectedOption.dataset.name;
-                            // Check if this user name is in the deal owner list
-                            for (let i = 0; i < seniorManagerSelect.options.length; i++) {
-                                if (seniorManagerSelect.options[i].value === userName) {
-                                    seniorManagerSelect.value = userName;
-                                    break;
-                                }
-                            }
-                        }
-                    };
-
-                    userIdSelect.addEventListener('change', sync);
-                    // Initial sync
-                    sync();
-                }
+                // syncing logic removed since edit_user_id no longer exists
             }
-
-
-            setupSeniorManagerSync('edit_user_id', 'edit_senior_manager');
         });
 
         // Auto-open deal modal if deal_id is present in URL
@@ -1143,7 +1126,7 @@
                 setTimeout(() => {
                     const dealCard = document.querySelector(`.kanban-col [data-id="${dealId}"]`);
                     if (dealCard) {
-                        const editBtn = dealCard.querySelector('button[onclick^="editDeal"]');
+                        const editBtn = dealCard.querySelector('button[onclick*="editDeal"]');
                         if (editBtn) editBtn.click();
                     }
                 }, 500);

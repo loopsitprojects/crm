@@ -82,7 +82,9 @@ class EstimateController extends Controller
         $currencies = \App\Models\SystemCurrency::all();
         $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
-        $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        $estimateBrands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
+        $brands = $estimateBrands->concat($customerBrands)->unique()->sort()->values();
         $nextReferenceNumber = Estimate::generateReferenceNumber();
         $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
 
@@ -98,7 +100,7 @@ class EstimateController extends Controller
     {
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'brand_name' => 'nullable|string|max:255',
+            'brand_name' => 'required|string|max:255',
             'date' => 'required|date',
             'attention_to' => 'nullable|string',
             'currency' => 'required|string',
@@ -363,7 +365,9 @@ class EstimateController extends Controller
         $currencies = \App\Models\SystemCurrency::all();
         $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
-        $brands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        $estimateBrands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
+        $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
+        $brands = $estimateBrands->concat($customerBrands)->unique()->sort()->values();
         $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
         return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'users'));
     }
@@ -386,6 +390,7 @@ class EstimateController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
+            'brand_name' => 'required|string|max:255',
             'date' => 'required|date',
             'attention_to' => 'nullable|string',
             'currency' => 'required|string',

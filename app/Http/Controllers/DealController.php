@@ -60,12 +60,13 @@ class DealController extends Controller
                       $tm->where('users.id', $user->id);
                   });
                 
-                // HOD specific: Department split and subordinates
+                // Department split check (all users in department)
+                if ($userDept) {
+                    $q->orWhereJsonContains('department_split', [['department' => $userDept]]);
+                }
+                
+                // HOD specific: subordinates
                 if ($user->role === 'HOD') {
-                    if ($userDept) {
-                        $q->orWhere('department_split', 'like', '%' . $userDept . '%');
-                    }
-                    
                     // Deals owned by subordinates
                     $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
                     if ($subordinateIds->isNotEmpty()) {

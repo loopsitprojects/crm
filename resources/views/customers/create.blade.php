@@ -57,10 +57,10 @@
 
                         <div>
                             <label for="brand" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Brand
+                                Brand <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="brand" id="brand"
-                                value="{{ old('brand') }}"
+                                value="{{ old('brand') }}" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 transition-all"
                                 placeholder="Brand Name">
                             @error('brand') <p class="mt-2 text-sm text-red-600"><i
