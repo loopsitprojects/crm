@@ -17,21 +17,50 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with('customer', 'estimate.deal')->where('is_proforma', false);
+        $query = Invoice::with(['customer', 'estimate.deal', 'estimate.thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->where('is_proforma', false);
 
         // RBAC Access Control
         $user = auth()->user();
+        $managers = collect();
         if ($user->role === 'HOD' && $user->department) {
-            $query->whereHas('estimate.deal', function ($q) use ($user) {
-                $q->where('department_split', 'like', '%' . $user->department . '%');
+            $dept = $user->department;
+            $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
+            
+            $query->whereHas('estimate', function ($q) use ($dept, $request) {
+                $q->where(function($sq) use ($dept) {
+                    $sq->whereHas('user', function($uq) use ($dept) {
+                        $uq->where('department', $dept);
+                    })->orWhereHas('deal', function ($dq) use ($dept) {
+                        $dq->where(function ($dsq) use ($dept) {
+                            $dsq->whereHas('owner', function ($oq) use ($dept) {
+                                $oq->where('department', $dept);
+                            })->orWhereJsonContains('department_split', ['department' => $dept])
+                              ->orWhereHas('estimates.items', function ($iq) use ($dept) {
+                                $iq->where('department', $dept);
+                            });
+                        });
+                    });
+                });
+
+                if ($request->filled('manager_id')) {
+                    $q->where('user_id', $request->manager_id);
+                }
             });
         } elseif ($user->role === 'Manager') {
-            $query->whereHas('estimate.deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->whereHas('estimate', function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('estimate.deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->whereHas('estimate', function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         }
 
@@ -53,26 +82,53 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query->latest()->get();
-        return view('invoices.index', compact('invoices'));
+        return view('invoices.index', compact('invoices', 'managers'));
     }
 
     public function ready(Request $request)
     {
-        $query = Estimate::with('customer', 'deal')->whereIn('status', ['accepted', 'ready_to_invoice']);
+        $query = Estimate::with(['customer', 'user', 'deal', 'thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->whereIn('status', ['accepted', 'ready_to_invoice']);
 
         // RBAC Access Control
         $user = auth()->user();
+        $managers = collect();
         if ($user->role === 'HOD' && $user->department) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('department_split', 'like', '%' . $user->department . '%');
+            $dept = $user->department;
+            $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
+            
+            $query->where(function($q) use ($dept) {
+                $q->whereHas('user', function($uq) use ($dept) {
+                    $uq->where('department', $dept);
+                })->orWhereHas('deal', function ($dq) use ($dept) {
+                    $dq->where(function ($dsq) use ($dept) {
+                        $dsq->whereHas('owner', function ($oq) use ($dept) {
+                            $oq->where('department', $dept);
+                        })->orWhereJsonContains('department_split', ['department' => $dept])
+                          ->orWhereHas('estimates.items', function ($iq) use ($dept) {
+                            $iq->where('department', $dept);
+                        });
+                    });
+                });
             });
+
+            if ($request->filled('manager_id')) {
+                $query->where('user_id', $request->manager_id);
+            }
         } elseif ($user->role === 'Manager') {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         }
 
@@ -94,26 +150,53 @@ class InvoiceController extends Controller
         }
 
         $estimates = $query->latest()->get();
-        return view('invoices.ready', compact('estimates'));
+        return view('invoices.ready', compact('estimates', 'managers'));
     }
 
     public function invoiced(Request $request)
     {
-        $query = Estimate::with('customer', 'deal')->whereIn('status', ['invoiced', 'approved']);
+        $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->whereIn('status', ['invoiced', 'approved']);
 
         // RBAC Access Control
         $user = auth()->user();
+        $managers = collect();
         if ($user->role === 'HOD' && $user->department) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('department_split', 'like', '%' . $user->department . '%');
+            $dept = $user->department;
+            $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
+            
+            $query->where(function($q) use ($dept) {
+                $q->whereHas('user', function($uq) use ($dept) {
+                    $uq->where('department', $dept);
+                })->orWhereHas('deal', function ($dq) use ($dept) {
+                    $dq->where(function ($dsq) use ($dept) {
+                        $dsq->whereHas('owner', function ($oq) use ($dept) {
+                            $oq->where('department', $dept);
+                        })->orWhereJsonContains('department_split', ['department' => $dept])
+                          ->orWhereHas('estimates.items', function ($iq) use ($dept) {
+                            $iq->where('department', $dept);
+                        });
+                    });
+                });
             });
+
+            if ($request->filled('manager_id')) {
+                $query->where('user_id', $request->manager_id);
+            }
         } elseif ($user->role === 'Manager') {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         }
 
@@ -135,7 +218,7 @@ class InvoiceController extends Controller
         }
 
         $estimates = $query->latest()->get();
-        return view('invoices.invoiced', compact('estimates'));
+        return view('invoices.invoiced', compact('estimates', 'managers'));
     }
 
     public function proforma(Request $request)
@@ -144,7 +227,9 @@ class InvoiceController extends Controller
             return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
         }
 
-        $query = Invoice::with('customer', 'estimate')->where('is_proforma', true);
+        $query = Invoice::with(['customer', 'estimate.thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->where('is_proforma', true);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -169,21 +254,48 @@ class InvoiceController extends Controller
 
     public function rejected(Request $request)
     {
-        $query = Estimate::with('customer', 'deal')->where('status', 'rejected');
+        $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->where('status', 'rejected');
 
         // RBAC Access Control
         $user = auth()->user();
+        $managers = collect();
         if ($user->role === 'HOD' && $user->department) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('department_split', 'like', '%' . $user->department . '%');
+            $dept = $user->department;
+            $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
+            
+            $query->where(function($q) use ($dept) {
+                $q->whereHas('user', function($uq) use ($dept) {
+                    $uq->where('department', $dept);
+                })->orWhereHas('deal', function ($dq) use ($dept) {
+                    $dq->where(function ($dsq) use ($dept) {
+                        $dsq->whereHas('owner', function ($oq) use ($dept) {
+                            $oq->where('department', $dept);
+                        })->orWhereJsonContains('department_split', ['department' => $dept])
+                          ->orWhereHas('estimates.items', function ($iq) use ($dept) {
+                            $iq->where('department', $dept);
+                        });
+                    });
+                });
             });
+
+            if ($request->filled('manager_id')) {
+                $query->where('user_id', $request->manager_id);
+            }
         } elseif ($user->role === 'Manager') {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
             });
         }
 
@@ -205,7 +317,7 @@ class InvoiceController extends Controller
         }
 
         $estimates = $query->latest()->get();
-        return view('invoices.rejected', compact('estimates'));
+        return view('invoices.rejected', compact('estimates', 'managers'));
     }
 
     public function create()
@@ -238,7 +350,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::findOrFail($id);
         
         if ($invoice->quotation_id) {
-            return redirect()->route('estimates.edit', $invoice->quotation_id);
+            return redirect()->route('estimates.edit', ['estimate' => $invoice->quotation_id, 'from' => 'invoice']);
         }
 
         return back()->with('error', 'This invoice cannot be edited directly.');
@@ -309,6 +421,7 @@ class InvoiceController extends Controller
                 'sscl_amount' => $item->sscl_amount,
                 'vat_amount' => $item->vat_amount,
                 'total_with_vat' => $item->total_with_vat,
+                'type' => $item->type ?? 'item',
             ]);
         }
 

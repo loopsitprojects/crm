@@ -10,44 +10,71 @@ use App\Models\Setting;
 use App\Models\StandardTerm;
 use App\Models\SystemCurrency;
 use App\Models\ThirdPartyCost;
+use App\Notifications\EstimateCreatedNotification;
+use App\Notifications\EstimateStatusChangedNotification;
+use App\Notifications\EstimateInvoicedNotification;
 use App\Traits\LogsActivity;
+use App\Traits\NotifiesStakeholders;
 
 class EstimateController extends Controller
 {
-    use LogsActivity;
+    use LogsActivity, NotifiesStakeholders;
 
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $query = Estimate::with('customer', 'deal')->whereIn('status', ['draft', 'ready_to_invoice']);
+        $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
+            $q->whereNotNull('file_path')->where('file_path', '!=', '');
+        }])->whereIn('status', ['draft', 'ready_to_invoice']);
 
         // RBAC Access Control
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->whereHas('deal', function ($q) use ($user) {
-                $q->where(function ($inner) use ($user) {
-                    // Own deals
-                    $inner->where('user_id', $user->id)
-                      // Team member deals
-                      ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                          $tm->where('users.id', $user->id);
-                      });
-                    
-                    // HOD specific
-                    if ($user->role === 'HOD') {
-                        if ($user->department) {
-                            $inner->orWhere('department_split', 'like', '%' . $user->department . '%');
-                        }
-                        
-                        // Subordinates
-                        $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
-                        if ($subordinateIds->isNotEmpty()) {
-                            $inner->orWhereIn('user_id', $subordinateIds);
-                        }
+        $managers = collect();
+        if ($user->role === 'HOD' && $user->department) {
+            $dept = $user->department;
+            $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
+            
+            $query->where(function ($q) use ($dept, $request) {
+                // Deal-based visibility
+                $q->whereHas('deal', function ($dq) use ($dept, $request) {
+                    $dq->where(function ($sq) use ($dept) {
+                        $sq->whereHas('owner', function ($oq) use ($dept) {
+                            $oq->where('department', $dept);
+                        })->orWhereJsonContains('department_split', ['department' => $dept])
+                        ->orWhereHas('estimates.items', function ($iq) use ($dept) {
+                            $iq->where('department', $dept);
+                        });
+                    });
+
+                    if ($request->filled('manager_id')) {
+                        $dq->where('user_id', $request->manager_id);
                     }
+                })
+                // Creator-based visibility (for estimates without deals)
+                ->orWhere(function ($cq) use ($dept) {
+                    $cq->whereNull('deal_id')->whereHas('user', function ($uq) use ($dept) {
+                        $uq->where('department', $dept);
+                    });
                 });
+            });
+        } elseif ($user->role === 'Manager') {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                  });
+            });
+        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('deal', function ($dq) use ($user) {
+                      $dq->where('user_id', $user->id);
+                      if ($user->department) {
+                          $dq->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                      }
+                  });
             });
         }
 
@@ -72,7 +99,7 @@ class EstimateController extends Controller
         }
 
         $estimates = $query->latest()->get();
-        return view('estimates.index', compact('estimates'));
+        return view('estimates.index', compact('estimates', 'managers'));
     }
 
     public function create(Request $request)
@@ -109,14 +136,37 @@ class EstimateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|min:0.0001',
             'items.*.position' => 'required|integer',
+            'items.*.department' => 'required|string',
+            'items.*.revenue_category' => 'required|string',
             'proforma_invoice' => 'nullable|string|in:yes,no',
             'third_party_cost' => 'nullable|string|in:yes,no',
             'proforma_percentage' => 'nullable|numeric|min:0|max:100',
             'proforma_tax' => 'nullable|string|in:with_tax,without_tax',
             'advance_received_amount' => 'nullable|numeric|min:0',
+            'third_party_costs' => 'required_if:third_party_cost,yes|array',
+            'third_party_costs.*.supplier' => 'required_if:third_party_cost,yes|string|max:255',
+            'third_party_costs.*.cost' => 'required_if:third_party_cost,yes|numeric|min:0',
+            'third_party_costs.*.department' => 'required_if:third_party_cost,yes|string|max:255',
+            'third_party_costs.*.file' => 'required_if:third_party_cost,yes|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+            'po_applicable' => 'nullable|string|in:yes,no',
+            'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
+            'po_document' => 'required_if:po_applicable,yes|nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+        ], [
+            'third_party_costs.required_if' => 'Please add at least one third party cost.',
+            'third_party_costs.*.supplier.required_if' => 'Supplier name is required.',
+            'third_party_costs.*.cost.required_if' => 'Cost is required.',
+            'third_party_costs.*.department.required_if' => 'Department is required.',
+            'third_party_costs.*.file.required_if' => 'Document file is required.',
         ]);
+
+        if ($request->deal_id) {
+            $deal = \App\Models\Deal::find($request->deal_id);
+            if ($deal && !$deal->canEdit()) {
+                abort(403, 'You do not have permission to create an estimate for this deal.');
+            }
+        }
 
         if ($request->deal_id && Estimate::where('deal_id', $request->deal_id)->exists()) {
             return back()->withErrors(['deal_id' => 'An estimate already exists for this deal.'])->withInput();
@@ -124,8 +174,16 @@ class EstimateController extends Controller
 
         $referenceNumber = Estimate::generateReferenceNumber();
 
+        $poPath = null;
+        if ($request->hasFile('po_document')) {
+            $file = $request->file('po_document');
+            $poPath = $file->move(public_path('uploads/pos'), time() . '_' . $file->getClientOriginalName());
+            $poPath = 'uploads/pos/' . basename($poPath);
+        }
+
         $estimate = Estimate::create([
             'customer_id' => $request->customer_id,
+            'user_id' => auth()->id(),
             'reference_number' => $referenceNumber,
             'brand_name' => $request->brand_name,
             'date' => $request->date,
@@ -152,6 +210,9 @@ class EstimateController extends Controller
             'proforma_percentage' => $request->proforma_percentage,
             'proforma_tax' => $request->proforma_tax ?? 'with_tax',
             'advance_received_amount' => $request->advance_received_amount ?? 0,
+            'po_applicable' => $request->po_applicable ?? 'no',
+            'po_number' => $request->po_number,
+            'po_file_path' => $poPath,
         ]);
 
         $grandTotal = 0;
@@ -191,6 +252,7 @@ class EstimateController extends Controller
                 'days' => $item['days'] ?? null,
                 'department' => $item['department'] ?? null,
                 'revenue_category' => $item['revenue_category'] ?? null,
+                'type' => $item['type'] ?? 'item',
             ]);
 
             $grandTotal += $totalWithVat;
@@ -199,18 +261,8 @@ class EstimateController extends Controller
         $estimate->update(['total_amount' => $grandTotal]);
 
 
-        // Sync with Deal if exists
-        if ($estimate->deal_id) {
-            $deal = \App\Models\Deal::find($estimate->deal_id);
-            if ($deal) {
-                $deal->update([
-                    'revenue' => $grandTotal,
-                    'contribution' => $grandTotal
-                ]);
-            }
-        }
-
-        // Handle Third Party Costs
+        // Handle Third Party Costs (Move before Sync)
+        $thirdPartyTotal = 0;
         if ($request->third_party_cost === 'yes' && $request->has('third_party_costs')) {
             foreach ($request->third_party_costs as $costData) {
                 $filePath = null;
@@ -224,33 +276,67 @@ class EstimateController extends Controller
                     'department' => $costData['department'] ?? null,
                     'file_path' => $filePath,
                 ]);
+                
+                $thirdPartyTotal += (float)$costData['cost'];
+            }
+        }
+
+        // Sync with Deal if exists
+        if ($estimate->deal_id) {
+            $deal = \App\Models\Deal::find($estimate->deal_id);
+            if ($deal) {
+                // Pre-tax total (excluding VAT and SSCL)
+                $preTaxTotal = $estimate->items->sum(function($item) {
+                    return (float)$item->amount;
+                });
+                
+                $deal->update([
+                    'revenue' => $preTaxTotal,
+                    'contribution' => $preTaxTotal - $thirdPartyTotal
+                ]);
             }
         }
 
         $this->syncProformaInvoice($estimate);
 
         $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal, new EstimateCreatedNotification($estimate, $estimate->deal, auth()->user()));
+        }
 
         return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
     }
 
     public function markAsAccepted(Estimate $estimate)
     {
+        $oldStatus = $estimate->status;
         $estimate->update(['status' => 'accepted']);
         $this->logAction("Accepted estimate: {$estimate->reference_number}", $estimate);
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'accepted', auth()->user()));
+        }
         return back()->with('success', 'Estimate marked as accepted.');
     }
 
     public function markAsRejected(Estimate $estimate)
     {
+        $oldStatus = $estimate->status;
         $estimate->update(['status' => 'rejected']);
         $this->logAction("Rejected estimate: {$estimate->reference_number}", $estimate);
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'rejected', auth()->user()));
+        }
         return back()->with('success', 'Estimate marked as rejected.');
     }
 
     public function updateStatus(Request $request, Estimate $estimate)
     {
         $user = auth()->user();
+
+        if (!$estimate->canEdit($user)) {
+            return back()->with('error', 'You do not have permission to change the status of this estimate.');
+        }
+
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
         // Define allowed statuses
@@ -265,12 +351,26 @@ class EstimateController extends Controller
             'status' => "required|in:$allowedStatuses"
         ]);
 
+        // Reversion Protection: it cannot be reverted to earlier stages from 'Ready to Invoice' or 'Invoiced'
+        $reversionRestricted = ['ready_to_invoice', 'invoiced', 'accepted'];
+        $earlierStages = ['draft', 'approved'];
+
+        if (in_array($estimate->status, $reversionRestricted) && in_array($request->status, $earlierStages)) {
+            return back()->with('error', 'Estimate status cannot be reverted once it is ' . ucfirst(str_replace('_', ' ', $estimate->status)) . '.');
+        }
+
+        $oldStatus = $estimate->status;
         $estimate->update(['status' => $request->status]);
         $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate);
-
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, $request->status, auth()->user()));
+        }
         $message = "Estimate status updated to " . ucfirst($request->status) . ".";
 
         if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
+            if ($estimate->po_applicable === 'yes' && !$estimate->po_file_path) {
+                return back()->with('error', 'A PO document must be uploaded before moving to Ready to Invoice.');
+            }
             return redirect()->route('invoices.ready')->with('success', $message);
         } elseif ($request->status === 'approved' || $request->status === 'invoiced') {
             return redirect()->route('invoices.invoiced')->with('success', $message);
@@ -315,6 +415,7 @@ class EstimateController extends Controller
         foreach ($estimate->items as $item) {
             $invoice->items()->create([
                 'description' => $item->description,
+                'type' => $item->type,
                 'quantity' => $item->quantity,
                 'unit_price' => $item->unit_price,
                 'amount' => $item->amount,
@@ -328,6 +429,10 @@ class EstimateController extends Controller
 
         $estimate->update(['status' => 'invoiced']);
         $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
+        
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal, new EstimateInvoicedNotification($estimate, $invoice, auth()->user()));
+        }
 
         return redirect()->route('invoices.invoiced')->with('success', 'Estimate converted to Invoice successfully.');
     }
@@ -352,11 +457,16 @@ class EstimateController extends Controller
         $estimate = Estimate::with(['items', 'deal.owner'])->findOrFail($id);
 
         $user = auth()->user();
-        if ($user->role !== 'Super Admin') {
-            if ($user->role === 'Management' && $estimate->status === 'invoiced') {
-                abort(403, 'Management cannot edit Invoiced estimates.');
+        $canEditDeal = $estimate->deal ? $estimate->deal->canEdit($user) : true;
+        $readonly = !$canEditDeal;
+
+        if (!$readonly && $user->role !== 'Super Admin') {
+            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced') {
+                $readonly = true;
+            } elseif ($user->role === 'Management' && $estimate->status === 'invoiced') {
+                $readonly = true;
             } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
-                abort(403, 'You can only edit Draft estimates.');
+                $readonly = true;
             }
         }
 
@@ -369,7 +479,7 @@ class EstimateController extends Controller
         $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
         $brands = $estimateBrands->concat($customerBrands)->unique()->sort()->values();
         $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
-        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'users'));
+        return view('estimates.edit', compact('estimate', 'customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'users', 'readonly'));
     }
 
     /**
@@ -380,7 +490,15 @@ class EstimateController extends Controller
         $estimate = Estimate::findOrFail($id);
 
         $user = auth()->user();
+        $canEditDeal = $estimate->deal ? $estimate->deal->canEdit($user) : true;
+        if (!$canEditDeal && $user->role !== 'Super Admin' && $user->role !== 'Management') {
+             abort(403, 'You do not have permission to edit this estimate.');
+        }
+
         if ($user->role !== 'Super Admin') {
+            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced') {
+                abort(403, 'This estimate is locked because it is ready to invoice or already invoiced.');
+            }
             if ($user->role === 'Management' && $estimate->status === 'invoiced') {
                 abort(403, 'Management cannot edit Invoiced estimates.');
             } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
@@ -398,14 +516,71 @@ class EstimateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|min:0.01',
             'items.*.position' => 'required|integer',
+            'items.*.department' => 'required|string',
+            'items.*.revenue_category' => 'required|string',
             'proforma_invoice' => 'nullable|string|in:yes,no',
             'third_party_cost' => 'nullable|string|in:yes,no',
             'proforma_percentage' => 'nullable|numeric|min:0|max:100',
             'proforma_tax' => 'nullable|string|in:with_tax,without_tax',
             'advance_received_amount' => 'nullable|numeric|min:0',
+            'third_party_costs' => 'required_if:third_party_cost,yes|array',
+            'third_party_costs.*.supplier' => 'required_if:third_party_cost,yes|string|max:255',
+            'third_party_costs.*.cost' => 'required_if:third_party_cost,yes|numeric|min:0',
+            'third_party_costs.*.department' => 'required_if:third_party_cost,yes|string|max:255',
+            'third_party_costs.*.file' => [
+                'nullable',
+                'file',
+                'mimes:pdf,jpg,jpeg,png,docx,doc',
+                'max:10240',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->third_party_cost === 'yes') {
+                        $index = explode('.', $attribute)[1];
+                        $costData = $request->third_party_costs[$index];
+                        $costId = $costData['id'] ?? null;
+                        
+                        $hasExisting = false;
+                        if ($costId) {
+                            $hasExisting = \App\Models\ThirdPartyCost::where('id', $costId)->whereNotNull('file_path')->exists();
+                        }
+                        
+                        if (!$hasExisting && !$request->hasFile("third_party_costs.$index.file")) {
+                            $fail('The document file is required for each third party cost.');
+                        }
+                    }
+                }
+            ],
+            'po_applicable' => 'nullable|string|in:yes,no',
+            'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
+            'po_document' => [
+                'nullable',
+                'file',
+                'mimes:pdf,jpg,jpeg,png,docx,doc',
+                'max:10240',
+                function ($attribute, $value, $fail) use ($request, $estimate) {
+                    if ($request->po_applicable === 'yes' && !$estimate->po_file_path && !$request->hasFile('po_document')) {
+                        $fail('The PO document is required when PO is applicable.');
+                    }
+                },
+            ],
+        ], [
+            'third_party_costs.required_if' => 'Please add at least one third party cost.',
+            'third_party_costs.*.supplier.required_if' => 'Supplier name is required.',
+            'third_party_costs.*.cost.required_if' => 'Cost is required.',
+            'third_party_costs.*.department.required_if' => 'Department is required.',
         ]);
+
+        $poPath = $estimate->po_file_path;
+        if ($request->hasFile('po_document')) {
+            // Delete old file if exists
+            if ($poPath && file_exists(public_path($poPath))) {
+                unlink(public_path($poPath));
+            }
+            $file = $request->file('po_document');
+            $poPath = $file->move(public_path('uploads/pos'), time() . '_' . $file->getClientOriginalName());
+            $poPath = 'uploads/pos/' . basename($poPath);
+        }
 
         $estimate->update([
             'customer_id' => $request->customer_id,
@@ -431,6 +606,9 @@ class EstimateController extends Controller
             'proforma_percentage' => $request->proforma_percentage,
             'proforma_tax' => $request->proforma_tax ?? 'with_tax',
             'advance_received_amount' => $request->advance_received_amount ?? 0,
+            'po_applicable' => $request->po_applicable ?? 'no',
+            'po_number' => $request->po_number,
+            'po_file_path' => $poPath,
         ]);
 
         // Delete existing items and recreate
@@ -472,6 +650,7 @@ class EstimateController extends Controller
                 'days' => $item['days'] ?? null,
                 'department' => $item['department'] ?? null,
                 'revenue_category' => $item['revenue_category'] ?? null,
+                'type' => $item['type'] ?? 'item',
             ]);
 
             $grandTotal += $totalWithVat;
@@ -480,50 +659,88 @@ class EstimateController extends Controller
         $estimate->update(['total_amount' => $grandTotal]);
 
 
+        // Handle Third Party Costs (Move before Sync)
+        $existingCostIds = $estimate->thirdPartyCosts()->pluck('id')->toArray();
+        $submittedCostIds = [];
+        $thirdPartyTotal = 0;
+
+        if ($request->third_party_cost === 'yes' && $request->has('third_party_costs')) {
+            foreach ($request->third_party_costs as $costData) {
+                $costId = $costData['id'] ?? null;
+                $filePath = null;
+
+                // Handle file upload
+                if (isset($costData['file']) && $costData['file'] instanceof \Illuminate\Http\UploadedFile) {
+                    $filePath = $costData['file']->store('third_party_costs', 'public');
+                }
+
+                if ($costId && in_array($costId, $existingCostIds)) {
+                    // Update existing
+                    $cost = \App\Models\ThirdPartyCost::find($costId);
+                    $updateData = [
+                        'supplier' => $costData['supplier'],
+                        'cost' => $costData['cost'],
+                        'department' => $costData['department'] ?? null,
+                    ];
+                    
+                    if ($filePath) {
+                        // Delete old file if new one uploaded
+                        if ($cost->file_path) {
+                            \Illuminate\Support\Facades\Storage::disk('public')->delete($cost->file_path);
+                        }
+                        $updateData['file_path'] = $filePath;
+                    }
+                    
+                    $cost->update($updateData);
+                    $submittedCostIds[] = $costId;
+                    $thirdPartyTotal += (float)$costData['cost'];
+                } else {
+                    // Create new
+                    $newCost = $estimate->thirdPartyCosts()->create([
+                        'supplier' => $costData['supplier'],
+                        'cost' => $costData['cost'],
+                        'department' => $costData['department'] ?? null,
+                        'file_path' => $filePath,
+                    ]);
+                    $submittedCostIds[] = $newCost->id;
+                    $thirdPartyTotal += (float)$costData['cost'];
+                }
+            }
+        }
+
+        // Delete costs not in submission
+        $toDelete = array_diff($existingCostIds, $submittedCostIds);
+        foreach ($toDelete as $idToDelete) {
+            $costToDelete = \App\Models\ThirdPartyCost::find($idToDelete);
+            if ($costToDelete->file_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($costToDelete->file_path);
+            }
+            $costToDelete->delete();
+        }
+
         // Sync with Deal if exists
         if ($estimate->deal_id) {
             $deal = \App\Models\Deal::find($estimate->deal_id);
             if ($deal) {
-                $deal->update([
-                    'revenue' => $grandTotal,
-                    'contribution' => $grandTotal
-                ]);
-            }
-        }
-
-        // Handle Third Party Costs (Delete old and recreate)
-        $estimate->thirdPartyCosts()->get()->each(function($oldCost) {
-            if ($oldCost->file_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($oldCost->file_path);
-            }
-            $oldCost->delete();
-        });
-
-        if ($request->third_party_cost === 'yes' && $request->has('third_party_costs')) {
-            foreach ($request->third_party_costs as $costData) {
-                $filePath = null;
-                // If there's a new file, upload it
-                if (isset($costData['file']) && $costData['file'] instanceof \Illuminate\Http\UploadedFile) {
-                    $filePath = $costData['file']->store('third_party_costs', 'public');
-                } 
-                // Note: In this simple implementation, we recreate rows. 
-                // If we wanted to keep old files when not replaced, we'd need more logic.
-                // But since the UI doesn't currently support "keep existing file" vs "replace",
-                // we'll assume we're recreating. 
-                // Actually, I should probably check if I can keep the old file path if no new one is uploaded.
+                // Pre-tax total (excluding VAT and SSCL)
+                $preTaxTotal = $estimate->items->sum(function($item) {
+                    return (float)$item->amount;
+                });
                 
-                $estimate->thirdPartyCosts()->create([
-                    'supplier' => $costData['supplier'],
-                    'cost' => $costData['cost'],
-                    'department' => $costData['department'] ?? null,
-                    'file_path' => $filePath,
+                $deal->update([
+                    'revenue' => $preTaxTotal,
+                    'contribution' => $preTaxTotal - $thirdPartyTotal
                 ]);
             }
         }
 
         $this->syncProformaInvoice($estimate);
+        $this->syncTaxInvoices($estimate);
 
         $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
+        if ($estimate->deal) {
+            $this->notifyStakeholders($estimate->deal);
+        }
 
         return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');
     }
@@ -599,6 +816,38 @@ class EstimateController extends Controller
         } else {
             // Delete existing proforma if it was changed to 'no'
             Invoice::where('quotation_id', $estimate->id)->where('is_proforma', true)->delete();
+        }
+    }
+
+    /**
+     * Synchronize the regular tax invoices based on Estimate updates.
+     */
+    private function syncTaxInvoices(Estimate $estimate)
+    {
+        $taxInvoices = Invoice::where('quotation_id', $estimate->id)->where('is_proforma', false)->get();
+        
+        foreach ($taxInvoices as $invoice) {
+            // Update Invoice Totals and details
+            $invoice->update([
+                'customer_id' => $estimate->customer_id,
+                'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
+            ]);
+
+            // Sync Items
+            $invoice->items()->delete();
+            foreach ($estimate->items as $item) {
+                $invoice->items()->create([
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                    'sscl_amount' => $item->sscl_amount,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->total_with_vat,
+                    'department' => $item->department,
+                    'revenue_category' => $item->revenue_category,
+                ]);
+            }
         }
     }
 }

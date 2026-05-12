@@ -82,10 +82,10 @@
                                 <div class="text-sm text-gray-500">{{ $customer->email }}</div>
                             </td>
                             <td x-show="isColumnVisible('phone')" class="px-6 py-4 white-space-nowrap">
-                                <div class="text-sm text-gray-500">{{ $customer->phone ?? '-' }}</div>
+                                <div class="text-sm text-gray-500">{{ $customer->telephone ?? $customer->phone ?? $customer->primary_contact_mobile ?? '-' }}</div>
                             </td>
                             <td x-show="isColumnVisible('address')" class="px-6 py-4">
-                                <div class="text-sm text-gray-500">{{ Str::limit($customer->address, 30) ?? '-' }}</div>
+                                <div class="text-sm text-gray-500">{{ Str::limit($customer->billing_address ?? $customer->address, 30) ?? '-' }}</div>
                             </td>
                             <td x-show="isColumnVisible('actions')" class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
                                 <a href="{{ route('customers.edit', $customer) }}"

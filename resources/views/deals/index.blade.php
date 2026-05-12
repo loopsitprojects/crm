@@ -72,10 +72,10 @@
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project</h4>
                 <div class="mt-2">
                     <p class="text-xl font-bold text-brand-purple mt-1 metric-revenue">
-                        LKR {{ number_format($dealsByStage->flatten()->sum('revenue'), 2) }}
+                        {{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }} {{ number_format($totalProjectRevenue, 2) }}
                     </p>
                     <p class="text-xl font-bold text-brand-purple mt-1 metric-contribution">
-                        LKR {{ number_format($totalProjectContribution, 2) }}
+                        {{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }} {{ number_format($totalProjectContribution, 2) }}
                     </p>
                 </div>
             </div>
@@ -126,13 +126,13 @@
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Invoiced</h4>
-                <p class="text-xl font-bold text-brand-blue mt-1">LKR
+                <p class="text-xl font-bold text-brand-blue mt-1">{{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }}
                     {{ number_format($invoicedAmount, 2) }}
                 </p>
             </div>
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment Collected</h4>
-                <p class="text-xl font-bold text-green-600 mt-1">LKR
+                <p class="text-xl font-bold text-green-600 mt-1">{{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }}
                     {{ number_format($paymentCollected, 2) }}
                 </p>
             </div>
@@ -165,9 +165,15 @@
                         <div class="w-80 flex-shrink-0 flex flex-col bg-gray-100 rounded-lg">
                             <div class="p-3 bg-gray-200 rounded-t-lg border-b border-gray-300 flex justify-between items-center">
                                 <h3 class="font-bold text-gray-700 text-sm">{{ $stage }}</h3>
-                                <span class="bg-gray-300 text-gray-600 text-xs font-semibold px-2 py-1 rounded-full">
-                                    {{ $dealsByStage->get($stage, collect())->count() }}
-                                </span>
+                                <div class="flex flex-col items-end">
+                                    <span class="bg-gray-300 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
+                                        {{ $dealsByStage->get($stage, collect())->count() }}
+                                    </span>
+                                    <div class="text-[10px] font-black text-gray-500 whitespace-nowrap">
+                                        <span class="metric-revenue">LKR {{ number_format($dealsByStage->get($stage, collect())->sum(fn($d) => $d->dept_share_revenue ?? $d->revenue), 2) }}</span>
+                                        <span class="metric-contribution">LKR {{ number_format($dealsByStage->get($stage, collect())->sum(fn($d) => $d->dept_share_contribution ?? $d->contribution), 2) }}</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="flex-1 p-2 overflow-y-auto kanban-col" data-stage="{{ $stage }}">
                                 @foreach($dealsByStage->get($stage, collect()) as $deal)
@@ -175,35 +181,50 @@
                                         data-id="{{ $deal->id }}">
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="font-bold text-gray-800 text-sm line-clamp-1 flex-1">{{ $deal->title }}</h4>
-                                            <div class="flex items-center gap-1 ml-2">
-                                                @php $hasEstimate = $deal->estimates->isNotEmpty(); @endphp
-                                                
-                                                @if($stage === 'Objection handling')
-                                                    @if(!$hasEstimate)
-                                                    <button onclick="createEstimate({{ $deal->id }})"
-                                                        class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
-                                                        <i class="fas fa-file-invoice text-xs"></i>
-                                                    </button>
-                                                    @else
-                                                    <a href="{{ route('estimates.edit', $deal->estimates->first()->id) }}"
-                                                        class="text-purple-500 hover:text-purple-700 transition-colors" title="Edit Estimate">
-                                                        <i class="fas fa-file-invoice text-xs"></i>
-                                                    </a>
+                                                @php 
+                                                    $canEdit = $deal->canEdit(); 
+                                                    $dealEstimates = $deal->estimates;
+                                                    $hasEstimate = $dealEstimates->isNotEmpty(); 
+                                                    $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
+                                                @endphp
+                                                <div class="flex items-center gap-1.5 ml-2">
+                                                    {{-- Estimate/Invoice Link (Show only in late stages) --}}
+                                                @if(in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
+                                                    @if($taxInvoice)
+                                                        <a href="{{ route('invoices.show', $taxInvoice->id) }}"
+                                                            class="text-brand-pink hover:text-brand-purple transition-colors" 
+                                                            title="View Invoice">
+                                                            <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                                        </a>
+                                                    @elseif($hasEstimate)
+                                                        <a href="{{ $canEdit ? route('estimates.edit', $dealEstimates->first()->id) : route('estimates.show', $dealEstimates->first()->id) }}"
+                                                            class="text-purple-500 hover:text-purple-700 transition-colors" 
+                                                            title="{{ $canEdit ? 'Edit Estimate' : 'View Estimate' }}">
+                                                            <i class="fas fa-file-invoice text-xs"></i>
+                                                        </a>
+                                                    @elseif($canEdit)
+                                                        <button onclick="createEstimate({{ $deal->id }})"
+                                                            class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
+                                                            <i class="fas fa-file-invoice text-xs"></i>
+                                                        </button>
                                                     @endif
                                                 @endif
-                                                @if(in_array($stage, ['Finalizing terms', 'Closed Won']) && $hasEstimate)
-                                                <a href="{{ route('estimates.edit', $deal->estimates->first()->id) }}"
-                                                    class="text-purple-500 hover:text-purple-700 transition-colors" title="Edit Estimate">
-                                                    <i class="fas fa-file-invoice text-xs"></i>
-                                                </a>
-                                                @endif
-                                                @if(!in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won']))
-                                                <button data-deal="{{ base64_encode($deal->toJson()) }}" onclick="editDeal(JSON.parse(atob(this.dataset.deal)))"
-                                                    class="text-blue-400 hover:text-blue-600 transition-colors" title="Edit Deal">
-                                                    <i class="fas fa-edit text-xs"></i>
-                                                </button>
-                                                @endif
-                                            </div>
+
+                                                    {{-- Deal Edit/View Link (Hide in late stages) --}}
+                                                    @if(!in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
+                                                        @if($canEdit)
+                                                            <button data-deal="{{ base64_encode($deal->toJson()) }}" onclick="editDeal(JSON.parse(atob(this.dataset.deal)), false)"
+                                                                class="text-blue-400 hover:text-blue-600 transition-colors" title="Edit Deal">
+                                                                <i class="fas fa-edit text-xs"></i>
+                                                            </button>
+                                                        @else
+                                                            <button data-deal="{{ base64_encode($deal->toJson()) }}" onclick="editDeal(JSON.parse(atob(this.dataset.deal)), true)"
+                                                                class="text-gray-400 hover:text-gray-600 transition-colors" title="View Deal Details">
+                                                                <i class="fas fa-eye text-xs"></i>
+                                                            </button>
+                                                        @endif
+                                                    @endif
+                                                </div>
                                         </div>
                                         <div class="flex flex-wrap gap-1 mb-2">
                                             @if($deal->job_number)
@@ -241,8 +262,12 @@
                                                         {{ strtoupper(substr($deal->owner->name, 0, 1)) }}
                                                     </div>
                                                 @endif
-                                                <span class="text-xs font-bold text-gray-900">{{ $deal->currency }}
-                                                    {{ number_format($deal->contribution, 2) }}</span>
+                                                <span class="text-xs font-bold text-gray-900 metric-revenue">
+                                                    {{ $deal->currency }} {{ number_format($deal->dept_share_revenue ?? $deal->revenue, 2) }}
+                                                </span>
+                                                <span class="text-xs font-bold text-gray-900 metric-contribution">
+                                                    {{ $deal->currency }} {{ number_format($deal->dept_share_contribution ?? $deal->contribution, 2) }}
+                                                </span>
                                             </div>
                                             <div class="flex -space-x-1.5 overflow-hidden py-1">
                                                 @foreach($deal->teamMembers->take(4) as $member)
@@ -302,7 +327,7 @@
                                     Customer <span class="text-red-500">*</span> <i
                                         class="fas fa-info-circle ml-1 opacity-50 text-[10px]"></i>
                                 </label>
-                                <select name="customer_id" id="company_select" placeholder="Search Customer..."
+                                <select name="customer_id" id="company_select" placeholder="Search Customer..." required
                                     class="cust-column">
                                     <option value="">Search Customer...</option>
                                     @foreach($customers as $customer)
@@ -413,8 +438,9 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Close Date</label>
-                                <input type="date" name="close_date"
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Close Date <span
+                                        class="text-red-500">*</span></label>
+                                <input type="date" name="close_date" required
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                             </div>
                         </div>
@@ -438,9 +464,9 @@
 
                         <!-- Hidden template for department row -->
                         <template id="department-row-template">
-                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 w-full mb-2">
+                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100 w-full mb-2">
                                 <div class="w-full md:w-3/12">
-                                    <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <select class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-white font-medium text-gray-700" required>
                                         <option value="">Department</option>
                                         @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
                                             @foreach($departments as $key => $label)
@@ -454,20 +480,20 @@
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
-                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
-                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8 text-gray-700" required>
+                                    <span class="absolute right-3 top-2.5 text-gray-400 text-xs font-medium">%</span>
                                 </div>
                                 <div class="w-[48%] md:w-2/12">
-                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none text-gray-700" required>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative mt-2 md:mt-0">
-                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
-                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8 text-gray-700" required>
+                                    <span class="absolute right-3 top-2.5 text-gray-400 text-xs font-medium">%</span>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 mt-2 md:mt-0">
-                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none text-gray-700" required>
                                 </div>
-                                <button type="button" class="remove-department-btn px-2 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0">
+                                <button type="button" class="remove-department-btn p-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0 shadow-sm" title="Remove Split">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -493,7 +519,7 @@
     <div id="editDealModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-10 mx-auto p-0 border w-full max-w-2xl shadow-xl rounded-xl bg-white overflow-hidden">
             <div class="bg-brand-purple px-6 py-4 flex justify-between items-center">
-                <h3 class="text-xl font-bold text-white">Edit Deal</h3>
+                <h3 id="editDealModalTitle" class="text-xl font-bold text-white">Edit Deal</h3>
                 <button onclick="document.getElementById('editDealModal').classList.add('hidden')"
                     class="text-white hover:text-gray-200">
                     <i class="fas fa-times"></i>
@@ -520,7 +546,7 @@
                                     Customer <span class="text-red-500">*</span> <i
                                         class="fas fa-info-circle ml-1 opacity-50 text-[10px]"></i>
                                 </label>
-                                <select name="customer_id" id="edit_company_select" placeholder="Search Customer..."
+                                <select name="customer_id" id="edit_company_select" placeholder="Search Customer..." required
                                     class="cust-column">
                                     <option value="">Search Customer...</option>
                                     @foreach($customers as $customer)
@@ -623,11 +649,9 @@
                                 <label class="block text-sm font-bold text-gray-700 mb-1">Winning Percentage (%)</label>
                                 <input type="number" name="winning_percentage" id="edit_winning_percentage" readonly tabindex="-1"
                                     class="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed outline-none select-none">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-1">Close Date</label>
-                                <input type="date" name="close_date" id="edit_close_date"
+                                <label class="block text-sm font-bold text-gray-700 mb-1">Close Date <span
+                                        class="text-red-500">*</span></label>
+                                <input type="date" name="close_date" id="edit_close_date" required
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                             </div>
                         </div>
@@ -651,9 +675,9 @@
 
                         <!-- Hidden template for edit department row -->
                         <template id="edit-department-row-template">
-                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 w-full mb-2">
+                            <div class="department-row flex flex-wrap md:flex-nowrap items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100 w-full mb-2">
                                 <div class="w-full md:w-3/12">
-                                    <select class="department-select w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <select class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-white font-medium text-gray-700" required>
                                         <option value="">Department</option>
                                         @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
                                             @foreach($departments as $key => $label)
@@ -667,20 +691,20 @@
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
-                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
-                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Rev %" class="department-rev-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8 text-gray-700" required>
+                                    <span class="absolute right-3 top-2.5 text-gray-400 text-xs font-medium">%</span>
                                 </div>
                                 <div class="w-[48%] md:w-2/12">
-                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <input type="number" step="0.01" min="0" placeholder="Revenue" class="department-rev-amount w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none text-gray-700" required>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative mt-2 md:mt-0">
-                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-6" required>
-                                    <span class="absolute right-2 top-2 text-gray-500 text-xs">%</span>
+                                    <input type="number" step="0.01" min="0" max="100" placeholder="Con %" class="department-con-percentage w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none pr-8 text-gray-700" required>
+                                    <span class="absolute right-3 top-2.5 text-gray-400 text-xs font-medium">%</span>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 mt-2 md:mt-0">
-                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none" required>
+                                    <input type="number" step="0.01" min="0" placeholder="Contribution" class="department-con-amount w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none text-gray-700" required>
                                 </div>
-                                <button type="button" class="remove-department-btn px-2 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0">
+                                <button type="button" class="remove-department-btn p-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all flex-shrink-0 mt-2 md:mt-0 shadow-sm" title="Remove Split">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -695,7 +719,7 @@
                         class="px-6 py-2 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                         Cancel
                     </button>
-                    <button type="submit"
+                    <button id="editDealSubmitBtn" type="submit"
                         class="px-8 py-2 bg-brand-pink text-white font-bold rounded-lg hover:bg-brand-purple transition-all shadow-md active:transform active:scale-95">
                         Save Changes
                     </button>
@@ -707,7 +731,7 @@
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
-        function editDeal(deal) {
+        function editDeal(deal, isReadOnly = false) {
             const form = document.getElementById('editDealForm');
             form.action = `/deals/${deal.id}`;
 
@@ -724,13 +748,49 @@
             document.getElementById('edit_winning_percentage').value = deal.winning_percentage || '';
             document.getElementById('edit_company_select').tomselect.setValue(deal.customer_id || '');
 
+            // Handle read-only mode UI
+            const titleEl = document.getElementById('editDealModalTitle');
+            const submitBtn = document.getElementById('editDealSubmitBtn');
+            const addDeptBtn = document.getElementById('edit-add-department-btn');
+            
+            if (isReadOnly) {
+                titleEl.textContent = 'View Deal Details';
+                if (submitBtn) submitBtn.classList.add('hidden');
+                if (addDeptBtn) addDeptBtn.classList.add('hidden');
+            } else {
+                titleEl.textContent = 'Edit Deal';
+                if (submitBtn) submitBtn.classList.remove('hidden');
+                if (addDeptBtn) addDeptBtn.classList.remove('hidden');
+            }
+
+            // Enable/Disable inputs
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.id === 'edit_winning_percentage') return; // Always readonly
+                if (isReadOnly) {
+                    input.setAttribute('disabled', 'disabled');
+                    input.classList.add('bg-gray-50', 'cursor-not-allowed');
+                } else {
+                    input.removeAttribute('disabled');
+                    input.classList.remove('bg-gray-50', 'cursor-not-allowed');
+                }
+            });
+
+            // Handle TomSelect
+            const ts = document.getElementById('edit_company_select').tomselect;
+            if (isReadOnly) {
+                ts.disable();
+            } else {
+                ts.enable();
+            }
+
             // Handle rejection reason visibility
             const rejectionReasonContainer = document.getElementById('edit_rejection_reason_container');
             const rejectionReasonInput = document.getElementById('edit_rejection_reason');
             if (deal.stage === 'Rejected') {
                 rejectionReasonContainer.classList.remove('hidden');
                 rejectionReasonInput.value = deal.rejection_reason || '';
-                rejectionReasonInput.setAttribute('required', 'required');
+                if (!isReadOnly) rejectionReasonInput.setAttribute('required', 'required');
             } else {
                 rejectionReasonContainer.classList.add('hidden');
                 rejectionReasonInput.value = '';
@@ -770,9 +830,18 @@
                             conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
                             conAmountInput.name = `department_allocations[${index}][contribution_amount]`;
 
-                            removeBtn.addEventListener('click', function () {
-                                this.closest('.department-row').remove();
-                            });
+                            if (isReadOnly) {
+                                select.setAttribute('disabled', 'disabled');
+                                revPercentInput.setAttribute('disabled', 'disabled');
+                                revAmountInput.setAttribute('disabled', 'disabled');
+                                conPercentInput.setAttribute('disabled', 'disabled');
+                                conAmountInput.setAttribute('disabled', 'disabled');
+                                removeBtn.classList.add('hidden');
+                            } else {
+                                removeBtn.addEventListener('click', function () {
+                                    this.closest('.department-row').remove();
+                                });
+                            }
                             editDeptContainer.appendChild(clone);
                         }
                     });
@@ -795,8 +864,11 @@
                     ghostClass: 'bg-indigo-100',
                     onEnd: function (evt) {
                         const item = evt.item;
+                        const fromStage = evt.from.getAttribute('data-stage');
                         const newStage = evt.to.getAttribute('data-stage');
                         const dealId = item.getAttribute('data-id');
+
+                        if (fromStage === newStage) return;
 
                         // If moving to Rejected, force open Edit Modal for reason
                         if (newStage === 'Rejected') {
@@ -821,34 +893,69 @@
                             return;
                         }
 
-                        // Optimistic UI update could happen here
+                        // Confirmation Prompt
+                        Swal.fire({
+                            title: 'Confirm Stage Change',
+                            text: `Are you sure you want to move this deal to "${newStage}"?`,
+                            showCancelButton: true,
+                            confirmButtonColor: '#8035ca',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'Yes, move it!',
+                            cancelButtonText: 'No, cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // API Call
+                                fetch(`/deals/${dealId}/stage`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                    },
+                                    body: JSON.stringify({ stage: newStage })
+                                })
+                                    .then(response => {
+                                        if (!response.ok) {
+                                            return response.json().then(err => { throw err; });
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        if (data.redirect) {
+                                            window.location.href = data.redirect;
+                                        }
+                                        if (data.job_number) {
+                                            // Find or create job number badge
+                                            let badgeContainer = item.querySelector('.flex.flex-wrap.gap-1.mb-2');
+                                            let badge = Array.from(badgeContainer.children).find(el => el.textContent.trim() === data.job_number);
 
-                        // API Call
-                        fetch(`/deals/${dealId}/stage`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({ stage: newStage })
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.redirect) {
-                                    window.location.href = data.redirect;
-                                }
-                                if (data.job_number) {
-                                    // Find or create job number badge
-                                    let badgeContainer = item.querySelector('.flex.flex-wrap.gap-1.mb-2');
-                                    let badge = Array.from(badgeContainer.children).find(el => el.textContent.trim() === data.job_number);
-
-                                    if (!badge) {
-                                        const badgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-brand-purple text-white">${data.job_number}</span>`;
-                                        badgeContainer.insertAdjacentHTML('afterbegin', badgeHtml);
-                                    }
-                                }
-                            })
-                            .catch(error => console.error('Error:', error));
+                                            if (!badge) {
+                                                const badgeHtml = `<span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-brand-purple text-white">${data.job_number}</span>`;
+                                                badgeContainer.insertAdjacentHTML('afterbegin', badgeHtml);
+                                            }
+                                        }
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Status Updated',
+                                            text: `Deal moved to ${newStage} successfully.`,
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        });
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        // Revert visual move
+                                        evt.from.appendChild(item);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Update Failed',
+                                            text: error.message || 'An error occurred while updating the deal stage.'
+                                        });
+                                    });
+                            } else {
+                                // Revert visual move
+                                evt.from.appendChild(item);
+                            }
+                        });
                     }
                 });
             });
@@ -890,8 +997,45 @@
             // Handle form submission for Create Deal
             const createForm = document.querySelector('#createDealModal form');
             if (createForm) {
-                createForm.addEventListener('submit', function (e) {
+                                createForm.addEventListener('submit', function (e) {
                     const rows = deptContainer.querySelectorAll('.department-row');
+                    
+                    // Validation: Sum of percentages and amounts should not exceed limit
+                    let totalRevPercent = 0;
+                    let totalConPercent = 0;
+                    let totalRevAmt = 0;
+                    let totalConAmt = 0;
+                    const mainRev = parseFloat(document.querySelector('#createDealModal input[name="revenue"]').value) || 0;
+                    const mainCon = parseFloat(document.querySelector('#createDealModal input[name="contribution"]').value) || 0;
+
+                    rows.forEach(row => {
+                        totalRevPercent += parseFloat(row.querySelector('.department-rev-percentage').value) || 0;
+                        totalConPercent += parseFloat(row.querySelector('.department-con-percentage').value) || 0;
+                        totalRevAmt += parseFloat(row.querySelector('.department-rev-amount').value) || 0;
+                        totalConAmt += parseFloat(row.querySelector('.department-con-amount').value) || 0;
+                    });
+
+                    if (totalRevPercent > 100.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total Revenue Percentage cannot exceed 100% (Current: ' + totalRevPercent.toFixed(2) + '%)', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                    if (totalConPercent > 100.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total Contribution Percentage cannot exceed 100% (Current: ' + totalConPercent.toFixed(2) + '%)', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                    if (totalRevAmt > mainRev + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total split revenue (LKR ' + totalRevAmt.toLocaleString() + ') cannot exceed project revenue (LKR ' + mainRev.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                                        if (totalConAmt > mainCon + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total split contribution (LKR ' + totalConAmt.toLocaleString() + ') cannot exceed total contribution (LKR ' + mainCon.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+
+                    if (mainCon > mainRev + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Project Contribution (LKR ' + mainCon.toLocaleString() + ') cannot exceed Project Revenue (LKR ' + mainRev.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
                     rows.forEach((row, index) => {
                         const select = row.querySelector('.department-select');
                         const revPercentInput = row.querySelector('.department-rev-percentage');
@@ -922,12 +1066,14 @@
                     });
 
                     const select = clone.querySelector('.department-select');
+                    const userSelect = clone.querySelector('.user-select');
                     const revPercentInput = clone.querySelector('.department-rev-percentage');
                     const revAmountInput = clone.querySelector('.department-rev-amount');
                     const conPercentInput = clone.querySelector('.department-con-percentage');
                     const conAmountInput = clone.querySelector('.department-con-amount');
                     const index = editDeptContainer.children.length;
                     select.name = `department_allocations[${index}][department]`;
+                    if (userSelect) userSelect.name = `department_allocations[${index}][user_name]`;
                     revPercentInput.name = `department_allocations[${index}][revenue_percentage]`;
                     revAmountInput.name = `department_allocations[${index}][revenue_amount]`;
                     conPercentInput.name = `department_allocations[${index}][contribution_percentage]`;
@@ -939,8 +1085,45 @@
 
             const editForm = document.getElementById('editDealForm');
             if (editForm) {
-                editForm.addEventListener('submit', function (e) {
+                                editForm.addEventListener('submit', function (e) {
                     const rows = editDeptContainer.querySelectorAll('.department-row');
+                    
+                    // Validation: Sum of percentages and amounts should not exceed limit
+                    let totalRevPercent = 0;
+                    let totalConPercent = 0;
+                    let totalRevAmt = 0;
+                    let totalConAmt = 0;
+                    const mainRev = parseFloat(document.getElementById('edit_revenue').value) || 0;
+                    const mainCon = parseFloat(document.getElementById('edit_contribution').value) || 0;
+
+                    rows.forEach(row => {
+                        totalRevPercent += parseFloat(row.querySelector('.department-rev-percentage').value) || 0;
+                        totalConPercent += parseFloat(row.querySelector('.department-con-percentage').value) || 0;
+                        totalRevAmt += parseFloat(row.querySelector('.department-rev-amount').value) || 0;
+                        totalConAmt += parseFloat(row.querySelector('.department-con-amount').value) || 0;
+                    });
+
+                    if (totalRevPercent > 100.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total Revenue Percentage cannot exceed 100% (Current: ' + totalRevPercent.toFixed(2) + '%)', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                    if (totalConPercent > 100.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total Contribution Percentage cannot exceed 100% (Current: ' + totalConPercent.toFixed(2) + '%)', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                    if (totalRevAmt > mainRev + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total split revenue (LKR ' + totalRevAmt.toLocaleString() + ') cannot exceed project revenue (LKR ' + mainRev.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+                                        if (totalConAmt > mainCon + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Total split contribution (LKR ' + totalConAmt.toLocaleString() + ') cannot exceed total contribution (LKR ' + mainCon.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
+
+                    if (mainCon > mainRev + 0.01) {
+                        Swal.fire({ icon: 'error', title: 'Validation Error', text: 'Project Contribution (LKR ' + mainCon.toLocaleString() + ') cannot exceed Project Revenue (LKR ' + mainRev.toLocaleString() + ')', confirmButtonColor: '#8035ca' });
+                        e.preventDefault(); return false;
+                    }
                     rows.forEach((row, index) => {
                         const select = row.querySelector('.department-select');
                         const revPercentInput = row.querySelector('.department-rev-percentage');
@@ -968,10 +1151,8 @@
                 container.addEventListener('input', function(e) {
                     const revInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="revenue"]') : document.getElementById('edit_revenue');
                     const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
-                    
                     const totalRev = parseFloat(revInput.value) || 0;
                     const totalCon = parseFloat(conInput.value) || 0;
-
                     const row = e.target.closest('.department-row');
                     if (!row) return;
 
@@ -984,14 +1165,64 @@
                         const p = parseFloat(e.target.value) || 0;
                         if (totalRev > 0) revAmt.value = ((p / 100) * totalRev).toFixed(2);
                     } else if (e.target.classList.contains('department-rev-amount')) {
-                        const amt = parseFloat(e.target.value) || 0;
-                        if (totalRev > 0) revPercent.value = ((amt / totalRev) * 100).toFixed(2);
+                        // Auto-summing: update total revenue based on all split amounts
+                        let newTotalRev = 0;
+                        container.querySelectorAll('.department-rev-amount').forEach(input => {
+                            newTotalRev += parseFloat(input.value) || 0;
+                        });
+                        if (newTotalRev > 0) {
+                            revInput.value = newTotalRev.toFixed(2);
+                            // Recalculate percentages for all rows to match new total
+                            container.querySelectorAll('.department-row').forEach(r => {
+                                const rAmt = parseFloat(r.querySelector('.department-rev-amount').value) || 0;
+                                const rPct = r.querySelector('.department-rev-percentage');
+                                if (newTotalRev > 0) rPct.value = ((rAmt / newTotalRev) * 100).toFixed(1);
+                            });
+                        }
                     } else if (e.target.classList.contains('department-con-percentage')) {
                         const p = parseFloat(e.target.value) || 0;
                         if (totalCon > 0) conAmt.value = ((p / 100) * totalCon).toFixed(2);
                     } else if (e.target.classList.contains('department-con-amount')) {
-                        const amt = parseFloat(e.target.value) || 0;
-                        if (totalCon > 0) conPercent.value = ((amt / totalCon) * 100).toFixed(2);
+                        // Auto-summing: update total contribution based on all split amounts
+                        let newTotalCon = 0;
+                        container.querySelectorAll('.department-con-amount').forEach(input => {
+                            newTotalCon += parseFloat(input.value) || 0;
+                        });
+                        if (newTotalCon > 0) {
+                            conInput.value = newTotalCon.toFixed(2);
+                            // Recalculate percentages for all rows to match new total
+                            container.querySelectorAll('.department-row').forEach(r => {
+                                const rAmt = parseFloat(r.querySelector('.department-con-amount').value) || 0;
+                                const rPct = r.querySelector('.department-con-percentage');
+                                if (newTotalCon > 0) rPct.value = ((rAmt / newTotalCon) * 100).toFixed(1);
+                            });
+                        }
+                    }
+                });
+
+                container.addEventListener('change', function(e) {
+                    const revInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="revenue"]') : document.getElementById('edit_revenue');
+                    const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
+                    const totalRev = parseFloat(revInput.value) || 0;
+                    const totalCon = parseFloat(conInput.value) || 0;
+
+                    const rows = container.querySelectorAll('.department-row');
+                    let currentRevP = 0, currentRevA = 0, currentConP = 0, currentConA = 0;
+                    rows.forEach(r => {
+                        currentRevP += parseFloat(r.querySelector('.department-rev-percentage').value) || 0;
+                        currentRevA += parseFloat(r.querySelector('.department-rev-amount').value) || 0;
+                        currentConP += parseFloat(r.querySelector('.department-con-percentage').value) || 0;
+                        currentConA += parseFloat(r.querySelector('.department-con-amount').value) || 0;
+                    });
+
+                    if (e.target.classList.contains('department-rev-percentage') || e.target.classList.contains('department-rev-amount')) {
+                        if (Math.round(currentRevP * 100) > 10000 || Math.round(currentRevA * 100) > Math.round(totalRev * 100) + 1) {
+                            Swal.fire({ icon: 'warning', title: 'Limit Exceeded', text: 'Total Revenue Split exceeds project total. Please adjust.', confirmButtonColor: '#8035ca' });
+                        }
+                    } else if (e.target.classList.contains('department-con-percentage') || e.target.classList.contains('department-con-amount')) {
+                         if (Math.round(currentConP * 100) > 10000 || Math.round(currentConA * 100) > Math.round(totalCon * 100) + 1) {
+                            Swal.fire({ icon: 'warning', title: 'Limit Exceeded', text: 'Total Contribution Split exceeds project total. Please adjust.', confirmButtonColor: '#8035ca' });
+                        }
                     }
                 });
 
@@ -1000,6 +1231,8 @@
                 const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
                 
                 function recalculateAll() {
+                    const revInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="revenue"]') : document.getElementById('edit_revenue');
+                    const conInput = modalType === 'create' ? document.querySelector('#createDealModal input[name="contribution"]') : document.getElementById('edit_contribution');
                     const totalRev = parseFloat(revInput.value) || 0;
                     const totalCon = parseFloat(conInput.value) || 0;
                     const rows = container.querySelectorAll('.department-row');
@@ -1024,6 +1257,28 @@
 
             handleSplitCalculations(document.getElementById('department-allocations'), 'create');
             handleSplitCalculations(document.getElementById('edit-department-allocations'), 'edit');
+
+            // Added validation for main Revenue vs Contribution
+            function setupMainMetricsValidation(revId, conId, modalSelector) {
+                const revInput = revId ? document.getElementById(revId) : document.querySelector(modalSelector + ' input[name="revenue"]');
+                const conInput = conId ? document.getElementById(conId) : document.querySelector(modalSelector + ' input[name="contribution"]');
+
+                if (!revInput || !conInput) return;
+
+                function validateMetrics() {
+                    const rev = parseFloat(revInput.value) || 0;
+                    const con = parseFloat(conInput.value) || 0;
+                    if (con > rev) {
+                        conInput.value = rev;
+                    }
+                }
+
+                revInput.addEventListener('input', validateMetrics);
+                conInput.addEventListener('input', validateMetrics);
+            }
+
+            setupMainMetricsValidation(null, null, '#createDealModal');
+            setupMainMetricsValidation('edit_revenue', 'edit_contribution', null);
 
         });
         // Initialize Tom Select
@@ -1095,18 +1350,44 @@
             }
 
             new TomSelect('#company_select', {
-                create: true,
+                create: false,
                 sortField: {
                     field: "text",
                     direction: "asc"
+                },
+                render: {
+                    no_results: function(data, escape) {
+                        return '<div class="no-results p-4 text-center border-t border-gray-100 bg-gray-50">' +
+                               '<div class="mb-2 text-red-500 font-bold">' +
+                               '<i class="fas fa-exclamation-circle mr-2"></i>Customer Not Found' +
+                               '</div>' +
+                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the customer list. Please add the customer first.</p>' +
+                               '<a href="{{ route('customers.create') }}" target="_blank" class="inline-flex items-center justify-center bg-brand-purple text-white text-[10px] font-bold py-1.5 px-3 rounded hover:bg-brand-blue transition-all">' +
+                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Customer' +
+                               '</a>' +
+                               '</div>';
+                    }
                 }
             });
 
             new TomSelect('#edit_company_select', {
-                create: true,
+                create: false,
                 sortField: {
                     field: "text",
                     direction: "asc"
+                },
+                render: {
+                    no_results: function(data, escape) {
+                        return '<div class="no-results p-4 text-center border-t border-gray-100 bg-gray-50">' +
+                               '<div class="mb-2 text-red-500 font-bold">' +
+                               '<i class="fas fa-exclamation-circle mr-2"></i>Customer Not Found' +
+                               '</div>' +
+                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the customer list. Please add the customer first.</p>' +
+                               '<a href="{{ route('customers.create') }}" target="_blank" class="inline-flex items-center justify-center bg-brand-purple text-white text-[10px] font-bold py-1.5 px-3 rounded hover:bg-brand-blue transition-all">' +
+                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Customer' +
+                               '</a>' +
+                               '</div>';
+                    }
                 }
             });
         });
@@ -1134,7 +1415,36 @@
         });
 
         function createEstimate(dealId) {
-            window.location.href = `{{ route('estimates.create') }}?deal_id=${dealId}`;
+            Swal.fire({
+                title: 'Creating Estimate...',
+                text: 'Please wait while we set up the estimate draft.',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/deals/${dealId}/create-estimate`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to create estimate', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            });
         }
 
         function toggleMetrics(type) {

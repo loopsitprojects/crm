@@ -82,11 +82,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label for="telephone" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Telephone No
+                                Telephone No <span class="text-red-500">*</span>
                             </label>
-                            <input type="text" name="telephone" id="telephone" value="{{ old('telephone', $customer->telephone) }}"
+                            <input type="text" name="telephone" id="telephone" value="{{ old('telephone', $customer->telephone) }}" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all"
-                                placeholder="Telephone">
+                                placeholder="Telephone" pattern="[0-9\s\+\-\(\)]+" title="Please enter a valid phone number (digits, spaces, and +, -, (, ) are allowed)">
                             @error('telephone') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
@@ -97,7 +97,7 @@
                             </label>
                             <input type="text" name="fax" id="fax" value="{{ old('fax', $customer->fax) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all"
-                                placeholder="Fax">
+                                placeholder="Fax" pattern="[0-9\s\+\-\(\)]*" title="Please enter a valid fax number">
                             @error('fax') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
@@ -163,12 +163,12 @@
 
                         <div>
                             <label for="primary_contact_mobile" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Mobile
+                                Mobile <span class="text-red-500">*</span>
                             </label>
                             <input type="text" name="primary_contact_mobile" id="primary_contact_mobile"
-                                value="{{ old('primary_contact_mobile', $customer->primary_contact_mobile) }}"
+                                value="{{ old('primary_contact_mobile', $customer->primary_contact_mobile) }}" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all"
-                                placeholder="Mobile">
+                                placeholder="Mobile" pattern="[0-9\s\+\-\(\)]+" title="Please enter a valid mobile number">
                             @error('primary_contact_mobile') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
@@ -180,17 +180,17 @@
                             <input type="text" name="primary_contact_office" id="primary_contact_office"
                                 value="{{ old('primary_contact_office', $customer->primary_contact_office) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all"
-                                placeholder="Office">
+                                placeholder="Office" pattern="[0-9\s\+\-\(\)]*" title="Please enter a valid office number">
                             @error('primary_contact_office') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
 
                         <div class="md:col-span-2">
                             <label for="primary_contact_email" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Email Address
+                                Email Address <span class="text-red-500">*</span>
                             </label>
                             <input type="email" name="primary_contact_email" id="primary_contact_email"
-                                value="{{ old('primary_contact_email', $customer->primary_contact_email) }}"
+                                value="{{ old('primary_contact_email', $customer->primary_contact_email) }}" required
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-pink focus:ring-2 focus:ring-brand-pink/20 transition-all"
                                 placeholder="Email Address">
                             @error('primary_contact_email') <p class="mt-2 text-sm text-red-600"><i
@@ -240,7 +240,7 @@
                             <input type="text" name="finance_contact_mobile" id="finance_contact_mobile"
                                 value="{{ old('finance_contact_mobile', $customer->finance_contact_mobile) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
-                                placeholder="Mobile">
+                                placeholder="Mobile" pattern="[0-9\s\+\-\(\)]*" title="Please enter a valid mobile number">
                             @error('finance_contact_mobile') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
@@ -252,7 +252,7 @@
                             <input type="text" name="finance_contact_office" id="finance_contact_office"
                                 value="{{ old('finance_contact_office', $customer->finance_contact_office) }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/20 transition-all"
-                                placeholder="Office">
+                                placeholder="Office" pattern="[0-9\s\+\-\(\)]*" title="Please enter a valid office number">
                             @error('finance_contact_office') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>

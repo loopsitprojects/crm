@@ -19,6 +19,7 @@ class ReportController extends Controller
         $department = $request->input('department');
         $customerName = $request->input('customer_name');
         $stageFilter = $request->input('stage');
+        $reportType = $request->input('report_type');
 
         $stages = [
             'Planned to Meet',
@@ -28,7 +29,7 @@ class ReportController extends Controller
             'Pitched',
             'Objection handling',
             'Finalizing terms',
-            'Approved',
+            'Closed Won',
             'Rejected'
         ];
 
@@ -41,7 +42,7 @@ class ReportController extends Controller
 
         // Base Query with RBAC & Filters
         $applyFilters = function ($query) use ($startDate, $endDate, $department, $customerName, $isRestricted, $user, $sbuDepts, $salesDepts) {
-            $query->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
 
             if ($department) {
                 if ($department === 'SBU') {
@@ -68,16 +69,28 @@ class ReportController extends Controller
             }
 
             if ($isRestricted) {
-                if ($user->role === 'HOD' && $user->department) {
-                    $query->whereJsonContains('department_split', [['department' => $user->department]]);
-                } else {
-                    $query->where(function ($q) use ($user) {
-                        $q->where('user_id', $user->id)
-                            ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                                $tm->where('users.id', $user->id);
-                            });
-                    });
-                }
+                $query->where(function ($q) use ($user) {
+                    // Own deals
+                    $q->where('user_id', $user->id)
+                      // Team member deals
+                      ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                          $tm->where('users.id', $user->id);
+                      });
+                    
+                    // Department split check (if user has a department)
+                    if ($user->department) {
+                        $q->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                    }
+                    
+                    // HOD specific: subordinates
+                    if ($user->role === 'HOD') {
+                        // Deals owned by subordinates
+                        $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                        if ($subordinateIds->isNotEmpty()) {
+                            $q->orWhereIn('user_id', $subordinateIds);
+                        }
+                    }
+                });
             }
             return $query;
         };
@@ -87,9 +100,29 @@ class ReportController extends Controller
             $dealQuery->where('stage', $stageFilter);
         }
 
+        // Apply Report Type Filters (These should work ON TOP of other filters for consistency)
+        if ($reportType === 'pending') {
+            $dealQuery->whereNotIn('stage', ['Closed Won', 'Rejected']);
+        } elseif ($reportType === 'complete') {
+            $dealQuery->where('stage', 'Closed Won');
+        } elseif ($reportType === 'deadlines') {
+            $dealQuery->whereNotNull('close_date')
+                ->where('close_date', '>=', now()->toDateString());
+        }
+        
+        // Sorting
+        if ($reportType === 'deadlines') {
+            $dealQuery->orderBy('close_date', 'asc');
+        } else {
+            $dealQuery->latest();
+        }
+
         $invoiceQuery = Invoice::with('customer', 'estimate.deal')
-            ->where('is_proforma', false) // Keep existing condition
-            ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            ->where('invoices.is_proforma', false)
+            ->whereBetween('invoices.created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+        
+        // Add table name to dealQuery as well if it's used in joins later
+        // (Currently not used in joins that would cause ambiguity, but good practice)
 
         if ($department) {
             $invoiceQuery->whereHas('estimate.deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
@@ -120,39 +153,87 @@ class ReportController extends Controller
         if ($isRestricted) {
             $invoiceQuery->where(function ($q) use ($user) {
                 $q->whereHas('estimate.deal', function ($dq) use ($user) {
-                    if ($user->role === 'HOD' && $user->department) {
-                        $dq->whereJsonContains('department_split', [['department' => $user->department]]);
-                    } else {
-                        $dq->where('user_id', $user->id)
-                            ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                                $tm->where('users.id', $user->id);
-                            });
-                    }
+                    $dq->where(function ($sq) use ($user) {
+                        // Own deals
+                        $sq->where('user_id', $user->id)
+                          // Team member deals
+                          ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                              $tm->where('users.id', $user->id);
+                          });
+                        
+                        // Department split check (if user has a department)
+                        if ($user->department) {
+                            $sq->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                        }
+                        
+                        // HOD specific: subordinates
+                        if ($user->role === 'HOD') {
+                            $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                            if ($subordinateIds->isNotEmpty()) {
+                                $sq->orWhereIn('user_id', $subordinateIds);
+                            }
+                        }
+                    });
                 });
             });
         }
 
+        // Unified Split Calculation Logic is now handled via private method $this->calculateDealSplits()
+
+        // Fetch all deals with estimates and items for metrics
+        $allReportDeals = (clone $dealQuery)->with(['estimates.items', 'estimates.thirdPartyCosts'])->get();
+        $allReportDeals->each(function($deal) use ($request, $user, $isRestricted) {
+            $this->calculateDealSplits($deal, $request, $user, $isRestricted);
+        });
+
         // Expanded Metrics
-        $totalDealRevenue = (clone $dealQuery)->sum('revenue');
-        $openDealsCount = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->count();
-        $weightedRevenue = (clone $dealQuery)->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->sum('revenue'); // Using total of open deals for now
-        $approvedRevenue = (clone $dealQuery)->where('stage', 'Approved')->sum('revenue');
+        $totalDealRevenue = $allReportDeals->sum('revenue');
+        $openDealsCount = $allReportDeals->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->count();
+        $weightedRevenue = $allReportDeals->whereIn('stage', ['Planned to Meet', 'Introductory meeting', 'Brief Stage', 'Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms'])->sum('revenue');
+        $approvedRevenue = $allReportDeals->where('stage', 'Closed Won')->sum('revenue');
         $newDeals30 = Deal::where('created_at', '>=', now()->subDays(30));
         if ($isRestricted) {
             $newDeals30->where(function ($q) use ($user) {
+                // Own deals
                 $q->where('user_id', $user->id)
-                    ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                        $tm->where('users.id', $user->id);
-                    });
+                  // Team member deals
+                  ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                      $tm->where('users.id', $user->id);
+                  });
+                
+                // Department split check (if user has a department)
+                if ($user->department) {
+                    $q->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                }
+                
+                // HOD specific: subordinates
+                if ($user->role === 'HOD') {
+                    $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                    if ($subordinateIds->isNotEmpty()) {
+                        $q->orWhereIn('user_id', $subordinateIds);
+                    }
+                }
             });
         }
-        $newDeals30Revenue = $newDeals30->sum('revenue');
+        $newDeals30Revenue = $allReportDeals->where('created_at', '>=', now()->subDays(30))->sum('revenue');
 
-        $avgDealAge = (clone $dealQuery)->avg(DB::raw('DATEDIFF(NOW(), created_at)')) ?: 0;
+        $avgDealAge = $allReportDeals->avg(function($deal) {
+            return now()->diffInDays($deal->created_at);
+        }) ?: 0;
 
-        $invoicedAmount = (clone $invoiceQuery)->sum('total_amount');
-        $paymentCollected = (clone $invoiceQuery)->where('status', 'paid')->sum('total_amount');
-        $pendingAmount = (clone $invoiceQuery)->where('status', '!=', 'paid')->sum('total_amount');
+        $invoicedAmount = (clone $invoiceQuery)
+            ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->sum('invoice_items.amount');
+            
+        $paymentCollected = (clone $invoiceQuery)
+            ->where('invoices.status', 'paid')
+            ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->sum('invoice_items.amount');
+            
+        $pendingAmount = (clone $invoiceQuery)
+            ->where('invoices.status', '!=', 'paid')
+            ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->sum('invoice_items.amount');
 
         // Legacy variable for view compatibility if needed
         $revenue = $paymentCollected;
@@ -160,16 +241,20 @@ class ReportController extends Controller
 
         // Data for Charts
         $dailyRevenue = (clone $invoiceQuery)
-            ->where('status', 'paid')
-            ->select(DB::raw('DATE(created_at) as report_date'), DB::raw('SUM(total_amount) as total'))
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->where('invoices.status', 'paid')
+            ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->select(DB::raw('DATE(invoices.created_at) as report_date'), DB::raw('SUM(invoice_items.amount) as total'))
+            ->groupBy(DB::raw('DATE(invoices.created_at)'))
             ->orderBy('report_date')
             ->get();
 
-        $dealsByStage = (clone $dealQuery)
-            ->select('stage', DB::raw('count(*) as count'), DB::raw('SUM(revenue) as total'))
-            ->groupBy('stage')
-            ->get();
+        $dealsByStage = $allReportDeals->groupBy('stage')->map(function ($group, $stage) {
+            return (object)[
+                'stage' => $stage,
+                'count' => $group->count(),
+                'total' => $group->sum('revenue')
+            ];
+        })->values();
 
         $revenueByDeptQuery = DB::table('invoices')
             ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
@@ -177,9 +262,34 @@ class ReportController extends Controller
             ->whereBetween('invoices.created_at', [$startDate, $endDate])
             ->where('invoices.status', 'paid');
 
-        if ($isRestricted && $user->role === 'HOD' && $user->department) {
-            $revenueByDeptQuery->whereJsonContains('deals.department_split', [['department' => $user->department]]);
-        } elseif ($department) {
+        if ($isRestricted) {
+            $revenueByDeptQuery->where(function ($q) use ($user) {
+                // Own deals
+                $q->where('deals.user_id', $user->id)
+                  // Team member deals
+                  ->orWhereExists(function ($qe) use ($user) {
+                      $qe->select(DB::raw(1))
+                         ->from('deal_user')
+                         ->whereColumn('deal_user.deal_id', 'deals.id')
+                         ->where('deal_user.user_id', $user->id);
+                  });
+                
+                // Department split check (if user has a department)
+                if ($user->department) {
+                    $q->orWhereJsonContains('deals.department_split', [['department' => $user->department]]);
+                }
+                
+                // HOD specific: subordinates
+                if ($user->role === 'HOD') {
+                    $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                    if ($subordinateIds->isNotEmpty()) {
+                        $q->orWhereIn('deals.user_id', $subordinateIds);
+                    }
+                }
+            });
+        }
+
+        if ($department) {
             if ($department === 'SBU') {
                 $revenueByDeptQuery->where(function($q) use ($sbuDepts) {
                     foreach ($sbuDepts as $dept) {
@@ -197,70 +307,63 @@ class ReportController extends Controller
             }
         }
 
-        $revenueByDept = $revenueByDeptQuery->select('deals.type', DB::raw('SUM(invoices.total_amount) as total'))
+        $revenueByDept = $revenueByDeptQuery
+            ->join('invoice_items', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->select('deals.type', DB::raw('SUM(invoice_items.amount) as total'))
             ->groupBy('deals.type')
             ->get();
 
-        // Handle Detailed Data
-        $detailedData = \App\Models\InvoiceItem::with([
-            'invoice.customer',
-            'invoice.estimate.deal.owner',
-            'invoice.estimate'
-        ])
-        ->whereHas('invoice', function ($q) use ($startDate, $endDate, $customerName, $department, $isRestricted, $user, $sbuDepts, $salesDepts) {
-            $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-              ->where('is_proforma', false);
+        // Use Deals as the primary source for the Detailed Report to ensure all matching counts are visible
+        $detailedData = (clone $dealQuery)
+            ->with(['owner', 'customer', 'estimates.items', 'estimates.thirdPartyCosts', 'estimates.invoices.items'])
+            ->latest()
+            ->paginate(25);
 
-            if ($customerName) {
-                $q->whereHas('customer', function ($cq) use ($customerName) {
-                    $cq->where('name', 'LIKE', "%{$customerName}%");
-                });
-            }
+        $detailedData->each(function($deal) use ($request, $user, $isRestricted) {
+            $this->calculateDealSplits($deal, $request, $user, $isRestricted);
 
-            if ($department || $isRestricted) {
-                $q->whereHas('estimate.deal', function ($dq) use ($department, $isRestricted, $user, $sbuDepts, $salesDepts) {
-                    if ($department) {
-                        if ($department === 'SBU') {
-                            $dq->where(function($sq) use ($sbuDepts) {
-                                foreach ($sbuDepts as $dept) {
-                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                                }
-                            });
-                        } elseif ($department === 'Sales') {
-                            $dq->where(function($sq) use ($salesDepts) {
-                                foreach ($salesDepts as $dept) {
-                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                                }
-                            });
-                        } else {
-                            $dq->whereJsonContains('department_split', [['department' => $department]]);
-                        }
-                    }
-                    if ($isRestricted) {
-                        $dq->where(function ($sq) use ($user) {
-                            if ($user->role === 'HOD' && $user->department) {
-                                $sq->whereJsonContains('department_split', [['department' => $user->department]]);
-                            } else {
-                                $sq->where('user_id', $user->id)
-                                    ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                                        $tm->where('users.id', $user->id);
-                                    });
-                            }
-                        });
-                    }
-                });
+            $estimate = $deal->estimates->first();
+            $invoice = $estimate ? $estimate->invoices->where('is_proforma', false)->first() : null;
+            
+            if ($invoice && $invoice->items->isNotEmpty()) {
+                $deal->first_invoice_item = $invoice->items->first();
+                $deal->first_invoice_item->invoice = $invoice;
+            } else {
+                $dummyItem = new \stdClass();
+                $dummyItem->description = $deal->title;
+                $dummyItem->amount = $deal->revenue ?? 0;
+                $dummyItem->sscl_amount = 0;
+                $dummyItem->vat_amount = 0;
+                $dummyItem->total_with_vat = $deal->revenue ?? 0;
+                $dummyItem->revenue_category = 'N/A';
+                $dummyItem->department = 'N/A';
+
+                $dummyInvoice = new \stdClass();
+                $dummyInvoice->date = $deal->created_at->format('Y-m-d');
+                $dummyInvoice->invoice_number = 'N/A';
+                $dummyInvoice->status = 'pending';
+                $dummyInvoice->total_amount = $deal->revenue ?? 0;
+                $dummyInvoice->customer = $deal->customer;
+
+                $dummyItem->invoice = $dummyInvoice;
+                $deal->first_invoice_item = $dummyItem;
             }
         });
 
-        if ($stageFilter) {
-            $detailedData->whereHas('invoice.estimate.deal', function ($dq) use ($stageFilter) {
-                $dq->where('stage', $stageFilter);
-            });
-        }
-
-        $detailedData = $detailedData->latest()->paginate(25);
-
         $incomeBreakdown = [];
+
+        // Stats for Quick Link cards - Must match the table's filter logic exactly!
+        $pendingCount = $applyFilters(Deal::query());
+        if ($stageFilter) $pendingCount->where('stage', $stageFilter);
+        $pendingCount = $pendingCount->whereNotIn('stage', ['Closed Won', 'Rejected'])->count();
+
+        $completeCount = $applyFilters(Deal::query());
+        if ($stageFilter) $completeCount->where('stage', $stageFilter);
+        $completeCount = $completeCount->where('stage', 'Closed Won')->count();
+
+        $deadlineCount = $applyFilters(Deal::query());
+        if ($stageFilter) $deadlineCount->where('stage', $stageFilter);
+        $deadlineCount = $deadlineCount->whereNotNull('close_date')->where('close_date', '>=', now()->toDateString())->count();
 
         return view('reports.index', compact(
             'startDate',
@@ -281,12 +384,15 @@ class ReportController extends Controller
             'dailyRevenue',
             'dealsByStage',
             'revenueByDept',
-            'revenueByDept',
             'detailedData',
             'customerName',
             'stageFilter',
             'stages',
-            'incomeBreakdown'
+            'incomeBreakdown',
+            'reportType',
+            'pendingCount',
+            'completeCount',
+            'deadlineCount'
         ));
     }
 
@@ -296,60 +402,72 @@ class ReportController extends Controller
         $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : now()->endOfMonth();
         $department = $request->input('department');
         $type = $request->input('type', 'deals');
+        $reportType = $request->input('report_type');
 
         $user = auth()->user();
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
-        if ($type === 'detailed') {
-            $query = \App\Models\InvoiceItem::with([
-                'invoice.customer',
-                'invoice.estimate.deal.owner',
-                'invoice.estimate' // Ensure estimate is loaded for advance_received_amount and reference_number
-            ])
-            ->whereHas('invoice', function ($q) use ($startDate, $endDate, $isRestricted, $user, $department, $sbuDepts, $salesDepts) {
-                $q->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                  ->where('is_proforma', false);
+        // Category Mappings
+        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $salesDepts = ['AM', 'BD'];
 
-                if ($isRestricted) {
-                    $q->whereHas('estimate.deal', function ($dq) use ($user) {
-                        $dq->where(function ($sq) use ($user) {
-                            if ($user->role === 'HOD' && $user->department) {
-                                $sq->whereJsonContains('department_split', [['department' => $user->department]]);
-                            } else {
-                                $sq->where('user_id', $user->id)
-                                    ->orWhereHas('teamMembers', function ($tm) use ($user) {
-                                        $tm->where('users.id', $user->id);
-                                    });
-                            }
-                        });
-                    });
-                }
-                
-                if ($department) {
-                    $q->whereHas('estimate.deal', function ($dq) use ($department, $sbuDepts, $salesDepts) {
-                        if ($department === 'SBU') {
-                            $dq->where(function($sq) use ($sbuDepts) {
-                                foreach ($sbuDepts as $dept) {
-                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                                }
-                            });
-                        } elseif ($department === 'Sales') {
-                            $dq->where(function($sq) use ($salesDepts) {
-                                foreach ($salesDepts as $dept) {
-                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                                }
-                            });
-                        } else {
-                            $dq->whereJsonContains('department_split', [['department' => $department]]);
+        if ($type === 'detailed') {
+            // Updated to match the new Deal-based detailed report logic
+            $dealQuery = Deal::whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            
+            if ($isRestricted) {
+                $dealQuery->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                          $tm->where('users.id', $user->id);
+                      })
+                      ->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                    
+                    if ($user->role === 'HOD') {
+                        $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                        if ($subordinateIds->isNotEmpty()) {
+                            $q->orWhereIn('user_id', $subordinateIds);
+                        }
+                    }
+                });
+            }
+
+            if ($department) {
+                if ($department === 'SBU') {
+                    $dealQuery->where(function($q) use ($sbuDepts) {
+                        foreach ($sbuDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
                         }
                     });
+                } elseif ($department === 'Sales') {
+                    $dealQuery->where(function($q) use ($salesDepts) {
+                        foreach ($salesDepts as $dept) {
+                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                        }
+                    });
+                } else {
+                    $dealQuery->whereJsonContains('department_split', [['department' => $department]]);
                 }
+            }
+
+            if ($reportType === 'pending') {
+                $dealQuery->whereNotIn('stage', ['Closed Won', 'Rejected']);
+            } elseif ($reportType === 'complete') {
+                $dealQuery->where('stage', 'Closed Won');
+            } elseif ($reportType === 'deadlines') {
+                $dealQuery->whereNotNull('close_date')
+                    ->where('close_date', '>=', now()->toDateString());
+            }
+
+            $data = $dealQuery->with(['owner', 'customer', 'estimates.items', 'estimates.thirdPartyCosts', 'estimates.invoices.items'])->get();
+
+            $data->each(function($deal) use ($request, $user, $isRestricted) {
+                $this->calculateDealSplits($deal, $request, $user, $isRestricted);
             });
 
-            $data = $query->get();
             $filename = "detailed_report_" . now()->format('YmdHis') . ".csv";
             $headers = [
-                'Inv Date/ Est Date', 'Est/Inv No', 'Job No', 'Invoiced Month/ Closing month', 
+                'Inv Date', 'Est Date', 'Inv No', 'Est No', 'Job No', 'Invoiced Month/ Closing month', 
                 'Client Name', 'TIN', 'Brand', 'Description', 'Line Amount', 'SSCL', 'VAT', 
                 'Total Amount', 'Con Confirmed', 'Revenue Category', 'Department', 'Data Inputter', 
                 'Stages', 'Advance payment Status', 'Payment Status', 'Balance Due'
@@ -358,31 +476,33 @@ class ReportController extends Controller
             $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, $headers);
-                foreach ($data as $item) {
-                    $invoice = $item->invoice;
-                    $estimate = $invoice->estimate ?? null;
-                    $deal = $estimate->deal ?? null;
-                    
-                    $total = $invoice->total_amount ?? 0;
-                    $balanceDue = ($invoice->status === 'paid') ? 0 : $total;
-                    $advanceStatus = ($estimate && $estimate->advance_received_amount > 0) ? 'RECEIVED' : 'PENDING';
+                foreach ($data as $deal) {
+                    $estimate = $deal->estimates->first();
+                    $invoice = $estimate ? $estimate->invoices->where('is_proforma', false)->first() : null;
+                    $item = $invoice ? $invoice->items->first() : null;
+
+                    $total = $invoice->total_amount ?? ($deal->revenue ?? 0);
+                    $balanceDue = ($invoice && ($invoice->status ?? '') === 'paid') ? 0 : $total;
+                    $advanceStatus = ($estimate && ($estimate->advance_received_amount ?? 0) > 0) ? 'RECEIVED' : 'PENDING';
 
                     fputcsv($file, [
-                        $invoice->date ?? ($estimate->date ?? 'N/A'),
-                        $invoice->invoice_number ?? ($estimate->reference_number ?? 'N/A'),
+                        $invoice->date ?? 'N/A',
+                        $estimate->date ?? 'N/A',
+                        $invoice->invoice_number ?? 'N/A',
+                        $estimate->reference_number ?? 'N/A',
                         $deal->job_number ?? 'N/A',
-                        $invoice->date ? date('M Y', strtotime($invoice->date)) : 'N/A',
-                        $invoice->customer->name ?? 'N/A',
-                        $invoice->customer->customer_tax_number ?? 'N/A',
+                        ($invoice && isset($invoice->date)) ? date('M Y', strtotime($invoice->date)) : ($deal->close_date ? date('M Y', strtotime($deal->close_date)) : 'N/A'),
+                        $deal->customer->name ?? 'N/A',
+                        $deal->customer->customer_tax_number ?? 'N/A',
                         $estimate->brand_name ?? 'N/A',
-                        $item->description,
-                        $item->amount,
-                        $item->sscl_amount,
-                        $item->vat_amount,
-                        $item->total_with_vat,
-                        $deal->contribution ?? 'N/A',
+                        $item->description ?? $deal->title,
+                        $item->amount ?? ($deal->revenue ?? 0),
+                        $item->sscl_amount ?? 0,
+                        $item->vat_amount ?? 0,
+                        $item->total_with_vat ?? ($deal->revenue ?? 0),
+                        $deal->contribution ?? 0,
                         $item->revenue_category ?? 'N/A',
-                        $item->department ?? 'N/A',
+                        $deal->owner->department ?? 'N/A',
                         $deal->owner->name ?? 'N/A',
                         $deal->stage ?? 'N/A',
                         $advanceStatus,
@@ -407,6 +527,21 @@ class ReportController extends Controller
                                 });
                         }
                     });
+                });
+            }
+
+            if ($reportType === 'pending') {
+                $query->whereHas('estimate.deal', function ($dq) {
+                    $dq->whereNotIn('stage', ['Closed Won', 'Rejected']);
+                });
+            } elseif ($reportType === 'complete') {
+                $query->whereHas('estimate.deal', function ($dq) {
+                    $dq->where('stage', 'Closed Won');
+                });
+            } elseif ($reportType === 'deadlines') {
+                $query->whereHas('estimate.deal', function ($dq) {
+                    $dq->whereNotNull('close_date')
+                        ->where('close_date', '>=', now()->toDateString());
                 });
             }
             
@@ -451,17 +586,38 @@ class ReportController extends Controller
                 fclose($file);
             };
         } else {
-            $query = Deal::whereBetween('created_at', [$startDate, $endDate])->with('customer', 'owner');
+            $query = Deal::whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()])->with('customer', 'owner');
+
+            if ($reportType === 'pending') {
+                $query->whereNotIn('stage', ['Closed Won', 'Rejected']);
+            } elseif ($reportType === 'complete') {
+                $query->where('stage', 'Closed Won');
+            } elseif ($reportType === 'deadlines') {
+                $query->whereNotNull('close_date')
+                    ->where('close_date', '>=', now()->toDateString())
+                    ->orderBy('close_date', 'asc');
+            }
 
             if ($isRestricted) {
                 $query->where(function ($q) use ($user) {
-                    if ($user->role === 'HOD' && $user->department) {
-                        $q->whereJsonContains('department_split', [['department' => $user->department]]);
-                    } else {
-                        $q->where('user_id', $user->id)
-                            ->orWhereHas('teamMembers', function ($sq) use ($user) {
-                                $sq->where('users.id', $user->id);
-                            });
+                    // Own deals
+                    $q->where('user_id', $user->id)
+                      // Team member deals
+                      ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                          $tm->where('users.id', $user->id);
+                      });
+                    
+                    // Department split check (if user has a department)
+                    if ($user->department) {
+                        $q->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                    }
+                    
+                    // HOD specific: subordinates
+                    if ($user->role === 'HOD') {
+                        $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                        if ($subordinateIds->isNotEmpty()) {
+                            $q->orWhereIn('user_id', $subordinateIds);
+                        }
                     }
                 });
             }
@@ -484,7 +640,68 @@ class ReportController extends Controller
                 }
             }
 
-            $data = $query->get();
+            $data = $query->with(['estimates.items', 'estimates.thirdPartyCosts'])->get();
+            
+            // Adjust revenue/contribution metrics to exclude VAT and SSCL, and deduct third party costs
+            $data->each(function($deal) use ($user, $isRestricted, $request) {
+                $estimate = $deal->estimates->first();
+                if ($estimate) {
+                    // Calculate total excluding VAT and SSCL: sum of amount from items
+                    $preTaxTotal = $estimate->items->sum(function($item) {
+                        return (float)$item->amount;
+                    });
+                    
+                    // Calculate third party costs
+                    $thirdPartyTotal = $estimate->thirdPartyCosts->sum('cost');
+                    
+                    if ($preTaxTotal > 0) {
+                        $deal->revenue = $preTaxTotal;
+                        $deal->contribution = $preTaxTotal - $thirdPartyTotal;
+                    }
+                }
+
+                // Apply department split override for CSV export consistency
+                $activeDept = $request->input('department') ?: null;
+                if (!$activeDept && $isRestricted) {
+                    $activeDept = $user->department;
+                }
+
+                $deptRevenue = 0;
+                $deptContribution = 0;
+                
+                if ($activeDept) {
+                    $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                    if (is_array($splits) && !empty($splits)) {
+                        foreach ($splits as $split) {
+                            $splitDept = trim(strtolower($split['department'] ?? ''));
+                            $targetDept = trim(strtolower($activeDept));
+                            if ($splitDept === $targetDept) {
+                                $revPercent = (float)($split['revenue_percentage'] ?? 0);
+                                $conPercent = (float)($split['contribution_percentage'] ?? 0);
+                                if ($revPercent > 0) {
+                                    $deptRevenue += ($deal->revenue * ($revPercent / 100));
+                                } else {
+                                    $deptRevenue += (float)($split['revenue_amount'] ?? 0);
+                                }
+                                if ($conPercent > 0) {
+                                    $deptContribution += ($deal->contribution * ($conPercent / 100));
+                                } else {
+                                    $deptContribution += (float)($split['contribution_amount'] ?? 0);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Owner keeps 100%, others get split if a filter/restriction applies
+                if ($deal->user_id !== $user->id) {
+                    if ($activeDept || $isRestricted) {
+                        $deal->revenue = $deptRevenue;
+                        $deal->contribution = $deptContribution;
+                    }
+                }
+            });
+
             $filename = "deals_report_" . now()->format('YmdHis') . ".csv";
             $headers = ['Date', 'Title', 'Customer', 'Owner', 'Type', 'Stage', 'Amount', 'Probability'];
 
@@ -493,7 +710,7 @@ class ReportController extends Controller
                 fputcsv($file, $headers);
                 foreach ($data as $deal) {
                     fputcsv($file, [
-                        $deal->created_at->format('Y-m-d'),
+                        $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : 'N/A',
                         $deal->title,
                         $deal->customer->name ?? 'N/A',
                         $deal->owner->name ?? 'N/A',
@@ -511,5 +728,38 @@ class ReportController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ]);
+    }
+    private function calculateDealSplits(\App\Models\Deal $deal, Request $request, \App\Models\User $user, bool $isRestricted)
+    {
+        $estimate = $deal->estimates->first();
+        if ($estimate) {
+            $preTaxTotal = $estimate->items->sum(fn($item) => (float)$item->amount);
+            $thirdPartyTotal = $estimate->thirdPartyCosts->sum('cost');
+            if ($preTaxTotal > 0) {
+                $deal->revenue = $preTaxTotal;
+                $deal->contribution = $preTaxTotal - $thirdPartyTotal;
+            }
+        }
+
+        $activeDept = $request->input('department') ?: null;
+        if (!$activeDept && $isRestricted) $activeDept = $user->department;
+
+        if ($activeDept && $deal->user_id !== $user->id) {
+            $deptRevenue = 0;
+            $deptContribution = 0;
+            $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+            if (is_array($splits) && !empty($splits)) {
+                foreach ($splits as $split) {
+                    if (trim(strtolower($split['department'] ?? '')) === trim(strtolower($activeDept))) {
+                        $revPercent = (float)($split['revenue_percentage'] ?? 0);
+                        $conPercent = (float)($split['contribution_percentage'] ?? 0);
+                        $deptRevenue += $revPercent > 0 ? ($deal->revenue * ($revPercent / 100)) : (float)($split['revenue_amount'] ?? 0);
+                        $deptContribution += $conPercent > 0 ? ($deal->contribution * ($conPercent / 100)) : (float)($split['contribution_amount'] ?? 0);
+                    }
+                }
+            }
+            $deal->revenue = $deptRevenue;
+            $deal->contribution = $deptContribution;
+        }
     }
 }

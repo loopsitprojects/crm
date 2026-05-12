@@ -19,12 +19,16 @@
                     <div class="py-1 px-3">
                         @php
                             $columns = [
-                                'date_combined' => 'Inv Date/ Est Date',
-                                'no_combined' => 'Est/Inv No',
+                                'inv_date' => 'Inv Date',
+                                'est_date' => 'Est Date',
+                                'close_date' => 'Close Date',
+                                'inv_no' => 'Inv No',
+                                'est_no' => 'Est No',
                                 'job_no' => 'Job No',
                                 'month_combined' => 'Invoiced Month/ Closing month',
                                 'client' => 'Client Name',
                                 'tin' => 'TIN',
+                                'currency' => 'Currency',
                                 'brand' => 'Brand',
                                 'description' => 'Description',
                                 'amount' => 'Line Amount',
@@ -71,32 +75,37 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($detailedData as $item)
+                @forelse($detailedData as $deal)
                     @php
-                        $invoice = $item->invoice;
-                        $estimate = $invoice->estimate ?? null;
-                        $deal = $estimate->deal ?? null;
+                        $item = $deal->first_invoice_item ?? null;
+                        $invoice = $item->invoice ?? null; // Could be a mock object from controller
+                        // Access estimate from deal directly or from invoice
+                        $estimate = $deal->estimates->first() ?? null;
                         
-                        $total = $invoice->total_amount ?? 0;
-                        $balanceDue = ($invoice->status === 'paid') ? 0 : $total;
-                        $advanceStatus = ($estimate && $estimate->advance_received_amount > 0) ? 'RECEIVED' : 'PENDING';
+                        $total = $invoice->total_amount ?? ($deal->revenue ?? 0);
+                        $balanceDue = ($invoice && ($invoice->status ?? '') === 'paid') ? 0 : $total;
+                        $advanceStatus = ($estimate && ($estimate->advance_received_amount ?? 0) > 0) ? 'RECEIVED' : 'PENDING';
                     @endphp
                     <tr class="hover:bg-gray-50 transition-colors duration-150">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="date_combined">{{ $invoice->date ?? ($estimate->date ?? 'N/A') }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-col="no_combined">{{ $invoice->invoice_number ?? ($estimate->reference_number ?? 'N/A') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="inv_date">{{ $invoice->date ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="est_date">{{ $estimate->date ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-bold text-indigo-600" data-col="close_date">{{ $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-col="inv_no">{{ $invoice->invoice_number ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-col="est_no">{{ $estimate->reference_number ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono" data-col="job_no">{{ $deal->job_number ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="month_combined">{{ $invoice->date ? date('M Y', strtotime($invoice->date)) : 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium" data-col="client">{{ $invoice->customer->name ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="tin">{{ $invoice->customer->customer_tax_number ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="month_combined">{{ ($invoice && isset($invoice->date)) ? date('M Y', strtotime($invoice->date)) : 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium" data-col="client">{{ $deal->customer->name ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="tin">{{ $deal->customer->customer_tax_number ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700" data-col="currency">{{ $deal->currency ?? 'LKR' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="brand">{{ $estimate->brand_name ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 text-sm text-gray-600" data-col="description">{{ $item->description }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900" data-col="amount">{{ number_format($item->amount, 2) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="sscl">{{ number_format($item->sscl_amount, 2) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="vat">{{ number_format($item->vat_amount, 2) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-indigo-600" data-col="total">{{ number_format($item->total_with_vat, 2) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="con_confirmed">{{ isset($deal->contribution) ? number_format($deal->contribution, 2) : 'N/A' }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600" data-col="description">{{ $item->description ?? $deal->title }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900" data-col="amount">{{ number_format($item->amount ?? $deal->revenue ?? 0, 2) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="sscl">{{ number_format($item->sscl_amount ?? 0, 2) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="vat">{{ number_format($item->vat_amount ?? 0, 2) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-indigo-600" data-col="total">{{ number_format($item->total_with_vat ?? $deal->revenue ?? 0, 2) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600" data-col="con_confirmed">{{ number_format($deal->contribution ?? 0, 2) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="category">{{ $item->revenue_category ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="department">{{ $item->department ?? 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="department">{{ $item->department ?? ($deal->owner->department ?? 'N/A') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="inputter">{{ $deal->owner->name ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="stage">{{ $deal->stage ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap" data-col="advance_status">
@@ -105,7 +114,7 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap" data-col="payment_status">
-                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $invoice && $invoice->status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $invoice && ($invoice->status ?? '') === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
                                 {{ strtoupper($invoice->status ?? 'pending') }}
                             </span>
                         </td>

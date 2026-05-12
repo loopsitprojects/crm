@@ -32,13 +32,55 @@
     <!-- Tom Select -->
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Alpine.js Plugins -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Quill Rich Text Editor -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
+        }
+        /* Quill Snow compact toolbar for table rows */
+        .ql-toolbar.ql-snow {
+            border: none;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 4px 6px;
+            background: #f9fafb;
+            border-radius: 0.375rem 0.375rem 0 0;
+        }
+        .ql-container.ql-snow {
+            border: none;
+            font-size: 13px;
+            min-height: 40px;
+        }
+        .ql-editor {
+            min-height: 40px;
+            padding: 6px 8px;
+        }
+        .ql-editor.ql-blank::before {
+            left: 8px;
+        }
+        /* Wrap the editor+toolbar in a border */
+        .quill-wrapper .ql-toolbar,
+        .quill-wrapper .ql-container {
+            display: block;
+        }
+        .quill-wrapper {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background: white;
+        }
+        .ql-snow .ql-toolbar button {
+            width: 22px;
+            height: 22px;
+        }
+        .ql-snow .ql-toolbar .ql-formats {
+            margin-right: 6px;
         }
     </style>
     @stack('head')
@@ -74,12 +116,12 @@
                     <span>Jobs</span>
                 </a>
                 <a href="{{ route('estimates.index') }}"
-                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('estimates.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ (request()->routeIs('estimates.*') && request('from') !== 'invoice') ? 'bg-gray-700 text-brand-pink' : '' }}">
                     <i class="fas fa-file-invoice w-6"></i>
                     <span>Estimates</span>
                 </a>
                 <a href="{{ route('invoices.index') }}"
-                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->is('invoices*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                    class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ (request()->is('invoices*') || request('from') === 'invoice') ? 'bg-gray-700 text-brand-pink' : '' }}">
                     <i class="fas fa-file-invoice-dollar mr-3 w-5"></i> Invoices
                 </a>
                 <a href="{{ route('reports.index') }}"
@@ -134,16 +176,39 @@
                         </button>
                         <h2 class="text-xl font-semibold text-gray-700 ml-4">@yield('header')</h2>
                     </div>
-                    <div x-data="{ open: false }" class="relative">
-                        <button @click="open = !open"
+                    <div x-data="{ 
+                        open: false, 
+                        unreadCount: {{ auth()->user()->unreadNotifications->count() }},
+                        markRead() {
+                            this.open = !this.open;
+                            if (this.open && this.unreadCount > 0) {
+                                fetch('{{ route('notifications.markAsRead') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                    },
+                                }).then(() => {
+                                    this.unreadCount = 0;
+                                    // Optionally dim unread items immediately
+                                    document.querySelectorAll('.notification-item-unread').forEach(el => {
+                                        el.classList.remove('bg-blue-50', 'notification-item-unread');
+                                        el.classList.add('opacity-60');
+                                    });
+                                });
+                            }
+                        }
+                    }" class="relative">
+                        <button @click="markRead()"
                             class="relative p-2 text-gray-400 hover:text-gray-500 focus:outline-none">
                             <i class="fas fa-bell fa-lg"></i>
-                            @if(auth()->user()->unreadNotifications->count() > 0)
+                            <template x-if="unreadCount > 0">
                                 <span
-                                    class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
-                                    {{ auth()->user()->unreadNotifications->count() }}
+                                    class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full"
+                                    x-text="unreadCount">
                                 </span>
-                            @endif
+                            </template>
                         </button>
 
                         <!-- Notification Dropdown -->
@@ -151,28 +216,31 @@
                             class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-20 border border-gray-200"
                             style="display: none;">
                             <div class="py-2">
-                                <div class="px-4 py-2 border-b border-gray-200 text-sm font-semibold text-gray-700">
-                                    Notifications
+                                 <div class="px-4 py-2 border-b border-gray-200 text-sm font-semibold text-gray-700 flex justify-between items-center">
+                                    <span>Notifications</span>
+                                    @if(auth()->user()->unreadNotifications->count() > 0)
+                                        <button onclick="markAllAsRead()" class="text-xs text-brand-blue hover:underline">Mark all as read</button>
+                                    @endif
                                 </div>
-                                @forelse(auth()->user()->unreadNotifications as $notification)
-                                    <a href="{{ isset($notification->data['request_id']) ? route('customers.requests.review', $notification->data['request_id']) : (isset($notification->data['customer_id']) ? route('customers.edit', $notification->data['customer_id']) : (isset($notification->data['invoice_id']) ? route('invoices.show', $notification->data['invoice_id']) : '#')) }}"
-                                        class="block px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out border-b border-gray-100 last:border-b-0">
-                                        <p class="text-sm font-medium text-gray-900">
-                                            {{ $notification->data['message'] ?? 'New Notification' }}
-                                        </p>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            {{ $notification->created_at->diffForHumans() }}
-                                        </p>
-                                    </a>
-                                    {{ $notification->markAsRead() }}
-                                @empty
-                                    <div class="px-4 py-3 text-sm text-gray-500 text-center">
-                                        No new notifications
-                                    </div>
-                                @endforelse
+                                <div class="max-h-96 overflow-y-auto">
+                                    @forelse(auth()->user()->notifications->take(10) as $notification)
+                                        <a href="{{ isset($notification->data['deal_id']) ? route('deals.index') : (isset($notification->data['request_id']) ? route('customers.requests.review', $notification->data['request_id']) : (isset($notification->data['customer_id']) ? route('customers.edit', $notification->data['customer_id']) : (isset($notification->data['invoice_id']) ? route('invoices.show', $notification->data['invoice_id']) : '#'))) }}"
+                                            class="block px-4 py-3 hover:bg-gray-50 transition duration-150 ease-in-out border-b border-gray-100 last:border-b-0 {{ $notification->read_at ? 'opacity-60' : 'bg-blue-50 notification-item-unread' }}">
+                                            <p class="text-sm font-medium text-gray-900">
+                                                {{ $notification->data['message'] ?? 'New Notification' }}
+                                            </p>
+                                            <p class="text-xs text-gray-500 mt-1">
+                                                {{ $notification->created_at->diffForHumans() }}
+                                            </p>
+                                        </a>
+                                    @empty
+                                        <div class="px-4 py-3 text-sm text-gray-500 text-center">
+                                            No notifications
+                                        </div>
+                                    @endforelse
+                                </div>
                                 <div class="border-t border-gray-200 bg-gray-50 px-4 py-2 text-center">
-                                    <a href="#" class="text-xs font-medium text-brand-blue hover:text-brand-purple">View
-                                        all</a>
+                                    <a href="#" class="text-xs font-medium text-brand-blue hover:text-brand-purple">View all</a>
                                 </div>
                             </div>
                         </div>
@@ -202,6 +270,25 @@
         </div>
     </div>
     @stack('scripts')
+    <script>
+        function markAllAsRead() {
+            fetch('{{ route('notifications.markAsRead') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.reload();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
 </body>
 
 </html>

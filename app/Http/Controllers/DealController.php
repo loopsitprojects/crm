@@ -9,11 +9,14 @@ use App\Models\Estimate;
 use App\Models\Setting;
 use App\Models\Invoice;
 use Illuminate\Support\Str;
+use App\Notifications\DealStageChangedNotification;
+use App\Notifications\EstimateCreatedNotification;
 use App\Traits\LogsActivity;
+use App\Traits\NotifiesStakeholders;
 
 class DealController extends Controller
 {
-    use LogsActivity;
+    use LogsActivity, NotifiesStakeholders;
 
     public function index(Request $request)
     {
@@ -48,7 +51,7 @@ class DealController extends Controller
         $currentSupervisor = $user->supervisor ? $user->supervisor->name : null;
 
         // Group all deals by stage for display
-        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates'])->orderBy('updated_at', 'desc');
+        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.items'])->orderBy('updated_at', 'desc');
 
         // RBAC Filtering
         if (!in_array($userRole, ['Super Admin', 'Management'])) {
@@ -78,22 +81,97 @@ class DealController extends Controller
 
         $allDeals = $query->get();
 
-        // If HOD, we need to adjust contribution sums for metrics
-        if ($userRole === 'HOD' && $userDept) {
-            $allDeals->transform(function($deal) use ($userDept) {
+        // Adjust revenue/contribution metrics to exclude VAT and SSCL, and deduct third party costs
+        $allDeals->each(function($deal) {
+            $estimate = $deal->estimates->first();
+            if ($estimate) {
+                // Calculate total excluding VAT and SSCL: sum of amount from items
+                $preTaxTotal = $estimate->items->sum(function($item) {
+                    return (float)$item->amount;
+                });
+                
+                // Calculate third party costs
+                $thirdPartyTotal = $estimate->thirdPartyCosts->sum('cost');
+                
+                if ($preTaxTotal > 0) {
+                    $deal->revenue = $preTaxTotal;
+                    $deal->contribution = $preTaxTotal - $thirdPartyTotal;
+                }
+            }
+        });
+
+        // 3. Apply restricted visibility and split logic
+        $activeDeptForMetrics = $request->input('department') ?: (in_array($userRole, ['HOD', 'Manager']) ? $userDept : null);
+
+        $allDeals->each(function($deal) use ($user, $activeDeptForMetrics) {
+            $deptRevenue = 0;
+            $deptContribution = 0;
+            $deptInvoiced = 0;
+            $deptPaid = 0;
+
+            if ($activeDeptForMetrics) {
                 $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
-                if (is_array($splits)) {
-                    $deptContribution = 0;
+                if (is_array($splits) && !empty($splits)) {
                     foreach ($splits as $split) {
-                        if (($split['department'] ?? '') === $userDept) {
-                            $deptContribution += (float)($split['contribution_amount'] ?? 0);
+                        $splitDept = trim(strtolower($split['department'] ?? ''));
+                        $targetDept = trim(strtolower($activeDeptForMetrics));
+                        
+                        if ($splitDept === $targetDept) {
+                            $revPercent = (float)($split['revenue_percentage'] ?? 0);
+                            $conPercent = (float)($split['contribution_percentage'] ?? 0);
+                            
+                            if ($revPercent > 0) {
+                                $deptRevenue += ($deal->revenue * ($revPercent / 100));
+                            } else {
+                                $deptRevenue += (float)($split['revenue_amount'] ?? 0);
+                            }
+                            
+                            if ($conPercent > 0) {
+                                $deptContribution += ($deal->contribution * ($conPercent / 100));
+                            } else {
+                                $deptContribution += (float)($split['contribution_amount'] ?? 0);
+                            }
+
+                            // Factor invoiced/paid amounts by the revenue share ratio
+                            $totalInvoiced = 0;
+                            $totalPaid = 0;
+                            foreach ($deal->estimates as $estimate) {
+                                foreach ($estimate->invoices as $invoice) {
+                                    if (!$invoice->is_proforma) {
+                                        $totalInvoiced += $invoice->total_amount;
+                                        if ($invoice->status === 'paid') {
+                                            $totalPaid += $invoice->total_amount;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if ($deal->revenue > 0) {
+                                $ratio = $deptRevenue / $deal->revenue;
+                                $deptInvoiced += ($totalInvoiced * $ratio);
+                                $deptPaid += ($totalPaid * $ratio);
+                            }
                         }
                     }
-                    $deal->contribution = $deptContribution; // Temporarily override for index metrics
                 }
-                return $deal;
-            });
-        }
+            }
+
+            // Apply visibility: Owners and their HODs/Supervisors always see 100%. 
+            // Others (including Admin viewing a filtered dept) see the share.
+            $isOwnerCircle = ($deal->user_id === $user->id) || 
+                             ($deal->owner && $deal->owner->supervisor_id === $user->id) ||
+                             ($user->role === 'HOD' && $deal->owner && $deal->owner->department === $user->department);
+
+            if (!$isOwnerCircle) {
+                // For those outside the owner's immediate team, show the department's share if a filter is active
+                if ($activeDeptForMetrics || !in_array($user->role, ['Super Admin', 'Management'])) {
+                    $deal->dept_share_revenue = $deptRevenue;
+                    $deal->dept_share_contribution = $deptContribution;
+                    $deal->dept_share_invoiced = $deptInvoiced;
+                    $deal->dept_share_paid = $deptPaid;
+                }
+            }
+        });
 
         // Group all deals by stage for counts
         $dealsByStage = $allDeals->groupBy('stage');
@@ -106,33 +184,68 @@ class DealController extends Controller
             ->where('id', '!=', $user->id)
             ->get();
 
+        // Helpers to get contribution/revenue/invoiced/paid for metrics (respects departmental share for HODs)
+        $getMetricRevenue = function($deal) {
+            return isset($deal->dept_share_revenue) ? $deal->dept_share_revenue : ($deal->revenue ?? 0);
+        };
+        $getMetricContribution = function($deal) {
+            return isset($deal->dept_share_contribution) ? $deal->dept_share_contribution : ($deal->contribution ?? 0);
+        };
+        $getMetricInvoiced = function($deal) {
+            if (isset($deal->dept_share_invoiced)) {
+                return $deal->dept_share_invoiced;
+            }
+            // If not HOD, calculate total invoiced for this deal
+            $total = 0;
+            foreach ($deal->estimates as $estimate) {
+                foreach ($estimate->invoices as $invoice) {
+                    if (!$invoice->is_proforma) $total += $invoice->total_amount;
+                }
+            }
+            return $total;
+        };
+        $getMetricPaid = function($deal) {
+            if (isset($deal->dept_share_paid)) {
+                return $deal->dept_share_paid;
+            }
+            // If not HOD, calculate total paid for this deal
+            $total = 0;
+            foreach ($deal->estimates as $estimate) {
+                foreach ($estimate->invoices as $invoice) {
+                    if (!$invoice->is_proforma && $invoice->status === 'paid') $total += $invoice->total_amount;
+                }
+            }
+            return $total;
+        };
+
         // Calculate metrics
         $openDeals = $allDeals->whereNotIn('stage', ['Rejected', 'Closed Won']);
 
         // Weighted Deal Amount: sum of (amount × probability) for open deals
-        $weightedDealAmount = $openDeals->sum(function ($deal) use ($stageProbabilities) {
+        $weightedDealAmount = $openDeals->sum(function ($deal) use ($stageProbabilities, $getMetricRevenue) {
             $probability = $stageProbabilities[$deal->stage] ?? 0;
-            return $deal->revenue * $probability;
+            return $getMetricRevenue($deal) * $probability;
         });
 
         // Weighted Contribution Amount
-        $weightedContributionAmount = $openDeals->sum(function ($deal) use ($stageProbabilities) {
+        $weightedContributionAmount = $openDeals->sum(function ($deal) use ($stageProbabilities, $getMetricContribution) {
             $probability = $stageProbabilities[$deal->stage] ?? 0;
-            return ($deal->contribution ?? 0) * $probability;
+            return $getMetricContribution($deal) * $probability;
         });
 
         // Approved Deal Revenue: sum of revenue for approved deals
-        $approvedDealRevenue = $allDeals->where('stage', 'Closed Won')->sum('revenue');
-        $approvedDealContribution = $allDeals->where('stage', 'Closed Won')->sum('contribution');
+        $approvedDealRevenue = $allDeals->where('stage', 'Closed Won')->sum($getMetricRevenue);
+        $approvedDealContribution = $allDeals->where('stage', 'Closed Won')->sum($getMetricContribution);
 
-        // Total Project Contribution
-        $totalProjectContribution = $allDeals->sum('contribution');
+        // Total Project Revenue & Contribution
+        $totalProjectRevenue = $allDeals->sum($getMetricRevenue);
+        $totalProjectContribution = $allDeals->sum($getMetricContribution);
 
         // New Deal Revenue: sum of revenue for deals created in last 30 days
         $thirtyDaysAgo = now()->subDays(30);
         $newDeals = $allDeals->where('created_at', '>=', $thirtyDaysAgo);
-        $newDealRevenue = $newDeals->sum('revenue');
-        $newDealContribution = $newDeals->sum('contribution');
+        $newDealRevenue = $newDeals->sum($getMetricRevenue);
+        $newDealContribution = $newDeals->sum($getMetricContribution);
 
         // Average Deal Age: average days since creation for open deals
         $averageDealAge = $openDeals->count() > 0
@@ -141,15 +254,9 @@ class DealController extends Controller
             }))
             : 0;
 
-        // Invoiced Amount: Sum of total_amount from invoices linked to deals
-        $invoicedAmount = Invoice::whereHas('estimate', function ($q) {
-            $q->whereNotNull('deal_id');
-        })->where('is_proforma', false)->sum('total_amount');
-
-        // Payment Collected: Sum of total_amount from paid invoices linked to deals
-        $paymentCollected = Invoice::whereHas('estimate', function ($q) {
-            $q->whereNotNull('deal_id');
-        })->where('status', 'paid')->where('is_proforma', false)->sum('total_amount');
+        // Invoiced Amount & Payment Collected
+        $invoicedAmount = $allDeals->sum($getMetricInvoiced);
+        $paymentCollected = $allDeals->sum($getMetricPaid);
 
         return view('deals.index', compact(
             'stages',
@@ -161,6 +268,7 @@ class DealController extends Controller
             'weightedContributionAmount',
             'approvedDealRevenue',
             'approvedDealContribution',
+            'totalProjectRevenue',
             'totalProjectContribution',
             'newDealRevenue',
             'newDealContribution',
@@ -169,7 +277,8 @@ class DealController extends Controller
             'paymentCollected',
             'usersByDepartment',
             'seniorManagers',
-            'currentSupervisor'
+            'currentSupervisor',
+            'allDeals'
         ));
     }
 
@@ -186,30 +295,16 @@ class DealController extends Controller
             'user_id' => 'nullable|exists:users,id', // Deal Owner
             'type' => 'nullable|string|max:255', // New/Existing Business
             'priority' => 'nullable|string|max:255', // Low, Medium, High
-            'close_date' => 'nullable|date',
-            'customer_id' => 'nullable|string',
+            'close_date' => 'required|date',
+            'customer_id' => 'required|exists:customers,id',
             'customer_name' => 'nullable|string',
-            'customer_email' => 'nullable|email',
             'customer_phone' => 'nullable|string',
             'rejection_reason' => 'nullable|string',
             'senior_manager' => 'nullable|string|max:255',
         ]);
 
-        if ($request->customer_id) {
-            if (is_numeric($request->customer_id)) {
-                $customer = \App\Models\Customer::find($request->customer_id);
-                if ($customer) {
-                    $validated['customer_id'] = $customer->id;
-                    $validated['customer_name'] = $customer->name;
-                } else {
-                    $validated['customer_name'] = $request->customer_id;
-                    $validated['customer_id'] = null;
-                }
-            } else {
-                $validated['customer_name'] = $request->customer_id;
-                $validated['customer_id'] = null;
-            }
-        }
+        $customer = \App\Models\Customer::find($validated['customer_id']);
+        $validated['customer_name'] = $customer->name;
 
         $stageProbs = [
             'Planned to Meet' => 10,
@@ -229,11 +324,48 @@ class DealController extends Controller
 
         // Handle department allocations
         if ($request->has('department_allocations')) {
-            $deal->department_split = json_encode($request->department_allocations);
+            $allocations = collect($request->department_allocations)->map(function($alloc) {
+                if (isset($alloc['department'])) {
+                    $alloc['department'] = trim($alloc['department']);
+                }
+                return $alloc;
+            })->toArray();
+            $deal->department_split = json_encode($allocations);
             $deal->save();
+
+            // Notify users in these departments
+            foreach ($allocations as $alloc) {
+                $dept = $alloc['department'] ?? null;
+                if ($dept) {
+                    $deptUsers = \App\Models\User::where('department', $dept)->get();
+                    foreach ($deptUsers as $deptUser) {
+                        if ($deptUser->id !== auth()->id()) {
+                            $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($request->has('team_members')) {
+            $deal->teamMembers()->sync($request->team_members);
+            
+            $usersToNotify = \App\Models\User::whereIn('id', $request->team_members)->get();
+            foreach ($usersToNotify as $userToNotify) {
+                if ($userToNotify->id !== auth()->id()) {
+                    $userToNotify->notify(new \App\Notifications\DealAssignedNotification($deal, 'Team Member', auth()->user()));
+                }
+            }
         }
 
         $this->logAction("Created deal: {$deal->title}", $deal);
+
+        if ($deal->senior_manager) {
+            $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
+            if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
+                $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+            }
+        }
 
         return back()->with('success', 'Deal created successfully.');
     }
@@ -254,29 +386,21 @@ class DealController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'type' => 'nullable|string|max:255',
             'priority' => 'nullable|string|max:255',
-            'close_date' => 'nullable|date',
-            'customer_id' => 'nullable|string',
+            'close_date' => 'required|date',
+            'customer_id' => 'required|exists:customers,id',
             'customer_name' => 'nullable|string',
-            'customer_email' => 'nullable|email',
             'customer_phone' => 'nullable|string',
             'rejection_reason' => 'nullable|string',
             'senior_manager' => 'nullable|string|max:255',
         ]);
 
-        if ($request->customer_id) {
-            if (is_numeric($request->customer_id)) {
-                $customer = \App\Models\Customer::find($request->customer_id);
-                if ($customer) {
-                    $validated['customer_id'] = $customer->id;
-                    $validated['customer_name'] = $customer->name;
-                } else {
-                    $validated['customer_name'] = $request->customer_id;
-                    $validated['customer_id'] = null;
-                }
-            } else {
-                $validated['customer_name'] = $request->customer_id;
-                $validated['customer_id'] = null;
-            }
+        $customer = \App\Models\Customer::find($validated['customer_id']);
+        $validated['customer_name'] = $customer->name;
+
+        // Restriction: can't go to 'Finalizing terms' or 'Closed Won' without an estimate
+        $postObjectionStages = ['Finalizing terms', 'Closed Won'];
+        if (in_array($validated['stage'], $postObjectionStages) && !$deal->estimates()->exists()) {
+            return back()->with('error', 'An estimate must be created before moving to ' . $validated['stage'] . '.');
         }
 
         // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
@@ -300,12 +424,39 @@ class DealController extends Controller
         ];
         $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
 
+        $oldStage = $deal->stage;
+        $oldSeniorManager = $deal->senior_manager;
         $deal->update($validated);
 
         // Handle department allocations
+        $oldDepartments = [];
+        if ($deal->department_split) {
+            $oldSplits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+            $oldDepartments = collect($oldSplits)->pluck('department')->filter()->toArray();
+        }
+
         if ($request->has('department_allocations')) {
-            $deal->department_split = json_encode($request->department_allocations);
+            $allocations = collect($request->department_allocations)->map(function($alloc) {
+                if (isset($alloc['department'])) {
+                    $alloc['department'] = trim($alloc['department']);
+                }
+                return $alloc;
+            })->toArray();
+
+            $newDepartments = collect($allocations)->pluck('department')->filter()->diff($oldDepartments)->toArray();
+
+            $deal->department_split = json_encode($allocations);
             $deal->save();
+
+            // Notify only newly added departments
+            foreach ($newDepartments as $dept) {
+                $deptUsers = \App\Models\User::where('department', $dept)->get();
+                foreach ($deptUsers as $deptUser) {
+                    if ($deptUser->id !== auth()->id()) {
+                        $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+                    }
+                }
+            }
         } elseif ($request->has('department_allocations_cleared')) {
             // Handle clearing if no allocations are sent but field was modified
             $deal->department_split = null;
@@ -313,15 +464,40 @@ class DealController extends Controller
         }
 
         if ($request->has('team_members')) {
+            $existingTeamMembers = $deal->teamMembers->pluck('id')->toArray();
+            $newTeamMembers = array_diff($request->team_members, $existingTeamMembers);
+
             $teamData = [];
             foreach ($request->team_members as $userId) {
                 $costAllocation = $request->input("cost_allocation.{$userId}", 0);
                 $teamData[$userId] = ['cost_allocation' => $costAllocation];
             }
             $deal->teamMembers()->sync($teamData);
+
+            if (!empty($newTeamMembers)) {
+                $usersToNotify = \App\Models\User::whereIn('id', $newTeamMembers)->get();
+                foreach ($usersToNotify as $userToNotify) {
+                    if ($userToNotify->id !== auth()->id()) {
+                        $userToNotify->notify(new \App\Notifications\DealAssignedNotification($deal, 'Team Member', auth()->user()));
+                    }
+                }
+            }
+        }
+
+        if ($deal->senior_manager && $deal->senior_manager !== $oldSeniorManager) {
+            $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
+            if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
+                $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+            }
         }
 
         $this->logAction("Updated deal: {$deal->title}", $deal);
+        
+        if ($deal->stage !== $oldStage) {
+            $this->notifyStakeholders($deal, new \App\Notifications\DealStageChangedNotification($deal, $oldStage, $deal->stage, auth()->user()));
+        } else {
+            $this->notifyStakeholders($deal);
+        }
 
         return back()->with('success', 'Deal updated successfully.');
     }
@@ -348,6 +524,12 @@ class DealController extends Controller
             'rejection_reason' => 'nullable|string'
         ]);
 
+        // Restriction: can't go to 'Finalizing terms' or 'Closed Won' without an estimate
+        $postObjectionStages = ['Finalizing terms', 'Closed Won'];
+        if (in_array($validated['stage'], $postObjectionStages) && !$deal->estimates()->exists()) {
+            return response()->json(['message' => 'An estimate must be created before moving to this stage.'], 422);
+        }
+
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages
@@ -371,7 +553,31 @@ class DealController extends Controller
             ];
             $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
 
+            // Restriction: can't move away from 'Closed Won' if an estimate is already ready to invoice or invoiced
+            if ($deal->stage === 'Closed Won' && $validated['stage'] !== 'Closed Won') {
+                $hasLockedEstimate = $deal->estimates()->whereIn('status', ['ready_to_invoice', 'invoiced'])->exists();
+                if ($hasLockedEstimate) {
+                    return response()->json(['message' => 'Closed Won deals cannot be moved back once an estimate is ready to invoice.'], 422);
+                }
+            }
+
+            $oldStage = $deal->stage;
             $deal->update($validated);
+            $this->notifyStakeholders($deal, new DealStageChangedNotification($deal, $oldStage, $validated['stage'], auth()->user()));
+
+            // Sync revenue and contribution if moving to 'Closed Won'
+            if ($validated['stage'] === 'Closed Won') {
+                $estimate = $deal->estimates->first();
+                if ($estimate) {
+                    $preTaxTotal = $estimate->items->sum('amount');
+                    $thirdPartyTotal = $estimate->thirdPartyCosts->sum('cost');
+                    
+                    $deal->update([
+                        'revenue' => $preTaxTotal,
+                        'contribution' => $preTaxTotal - $thirdPartyTotal
+                    ]);
+                }
+            }
 
             if ($request->has('team_members')) {
                 $deal->teamMembers()->sync($request->team_members);
@@ -400,12 +606,14 @@ class DealController extends Controller
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            $this->createEstimateFromDeal($deal);
+            $estimate = $this->createEstimateFromDeal($deal);
             \Illuminate\Support\Facades\DB::commit();
+
+            $this->notifyStakeholders($deal, new EstimateCreatedNotification($estimate, $deal, auth()->user()));
 
             return response()->json([
                 'message' => 'Estimate draft created successfully.',
-                'redirect' => route('estimates.index')
+                'redirect' => route('estimates.edit', $estimate->id)
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
@@ -433,13 +641,14 @@ class DealController extends Controller
 
         $estimate = Estimate::create([
             'customer_id' => $customerId,
+            'user_id' => $deal->user_id,
             'deal_id' => $deal->id,
             'reference_number' => Estimate::generateReferenceNumber(),
             'date' => now(),
             'status' => 'draft',
             'total_amount' => $deal->revenue,
             'currency' => 'LKR',
-            'heading' => 'Estimate for ' . $deal->title,
+            'heading' => $deal->title,
             'senior_manager' => $deal->senior_manager ?? ($deal->owner->name ?? null),
             'terms' => Setting::get('standard_terms', 'Standard business terms apply.')
         ]);
@@ -454,46 +663,12 @@ class DealController extends Controller
             'total_with_vat' => $deal->revenue,
             'sscl_amount' => 0
         ]);
-    }
 
+        return $estimate;
+    }
     private function checkDealAccess(Deal $deal)
     {
-        $user = auth()->user();
-        if (in_array($user->role, ['Super Admin', 'Management'])) {
-            return true;
-        }
-
-        // Check if owner
-        if ($deal->user_id === $user->id) {
-            return true;
-        }
-
-        // Check if team member
-        if ($deal->teamMembers()->where('users.id', $user->id)->exists()) {
-            return true;
-        }
-
-        // HOD specific
-        if ($user->role === 'HOD') {
-            // Department split check
-            if ($user->department) {
-                $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
-                if (is_array($splits)) {
-                    foreach ($splits as $split) {
-                        if (($split['department'] ?? '') === $user->department) {
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            // Subordinate owner check
-            if ($deal->owner && $deal->owner->supervisor_id === $user->id) {
-                return true;
-            }
-        }
-
-        return false;
+        return $deal->canEdit();
     }
 
 }

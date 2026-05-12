@@ -41,7 +41,8 @@
                     </div>
                 </div>
 
-                <!-- Column 2: Department -->
+                <!-- Column 2: Department (Only for Admins/Management) -->
+                @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Management'))
                 <div class="space-y-2">
                     <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Department / Category</label>
                     <select name="department" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
@@ -51,6 +52,7 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
 
                 <!-- Column 3: Customer & Stage -->
                 <div class="space-y-2">
@@ -72,6 +74,10 @@
                     <button type="submit" class="flex-1 px-4 py-2 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95 h-[38px]">
                         <i class="fas fa-sync-alt mr-1"></i> Update
                     </button>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'deals'])) }}" 
+                       class="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all text-center flex items-center h-[38px] shadow-md border border-emerald-500">
+                        <i class="fas fa-file-csv mr-1"></i> Export Deals
+                    </a>
                     <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all text-center flex items-center h-[38px]">
                         Reset
                     </a>
@@ -80,12 +86,57 @@
         </form>
     </div>
 
-    <!-- Removed Summary Tabs section as requested -->
+    <!-- Quick Insights (Added for HOD/Managers) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a href="{{ route('reports.index', array_merge(request()->query(), ['report_type' => 'pending'])) }}" 
+           class="group p-6 rounded-2xl border-2 transition-all duration-300 {{ $reportType === 'pending' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:border-indigo-100 hover:shadow-md' }}">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl {{ $reportType === 'pending' ? 'bg-indigo-500 text-white' : 'bg-indigo-50 text-indigo-500 group-hover:bg-indigo-500 group-hover:text-white' }} transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <span class="text-2xl font-black {{ $reportType === 'pending' ? 'text-indigo-600' : 'text-slate-800' }}">{{ number_format($pendingCount) }}</span>
+            </div>
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Pending Deals</h3>
+            <p class="text-xs text-gray-500 mt-1">Deals requiring follow-up or negotiation.</p>
+        </a>
+
+        <a href="{{ route('reports.index', array_merge(request()->query(), ['report_type' => 'complete'])) }}" 
+           class="group p-6 rounded-2xl border-2 transition-all duration-300 {{ $reportType === 'complete' ? 'bg-emerald-50 border-emerald-200 shadow-sm' : 'bg-white border-transparent hover:border-emerald-100 hover:shadow-md' }}">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl {{ $reportType === 'complete' ? 'bg-emerald-500 text-white' : 'bg-emerald-50 text-emerald-500 group-hover:bg-emerald-500 group-hover:text-white' }} transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <span class="text-2xl font-black {{ $reportType === 'complete' ? 'text-emerald-600' : 'text-slate-800' }}">{{ number_format($completeCount) }}</span>
+            </div>
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Complete Deals</h3>
+            <p class="text-xs text-gray-500 mt-1">Successfully closed won projects.</p>
+        </a>
+
+        <a href="{{ route('reports.index', array_merge(request()->query(), ['report_type' => 'deadlines'])) }}" 
+           class="group p-6 rounded-2xl border-2 transition-all duration-300 {{ $reportType === 'deadlines' ? 'bg-amber-50 border-amber-200 shadow-sm' : 'bg-white border-transparent hover:border-amber-100 hover:shadow-md' }}">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl {{ $reportType === 'deadlines' ? 'bg-amber-500 text-white' : 'bg-amber-50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white' }} transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <span class="text-2xl font-black {{ $reportType === 'deadlines' ? 'text-amber-600' : 'text-slate-800' }}">{{ number_format($deadlineCount) }}</span>
+            </div>
+            <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Project Deadlines</h3>
+            <p class="text-xs text-gray-500 mt-1">Upcoming project estimated closing dates.</p>
+        </a>
+    </div>
+
+    <!-- Original Sections -->
 
 
     <!-- Removed Detailed Report section as requested -->
 
-    <!-- Detailed Report Section -->
+    <!-- Detailed Report Section (Invoices) -->
     @include('reports.partials.detailed_report')
 
     <!-- Charts & Detailed Lists -->
@@ -131,7 +182,7 @@
                             </div>
                             <div class="text-right">
                                 <span class="text-xs font-black text-slate-800">
-                                    LKR {{ number_format($stage->total, 0) }}
+                                    {{ $dealsByStage->pluck('currency')->unique()->count() === 1 ? ($dealsByStage->first()->currency ?? 'LKR') : 'LKR' }} {{ number_format($stage->total, 2) }}
                                 </span>
                                 <span class="text-[10px] text-gray-400 ml-1">({{ $stage->count }} deals)</span>
                             </div>

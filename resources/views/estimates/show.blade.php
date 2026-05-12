@@ -1,5 +1,36 @@
 @extends('layouts.app')
 
+@push('head')
+<style>
+    .quill-content h1 {
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 700; /* font-bold */
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content h2 {
+        font-size: 1rem; /* text-base */
+        font-weight: 600; /* font-semibold */
+        font-style: italic;
+        margin-bottom: 0.25rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .quill-content p {
+        margin-bottom: 0.25rem;
+    }
+    /* Reset margins for first and last children to keep table cells neat */
+    .quill-content > *:first-child { margin-top: 0; }
+    .quill-content > *:last-child { margin-bottom: 0; }
+</style>
+@endpush
+
 @section('header')
     <div class="flex justify-between items-center no-print px-4 py-2 bg-gray-100 border-b border-gray-200">
         <span class="font-semibold text-gray-700">Estimate Preview</span>
@@ -74,7 +105,7 @@
                                 @if($estimate->address_line_3)
                                 <p>{{ $estimate->address_line_3 }}</p> @endif
                                 @if(!$estimate->address_line_1)
-                                <p>{{ $estimate->customer->address }}</p> @endif
+                                <p>{{ $estimate->customer->billing_address ?: $estimate->customer->address }}</p> @endif
                             </div>
                         </div>
                     </div>
@@ -100,16 +131,17 @@
                 <tbody class="text-sm">
                     @foreach($estimate->items as $item)
                         <tr class="border-b border-gray-50">
-                            <td class="py-4 pr-4">
-                                <p class="font-medium text-gray-800">{{ $item->description }}</p>
+                            <td class="py-4 pr-4 pl-2">
+                                <div class="quill-content text-gray-800">
+                                    {!! $item->description !!}
+                                </div>
                                 @if($item->locations)
-                                    <p class="text-xs text-gray-500 mt-0.5"><b>Loc:</b> {{ $item->locations }}</p>
+                                    <p class="text-xs text-gray-500 mt-1"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
-                            <td class="py-4 text-right text-gray-600">{{ number_format($item->unit_price + $item->sscl_amount, 2) }}</td>
-                            <td class="py-4 text-right text-gray-600">{{ number_format($item->vat_amount, 2) }}</td>
-                            <td class="py-4 text-right font-medium text-gray-800">{{ number_format($item->total_with_vat, 2) }}
-                            </td>
+                            <td class="py-4 text-right text-gray-600 align-top font-mono">{{ number_format($item->unit_price + $item->sscl_amount, 2) }}</td>
+                            <td class="py-4 text-right text-gray-600 align-top font-mono">{{ number_format($item->vat_amount, 2) }}</td>
+                            <td class="py-4 text-right font-medium text-gray-800 align-top font-mono">{{ number_format($item->total_with_vat, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -146,6 +178,8 @@
                         </div>
                     @endif
 
+
+
                 </div>
 
                 <!-- Right: Summary -->
@@ -162,7 +196,7 @@
 
                         @if($totalVAT > 0)
                             <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                <span>VAT ({{ \App\Models\Setting::get('vat_rate', 15) }}%)</span>
+                                <span>VAT ({{ number_format(\App\Models\Setting::get('vat_rate', 15), 2) }}%)</span>
                                 <span class="font-medium">{{ number_format($totalVAT, 2) }}</span>
                             </div>
                         @endif
@@ -186,23 +220,46 @@
     </div>
 
     <style>
+        /* Base styles for BOTH screen and print to ensure perfect match */
+        #invoice-container { 
+            background-color: #fff !important;
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+        }
+
+        @media screen {
+            body { background: #f3f4f6; }
+            #invoice-container { 
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                border: 1px solid #e5e7eb;
+            }
+        }
+
+        @page {
+            size: A4;
+            margin: 0mm;
+        }
+
         @media print {
-            body {
-                background: white;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            body * { visibility: hidden; }
+            #invoice-container, #invoice-container * { 
+                visibility: visible; 
             }
-
-            #invoice-container {
-                box-shadow: none;
-                margin: 0;
-                width: 100%;
-                max-width: none;
+            #invoice-container { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 210mm !important; 
+                margin: 0 !important; 
+                padding: 48px !important; 
+                box-sizing: border-box; 
+                box-shadow: none !important; 
+                border: none !important;
+                min-height: 297mm !important;
+                height: auto !important;
             }
-
-            .no-print {
-                display: none;
-            }
+            .no-print { display: none !important; }
         }
     </style>
 @endsection

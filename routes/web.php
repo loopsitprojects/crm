@@ -19,6 +19,11 @@ Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/notifications/mark-as-read', function () {
+        auth()->user()->unreadNotifications->markAsRead();
+        return response()->json(['success' => true]);
+    })->name('notifications.markAsRead');
+    Route::get('/dashboard/export', [DashboardController::class, 'exportCsv'])->name('dashboard.export');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [ReportController::class, 'exportCsv'])->name('reports.export');
     Route::get('/', function () {
@@ -75,6 +80,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
         Route::post('settings/general', [SettingController::class, 'updateGeneral'])->name('settings.updateGeneral');
         Route::post('settings/tax', [SettingController::class, 'updateTax'])->name('settings.updateTax');
+        Route::post('settings/department-targets', [SettingController::class, 'updateDepartmentTargets'])->name('settings.updateDepartmentTargets');
+        Route::post('settings/user-targets', [SettingController::class, 'updateUserTargets'])->name('settings.updateUserTargets');
+        
         Route::post('settings/managers', [SettingController::class, 'storeManager'])->name('settings.storeManager');
         Route::get('settings/managers/{manager}/delete', [SettingController::class, 'destroyManager'])->name('settings.destroyManager.get');
         Route::delete('settings/managers/{manager}', [SettingController::class, 'destroyManager'])->name('settings.destroyManager');

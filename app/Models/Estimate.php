@@ -10,6 +10,7 @@ class Estimate extends Model
 
     protected $fillable = [
         'customer_id',
+        'user_id',
         'deal_id',
         'brand_name',
         'reference_number',
@@ -35,7 +36,10 @@ class Estimate extends Model
         'senior_manager',
         'additional_notes',
         'sscl_applicable',
-        'vat_applicable'
+        'vat_applicable',
+        'po_applicable',
+        'po_number',
+        'po_file_path'
     ];
 
     public function customer()
@@ -43,9 +47,14 @@ class Estimate extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function invoice()
+    public function user()
     {
-        return $this->hasOne(Invoice::class, 'quotation_id');
+        return $this->belongsTo(User::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'quotation_id');
     }
 
     public function items()
@@ -61,6 +70,23 @@ class Estimate extends Model
     public function deal()
     {
         return $this->belongsTo(Deal::class);
+    }
+
+    /**
+     * Check if a specific user can edit this estimate.
+     */
+    public function canEdit($user = null)
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return false;
+
+        // If it's linked to a deal, follow the deal's edit permissions
+        if ($this->deal) {
+            return $this->deal->canEdit($user);
+        }
+
+        // Fallback for standalone estimates (if any)
+        return $this->user_id === $user->id || $user->hasRole('Super Admin') || $user->hasRole('Management');
     }
 
 

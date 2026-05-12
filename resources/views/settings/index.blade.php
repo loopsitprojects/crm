@@ -32,7 +32,7 @@
                 <button onclick="showSection('targets')"
                     class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
                     id="btn-targets">
-                    <i class="fas fa-bullseye mr-2 text-red-500"></i> Monthly Targets
+                    <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
                 </button>
                 @if(auth()->user()->hasRole('super_admin'))
                     <button onclick="showSection('currencies')"
@@ -167,7 +167,7 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">SSCL Rate (%)</label>
                                     <div class="relative rounded-md shadow-sm">
-                                        <input type="number" step="0.01" name="sscl_rate"
+                                        <input type="number" step="0.0001" name="sscl_rate"
                                             value="{{ \App\Models\Setting::get('sscl_rate', 2.5) }}"
                                             class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm pr-8">
                                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -269,36 +269,70 @@
 
                 </section>
                 
-                <!-- Monthly Targets Section -->
+                <!-- Targets Section -->
                 <section id="section-targets" class="settings-section hidden space-y-6">
-                    <form action="{{ route('settings.updateGeneral') }}" method="POST">
-                        @csrf
-                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                                <h3 class="text-lg font-bold text-gray-800">Monthly Revenue Targets</h3>
-                                <button type="submit"
-                                    class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
-                                    Save Targets
-                                </button>
-                            </div>
-                            <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">SBU Target (LKR)</label>
-                                    <input type="number" name="target_sbu"
-                                        value="{{ \App\Models\Setting::get('target_sbu', 0) }}"
-                                        class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                    <p class="mt-1 text-xs text-gray-500">Target for Creative, Digital, and Tech departments.</p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sales Target (LKR)</label>
-                                    <input type="number" name="target_sales"
-                                        value="{{ \App\Models\Setting::get('target_sales', 0) }}"
-                                        class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                    <p class="mt-1 text-xs text-gray-500">Target for AM and BD departments.</p>
-                                </div>
-                            </div>
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                            <h3 class="text-lg font-bold text-gray-800">Department Targets (LKR)</h3>
                         </div>
-                    </form>
+                        <div class="p-6">
+                            <form action="{{ route('settings.updateDepartmentTargets') }}" method="POST">
+                                @csrf
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    @php
+                                        $departments = [];
+                                        foreach (\App\Models\User::DEPARTMENT_HIERARCHY as $group) {
+                                            $departments = array_merge($departments, array_keys($group));
+                                        }
+                                    @endphp
+                                    @foreach($departments as $dept)
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $dept }}</label>
+                                            <input type="number" step="0.01" name="targets[{{ $dept }}]"
+                                                value="{{ isset($departmentTargets[$dept]) ? $departmentTargets[$dept]->target_amount : 0 }}"
+                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-6 flex justify-end">
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
+                                        Save Department Targets
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden mt-8">
+                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                            <h3 class="text-lg font-bold text-gray-800">User Targets (LKR)</h3>
+                        </div>
+                        <div class="p-6">
+                            <form action="{{ route('settings.updateUserTargets') }}" method="POST">
+                                @csrf
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    @foreach($users as $user)
+                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <label class="block text-sm font-medium text-gray-800 mb-1">
+                                                {{ $user->name }}
+                                                <span class="text-xs text-brand-blue block">{{ $user->department ?? 'No Dept' }}</span>
+                                            </label>
+                                            <input type="number" step="0.01" name="targets[{{ $user->id }}]"
+                                                value="{{ isset($userTargets[$user->id]) ? $userTargets[$user->id]->target_amount : 0 }}"
+                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm mt-2">
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-6 flex justify-end">
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
+                                        Save User Targets
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- Currency Management Section (Super Admin Only) -->

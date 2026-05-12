@@ -1,5 +1,36 @@
 @extends('layouts.app')
 
+@push('head')
+<style>
+    .quill-content h1 {
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 700; /* font-bold */
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content h2 {
+        font-size: 1rem; /* text-base */
+        font-weight: 600; /* font-semibold */
+        font-style: italic;
+        margin-bottom: 0.25rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .quill-content p {
+        margin-bottom: 0.25rem;
+    }
+    /* Reset margins for first and last children to keep table cells neat */
+    .quill-content > *:first-child { margin-top: 0; }
+    .quill-content > *:last-child { margin-bottom: 0; }
+</style>
+@endpush
+
 @section('header')
     <div class="flex justify-between items-center no-print">
         <span>Invoice Details</span>
@@ -21,69 +52,69 @@
 @endsection
 
 @section('content')
-    <!-- Top Text OUTSIDE the box -->
-    <div class="max-w-4xl mx-auto flex justify-between items-center text-[10px] sm:text-[11px] font-bold text-black mb-1 px-1 print:hidden">
-        <div>{{ \Carbon\Carbon::now()->format('n/j/y, g:i A') }}</div>
-        <div>Invoice System</div>
-    </div>
 
     <!-- MAIN BORDERED CONTAINER -->
     <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8" id="invoice-container">
         
-        <!-- Center Title -->
-        <div class="flex justify-center mb-[20px] mt-2">
-            <div class="border border-black px-12 py-2 bg-white font-bold text-[17px] uppercase tracking-wide">
-                {{ $invoice->is_proforma ? 'PROFORMA INVOICE' : 'TAX INVOICE' }}
+        <!-- Header with Logo for Proforma -->
+        <div class="flex justify-between items-center mb-[20px] mt-2">
+            <div class="w-1/3">
+                <img src="{{ asset('images/logo_loops.png') }}" alt="Loops Logo" class="h-12 w-auto">
             </div>
+            <div class="w-1/3 flex justify-center">
+                <div class="border border-black px-12 py-2 bg-white font-bold text-[17px] uppercase tracking-wide whitespace-nowrap">
+                    {{ $invoice->is_proforma ? 'PROFORMA INVOICE' : 'TAX INVOICE' }}
+                </div>
+            </div>
+            <div class="w-1/3"></div>
         </div>
 
-        <!-- THE MAIN GRID -->
-        <div class="flex flex-col border border-black bg-white">
-            <!-- Top Header Boxes -->
-            <div class="flex border-b border-black">
-                <div class="w-1/2 border-r border-black p-3 flex items-center">
-                    <span class="font-bold mr-2">Date of Invoice:</span> <span>{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
+        <!-- THE MAIN GRID USING EXPLICIT BORDERS FOR BULLETPROOF PRINTING -->
+        <div class="border-t border-l border-black">
+            <!-- Top Section: 2 Columns -->
+            <div class="flex">
+                <div class="w-1/2 p-3 border-r border-b border-black flex items-center">
+                    <span class="font-bold mr-2 text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
                 </div>
-                <div class="w-1/2 p-3 flex items-center">
-                    <span class="font-bold mr-2">Tax Invoice No.:</span> <span>{{ $invoice->invoice_number }}</span>
+                <div class="w-1/2 p-3 border-r border-b border-black flex items-center">
+                    <span class="font-bold mr-2 text-[13px]">{{ $invoice->is_proforma ? 'Proforma Invoice No.:' : 'Tax Invoice No.:' }}</span> <span class="text-[13px]">{{ $invoice->invoice_number }}</span>
                 </div>
             </div>
 
-            <!-- Supplier & Purchaser Boxes -->
-            <div class="flex border-b border-black min-h-[140px] bg-white">
-                <div class="w-1/2 border-r border-black p-3 flex flex-col justify-between">
+            <!-- Supplier & Purchaser Section -->
+            <div class="flex">
+                <div class="w-1/2 p-3 border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
-                        <div><span class="font-bold">Supplier's TIN:</span> 10246299 - 7000</div>
-                        <div><span class="font-bold">Supplier's Name:</span> Loops Digital (Pvt) Ltd</div>
-                        <div><span class="font-bold">Address:</span> 291, Soloman Terrace, Colombo 05, Sri Lanka</div>
+                        <div><span class="font-bold text-[13px]">Supplier's TIN:</span> 10246299 - 7000</div>
+                        <div><span class="font-bold text-[13px]">Supplier's Name:</span> Loops Digital (Pvt) Ltd</div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">291, Soloman Terrace, Colombo 05, Sri Lanka</span></div>
                     </div>
-                    <div class="mt-3"><span class="font-bold">Telephone No:</span> +94 112 581 689</div>
+                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> +94 112 581 689</div>
                 </div>
-                
-                <div class="w-1/2 p-3 flex flex-col justify-between">
+                <div class="w-1/2 p-3 border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
-                        <div><span class="font-bold">Purchaser's TIN:</span> {{ $invoice->customer->customer_vat_registration_number ?? 'N/A' }}</div>
-                        <div><span class="font-bold">Purchaser's Name:</span> {{ $invoice->customer->name }}</div>
-                        <div><span class="font-bold">Address:</span> {{ $invoice->customer->address }}</div>
+                        <div><span class="font-bold text-[13px]">Purchaser's TIN:</span> {{ $invoice->customer->customer_vat_registration_number ?? 'N/A' }}</div>
+                        <div><span class="font-bold text-[13px]">Purchaser's Name:</span> {{ $invoice->customer->name }}</div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">{{ $invoice->customer->billing_address ?: $invoice->customer->address }}</span></div>
                     </div>
-                    <div class="mt-3"><span class="font-bold">Telephone No:</span> {{ $invoice->customer->phone }}</div>
+                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> {{ $invoice->customer->telephone ?: $invoice->customer->phone }}</div>
                 </div>
             </div>
 
-            <!-- Delivery & Supply Boxes -->
-            <div class="flex border-b border-black bg-white">
-                <div class="w-1/2 border-r border-black p-3">
-                    <span class="font-bold">Date of Delivery:</span> N/A
+            <!-- Delivery & Supply Section -->
+            <div class="flex">
+                <div class="w-1/2 p-3 border-r border-b border-black">
+                    <span class="font-bold text-[13px]">Date of Delivery:</span> N/A
                 </div>
-                <div class="w-1/2 p-3">
-                    <span class="font-bold">Place of Supply:</span> N/A
+                <div class="w-1/2 p-3 border-r border-b border-black">
+                    <span class="font-bold text-[13px]">Place of Supply:</span> N/A
                 </div>
             </div>
 
-            <!-- Additional Info -->
-            <div class="border-b border-black p-3 min-h-[60px] bg-white">
-                <div class="font-bold mb-0.5">Additional Information if any:</div>
-                <div>
+            <!-- Additional Info Section -->
+            <div class="p-3 border-r border-b border-black min-h-[60px]">
+                <div class="font-bold mb-1 text-[13px]">Additional Information if any:</div>
+                <div class="text-[13px]">
                     @if($invoice->estimate && $invoice->estimate->additional_notes)
                         {{ $invoice->estimate->additional_notes }}
                     @else
@@ -92,80 +123,67 @@
                 </div>
             </div>
 
-            <!-- Main Items Table -->
-            <div class="w-full">
-                <!-- Table Header -->
-                <div class="flex border-b border-black bg-white">
-                    <div class="w-[8%] border-r border-black p-2 text-center font-bold flex items-center justify-center">Ref</div>
-                    <div class="w-[42%] border-r border-black p-2 text-center font-bold flex items-center justify-center">Description of Goods or Services</div>
-                    <div class="w-[12%] border-r border-black p-2 text-center font-bold flex items-center justify-center">Quantity</div>
-                    <div class="w-[18%] border-r border-black p-2 text-center font-bold flex items-center justify-center">Unit Price</div>
-                    <div class="w-[20%] p-2 text-center font-bold text-[12px] flex flex-col items-center justify-center leading-tight"><span>Amount Excluding</span><span>VAT (LKR)</span></div>
-                </div>
-
-                <!-- Table Rows -->
-                @php
-                    $totalExcludingVat = 0;
-                    $rowCount = count($invoice->items);
-                    $minRows = max(5, $rowCount); 
-                @endphp
-                
-                @for($i = 0; $i < $minRows; $i++)
-                    @if(isset($invoice->items[$i]))
-                        @php
-                            $item = $invoice->items[$i];
-                            $itemAmountNoVat = $item->amount + $item->sscl_amount;
-                            $totalExcludingVat += $itemAmountNoVat;
-                        @endphp
-                        <div class="flex border-b border-black last:border-b last:border-black min-h-[45px] bg-white">
-                            <div class="w-[8%] border-r border-black p-2 text-center flex items-center justify-center">{{ $i + 1 }}</div>
-                            <div class="w-[42%] border-r border-black p-2 flex items-center">{{ $item->description }}</div>
-                            <div class="w-[12%] border-r border-black p-2 text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
-                            <div class="w-[18%] border-r border-black p-2 text-right flex items-center justify-end pr-3">{{ number_format($item->unit_price, 2) }}</div>
-                            <div class="w-[20%] p-2 text-right flex items-center justify-end pr-3">{{ number_format($itemAmountNoVat, 2) }}</div>
-                        </div>
-                    @else
-                        <div class="flex border-b border-black last:border-b last:border-black min-h-[45px] bg-white">
-                            <div class="w-[8%] border-r border-black p-2"></div>
-                            <div class="w-[42%] border-r border-black p-2"></div>
-                            <div class="w-[12%] border-r border-black p-2"></div>
-                            <div class="w-[18%] border-r border-black p-2"></div>
-                            <div class="w-[20%] p-2"></div>
-                        </div>
-                    @endif
-                @endfor
-
-                <!-- Totals Rows -->
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end">Total Value of Supply:</div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
-                </div>
-                @php
-                    $vatRate = \App\Models\Setting::get('vat_rate', 15);
-                    $totalVat = $totalExcludingVat * ($vatRate / 100);
-                @endphp
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end">VAT Amount (Total Value of Supply @ {{ \App\Models\Setting::get('vat_rate', 15) }}%):</div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">{{ number_format($totalVat, 2) }}</div>
-                </div>
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold uppercase pr-3 flex items-center justify-end">TOTAL AMOUNT INCLUDING VAT:</div>
-                    @php
-                        $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
-                    @endphp
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($grandTotalIncludingVat, 2) }}</div>
-                </div>
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end uppercase">Advance Received amount:</div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
-                </div>
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold uppercase pr-3 flex items-center justify-end">Balance Payable:</div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
-                </div>
+            <!-- Items Table Headers -->
+            <div class="flex font-bold text-[13px] text-center">
+                <div class="p-2 w-[8%] border-r border-b border-black">Ref</div>
+                <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
+                <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
+                <div class="p-2 w-[18%] border-r border-b border-black">Unit Price</div>
+                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
             </div>
 
-            <!-- Amount in Words / Advance Payable -->
+            <!-- Item Rows - Dynamic -->
+            @php $totalExcludingVat = 0; @endphp
+            @foreach($invoice->items as $i => $item)
+                @php
+                    $itemAmountNoVat = $item->amount + $item->sscl_amount;
+                    if($item->type === 'item') {
+                        $totalExcludingVat += $itemAmountNoVat;
+                    }
+                @endphp
+
+                <div class="flex text-[13px] min-h-[45px]">
+                    <div class="p-2 w-[8%] border-r border-b border-black text-center flex items-center justify-center">{{ $i + 1 }}</div>
+                    <div class="p-2 w-[42%] border-r border-b border-black text-left flex items-start pl-4 py-2">
+                        <div class="quill-content w-full">
+                            {!! $item->description !!}
+                        </div>
+                    </div>
+                    <div class="p-2 w-[12%] border-r border-b border-black text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
+                    <div class="p-2 w-[18%] border-r border-b border-black text-right pr-3 flex items-center justify-end font-mono">{{ number_format($item->unit_price, 2) }}</div>
+                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end font-mono">{{ number_format($itemAmountNoVat, 2) }}</div>
+                </div>
+            @endforeach
+
+            <!-- Totals Section -->
+            <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">Total Value of Supply:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
+            </div>
+            @php
+                $vatRate = \App\Models\Setting::get('vat_rate', 15);
+                $totalVat = $totalExcludingVat * ($vatRate / 100);
+                $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
+            @endphp
+            <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">VAT Amount (Total Value of Supply @ {{ number_format($vatRate, 2) }}%):</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalVat, 2) }}</div>
+            </div>
+            <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">TOTAL AMOUNT INCLUDING VAT:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat, 2) }}</div>
+            </div>
+            @if(!$invoice->is_proforma)
+            <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Advance Received amount:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
+            </div>
+            <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Balance Payable:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
+            </div>
+            @endif
+
             @if($invoice->is_proforma)
                 @php
                     $percentage = $invoice->estimate->proforma_percentage ?? 50;
@@ -173,50 +191,71 @@
                     $baseForAdvance = $isWithTax ? $invoice->total_amount : $totalExcludingVat;
                     $advanceAmount = ($baseForAdvance * $percentage) / 100;
                 @endphp
-                <div class="flex border-b border-black min-h-[35px] bg-white">
-                    <div class="w-[80%] border-r border-black p-2 text-right font-bold pr-3 flex items-center justify-end">
-                        {{ (int)$percentage }}% Advance Payable {{ $isWithTax ? '(With Tax)' : '(Without Tax)' }}
+                <div class="flex text-[13px] font-bold min-h-[35px]">
+                    <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">
+                        {{ (int)$percentage }}% Advance Payable
                     </div>
-                    <div class="w-[20%] p-2 text-right font-bold pr-3 flex items-center justify-end">LKR {{ number_format($advanceAmount, 2) }}</div>
+                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($advanceAmount, 2) }}</div>
                 </div>
             @else
-                <div class="border-b border-black p-3 min-h-[60px] bg-white">
-                    <div class="font-bold mb-0.5">Total Amount in words:</div>
-                    <div>
-                        {{-- Leaving static/placeholder per the user image style, as Laravel needs a helper library to autogenerate --}}
-                        Eighty-five thousand Rupees Only
-                    </div>
+                <div class="p-3 border-r border-b border-black align-top min-h-[60px]">
+                    <div class="font-bold mb-1 text-[13px]">Total Amount in words:</div>
+                        {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} Rupees Only
                 </div>
             @endif
 
-            <!-- Mode of Payment - NO BOTTOM BORDER as the grid border handles it -->
-            <div class="p-3 min-h-[45px] bg-white">
-                <span class="font-bold">Mode of Payment:</span> <span>Cheque / Bank Transfer</span>
+            <div class="p-3 border-r border-b border-black align-top">
+                <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
             </div>
         </div>
         <!-- END MAIN GRID -->
         
-        <!-- Signature Area - Below grid, but inside padded outer box -->
-        <div class="pt-[80px] pb-2 flex justify-between items-end bg-white border-none">
-            <div class="italic text-gray-500 text-[11px]">
-                (This is a computer generated invoice, No manual signature required)
-            </div>
-            <!-- Blank space for signature if needed, or just removed the authorized signature text/line -->
-            <div class="w-48 text-center text-sm">
-            </div>
-        </div>
+
+    </div>
     </div>
     <style>
+        /* Base styles for BOTH screen and print to ensure perfect match */
+        #invoice-container { 
+            background-color: #fff !important;
+            border: 1px solid #000 !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+        }
+        .bg-black { background-color: #000 !important; }
+        .bg-white { background-color: #fff !important; }
+
+        @media screen {
+            body { background: #f3f4f6; padding: 20px 0; }
+            #invoice-container { 
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                margin-bottom: 30px;
+            }
+        }
+
+        @page {
+            size: A4;
+            margin: 0mm;
+        }
+
         @media print {
-            body { background: white; }
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
             body * { visibility: hidden; }
-            #invoice-container, #invoice-container * { visibility: visible; }
-            #invoice-container { position: absolute; left: 0; top: 0; width: 100%; margin: 10px; padding: 20px !important; box-sizing: border-box; box-shadow: none; border: 1px solid black !important; border-width: 1px !important; }
+            #invoice-container, #invoice-container * { 
+                visibility: visible; 
+            }
+            #invoice-container { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 210mm !important; 
+                margin: 0 !important; 
+                padding: 24px !important; 
+                box-sizing: border-box; 
+                box-shadow: none !important; 
+                min-height: 297mm !important;
+                height: auto !important;
+            }
             .no-print { display: none !important; }
-            /* Keep borders visible in print */
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .border { border-width: 1px !important; border-style: solid !important; border-color: black !important; }
-            .border-2 { border-width: 2px !important; border-style: solid !important; border-color: black !important; }
         }
     </style>
 @endsection

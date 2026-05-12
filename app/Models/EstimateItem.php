@@ -22,7 +22,8 @@ class EstimateItem extends Model
         'days',
         'department',
         'revenue_category',
-        'position'
+        'position',
+        'type'
     ];
 
     public function estimate()

@@ -241,8 +241,9 @@
     <!-- Overview Tab Content -->
     <div id="overview-tab" class="tab-content transition-all duration-300">
         <!-- Filters & KPI Header -->
-        <div class="flex gap-6 mb-6">
-            <form id="filterForm" action="{{ route('dashboard') }}" method="GET" class="filters-bar flex-1 mb-0">
+        <div class="flex flex-col xl:flex-row gap-6 mb-6 items-stretch">
+            <div class="flex-1 flex flex-col md:flex-row gap-4 items-center bg-white py-4 px-6 rounded-xl border border-slate-100 shadow-sm">
+                <form id="filterForm" action="{{ route('dashboard') }}" method="GET" class="filters-bar flex-1 mb-0 p-0 shadow-none border-none self-center h-full">
                 <div class="filter-group">
                     <label class="filter-label">Month</label>
                     <select name="month" class="filter-select" onchange="this.form.submit()">
@@ -253,6 +254,27 @@
                     </select>
                 </div>
 
+                @if(auth()->user()->role === 'Manager')
+                <div class="filter-group">
+                    <label class="filter-label">Brand</label>
+                    <select name="brand" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Brands</option>
+                        @foreach($brands as $b)
+                            <option value="{{ $b }}" {{ $brandFilter == $b ? 'selected' : '' }}>{{ $b }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Customer</label>
+                    <select name="customer" class="filter-select" onchange="this.form.submit()">
+                        <option value="all">All Customers</option>
+                        @foreach($managerCustomers as $id => $name)
+                            <option value="{{ $id }}" {{ $customerFilter == $id ? 'selected' : '' }}>{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @else
                 <div class="filter-group">
                     <label class="filter-label">Brand</label>
                     <select name="brand" class="filter-select" onchange="this.form.submit()">
@@ -275,6 +297,7 @@
                     </select>
                 </div>
 
+                @if(auth()->user()->role !== 'HOD')
                 <div class="filter-group">
                     <label class="filter-label">Department</label>
                     <select name="department" class="filter-select" onchange="this.form.submit()">
@@ -284,6 +307,7 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
 
                 <div class="filter-group">
                     <label class="filter-label">Stages</label>
@@ -294,28 +318,207 @@
                         @endforeach
                     </select>
                 </div>
+                @endif
             </form>
 
-            <div class="kpi-card min-w-[240px]">
-                <div class="kpi-title">Total Contribution</div>
-                <div class="kpi-value">
-                    <span class="text-primary-light/50 text-xl font-medium">LKR</span> 
-                    {{ number_format($totalContribution / 1000000, 2) }}M
+            <a href="{{ route('dashboard.export', request()->all()) }}" 
+               class="btn bg-slate-900 hover:bg-black text-white px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2 transition-all shadow-sm shrink-0">
+                <i class="fas fa-file-csv text-slate-400"></i>
+                Export CSV
+            </a>
+        </div>
+
+            @if(auth()->user()->role === 'Manager')
+            </div>
+            <div class="flex gap-4 min-w-[320px] w-full mt-4 flex-wrap">
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#2563eb]">
+                    <div class="kpi-title">My Target</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($userTarget / 1000000, 2) }}M
+                    </div>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-slate-500">
+                    <div class="kpi-title">Dept. Target ({{ auth()->user()->department }})</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($deptTarget / 1000000, 2) }}M
+                    </div>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#10b981]">
+                    <div class="kpi-title">Achieved Target</div>
+                    @php $achievedPct = $userTarget > 0 ? min(100, ($totalContribution / $userTarget) * 100) : 0; @endphp
+                    <div class="flex flex-col items-center w-full">
+                        <div class="kpi-value text-2xl mb-1">
+                            <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                            {{ number_format($totalContribution / 1000000, 2) }}M
+                        </div>
+                        <div class="w-full bg-white/10 rounded-full h-2 mt-1">
+                            <div class="bg-[#10b981] h-2 rounded-full" style="width: {{ $achievedPct }}%"></div>
+                        </div>
+                        <span class="text-[10px] mt-1 text-white/70">{{ number_format($achievedPct, 1) }}% of target</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#f59e0b]">
+                    <div class="kpi-title">Pending Payments</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($pendingPayments / 1000000, 2) }}M
+                    </div>
+                    <span class="text-[10px] mt-1 text-[#f59e0b]">Unpaid/Overdue Invoices</span>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#7c3aed]">
+                    <div class="kpi-title">Ongoing Deals</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($ongoingDealsValue / 1000000, 2) }}M
+                    </div>
+                    <span class="text-[10px] mt-1 text-[#a78bfa]">{{ $ongoingDealsCount }} Open Deals</span>
+                </div>
+            </div>
+            @elseif(auth()->user()->role === 'HOD')
+            </div>
+            <div class="flex gap-4 min-w-[320px] w-full mt-4 flex-wrap">
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-slate-500">
+                    <div class="kpi-title">Dept. Target ({{ auth()->user()->department }})</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($deptTarget / 1000000, 2) }}M
+                    </div>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#10b981]">
+                    <div class="kpi-title">Dept. Achieved</div>
+                    @php $deptAchievedPct = $deptTarget > 0 ? min(100, ($deptActual / $deptTarget) * 100) : 0; @endphp
+                    <div class="flex flex-col items-center w-full">
+                        <div class="kpi-value text-2xl mb-1">
+                            <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                            {{ number_format($deptActual / 1000000, 2) }}M
+                        </div>
+                        <div class="w-full bg-white/10 rounded-full h-2 mt-1">
+                            <div class="bg-[#10b981] h-2 rounded-full" style="width: {{ $deptAchievedPct }}%"></div>
+                        </div>
+                        <span class="text-[10px] mt-1 text-white/70">{{ number_format($deptAchievedPct, 1) }}% of dept target</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card flex-1 min-w-[200px] border-l-4 border-[#2563eb]">
+                    <div class="kpi-title">Total Contribution</div>
+                    <div class="kpi-value text-2xl">
+                        <span class="text-primary-light/50 text-[14px] font-medium">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> 
+                        {{ number_format($totalContribution / 1000000, 2) }}M
+                    </div>
+                </div>
+            </div>
+            @else
+            <div class="flex flex-row gap-6 w-full xl:w-auto shrink-0 self-stretch">
+                <div class="flex flex-col justify-center items-center px-10 rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] min-w-[250px] h-full" style="background-color: #2b3547;">
+                    <div class="text-[10px] font-bold text-[#f8fafc] mb-1.5 uppercase tracking-[0.1em]">Total Contribution</div>
+                    <div class="text-[28px] font-bold text-white flex items-baseline gap-1.5 leading-none mt-1">
+                        <span class="text-white/70 text-[14px] font-semibold">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> {{ number_format($totalContribution / 1000000, 2) }}M
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        @if(auth()->user()->role === 'Manager')
+        <!-- Manager Dashboard Charts -->
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="glass-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-funnel-dollar text-orange-500"></i> Deals Progress Pipeline</h3>
+                    <button onclick="downloadChart('dealsProgressChart', 'Deals_Progress')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+                <div class="h-[300px]">
+                    <canvas id="dealsProgressChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="glass-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-tag text-violet-500"></i> Top Brands (My Deals)</h3>
+                    <button onclick="downloadChart('brandChart', 'Top_Brands')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+                <div class="h-[300px]">
+                    <canvas id="brandChart"></canvas>
                 </div>
             </div>
         </div>
 
+        <div class="grid grid-cols-2 gap-6 mb-6">
+            <div class="glass-card flex flex-col">
+                <h3 class="chart-title"><i class="fas fa-trophy text-yellow-500"></i> Key Ongoing Deals</h3>
+                <div class="flex-1 overflow-y-auto">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-right">Contribution</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($keyCampaigns->take(10) as $campaign)
+                            <tr>
+                                <td class="truncate max-w-[200px]" title="{{ $campaign['description'] }}">
+                                    {{ $campaign['description'] ?: 'Untitled' }}
+                                </td>
+                                <td class="text-right font-semibold text-[#10b981]">
+                                    {{ $campaign['currency'] ?? ($deals->pluck('currency')->unique()->count() === 1 ? $deals->first()->currency : 'LKR') }} {{ number_format($campaign['contribution'] / 1000, 0) }}k
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="glass-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-chart-pie text-blue-500"></i> Revenue Categories</h3>
+                    <button onclick="downloadChart('revenueChart', 'Revenue_Categories')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
+                <div class="flex flex-col h-full">
+                    <div class="h-[200px] mb-4">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                    <div id="revenueLegend" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-[100px]">
+                    </div>
+                </div>
+            </div>
+        </div>
+        @else
         <!-- Top Charts Row -->
         <div class="grid grid-cols-2 gap-6 mb-6">
             <div class="glass-card">
-                <h3 class="chart-title"><i class="fas fa-users"></i> Account Manager Contribution</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-users"></i> Account Manager Contribution</h3>
+                    <button onclick="downloadChart('managerChart', 'Manager_Contribution')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
                 <div class="h-[300px]">
                     <canvas id="managerChart"></canvas>
                 </div>
             </div>
 
             <div class="glass-card">
-                <h3 class="chart-title"><i class="fas fa-tag"></i> Top Brands Contribution</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-tag"></i> Top Brands Contribution</h3>
+                    <button onclick="downloadChart('brandChart', 'Brand_Contribution')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
                 <div class="h-[300px]">
                     <canvas id="brandChart"></canvas>
                 </div>
@@ -325,14 +528,24 @@
         <!-- Bottom Charts Row -->
         <div class="grid grid-cols-3 gap-6 mb-6">
             <div class="glass-card">
-                <h3 class="chart-title"><i class="fas fa-building"></i> Department Split</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-building"></i> Department Split</h3>
+                    <button onclick="downloadChart('deptChart', 'Department_Split')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
                 <div class="h-[250px]">
                     <canvas id="deptChart"></canvas>
                 </div>
             </div>
 
             <div class="glass-card">
-                <h3 class="chart-title"><i class="fas fa-chart-pie"></i> Revenue Categories</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-chart-pie"></i> Revenue Categories</h3>
+                    <button onclick="downloadChart('revenueChart', 'Revenue_Categories')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
                 <div class="flex flex-col h-full">
                     <div class="h-[200px] mb-4">
                         <canvas id="revenueChart"></canvas>
@@ -369,24 +582,23 @@
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     <!-- Target Type Tab Content -->
     <div id="target-type-tab" class="tab-content hidden transition-all duration-300">
-        <div class="flex justify-between items-center mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
-                <div class="kpi-card">
-                    <div class="kpi-title">SBU Actual</div>
-                    <div class="kpi-value text-2xl">
-                        <span class="text-primary-light/50 text-lg font-medium">LKR</span> 
-                        {{ number_format($sbuActual / 1000000, 2) }}M
+        <div class="flex flex-col xl:flex-row gap-6 mb-6 items-stretch">
+            <div class="flex flex-row gap-6 w-full xl:flex-1 shrink-0 self-stretch">
+                <div class="flex flex-col justify-center items-center px-10 rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] min-w-[250px] h-full" style="background-color: #2b3547;">
+                    <div class="text-[10px] font-bold text-[#f8fafc] mb-1.5 uppercase tracking-[0.1em]">SBU Actual</div>
+                    <div class="text-[28px] font-bold text-white flex items-baseline gap-1.5 leading-none mt-1">
+                        <span class="text-white/70 text-[14px] font-semibold">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> {{ number_format($sbuActual / 1000000, 2) }}M
                     </div>
                 </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">Sales Actual</div>
-                    <div class="kpi-value text-2xl">
-                        <span class="text-primary-light/50 text-lg font-medium">LKR</span> 
-                        {{ number_format($salesActual / 1000000, 2) }}M
+                <div class="flex flex-col justify-center items-center px-10 rounded-[12px] shadow-[0_4px_12px_rgba(0,0,0,0.1)] min-w-[250px] h-full" style="background-color: #2b3547;">
+                    <div class="text-[10px] font-bold text-[#f8fafc] mb-1.5 uppercase tracking-[0.1em]">Sales Actual</div>
+                    <div class="text-[28px] font-bold text-white flex items-baseline gap-1.5 leading-none mt-1">
+                        <span class="text-white/70 text-[14px] font-semibold">{{ count($deals->pluck('currency')->unique()) === 1 ? $deals->first()->currency : 'LKR' }}</span> {{ number_format($salesActual / 1000000, 2) }}M
                     </div>
                 </div>
             </div>
@@ -403,7 +615,12 @@
 
         <div class="glass-card">
             <div class="flex items-center justify-between mb-6">
-                <h3 class="chart-title mb-0"><i class="fas fa-bullseye"></i> <span id="targetChartTitle">SBU vs Sales: Actual vs Target</span></h3>
+                <div class="flex items-center gap-4">
+                    <h3 class="chart-title mb-0"><i class="fas fa-bullseye"></i> <span id="targetChartTitle">SBU vs Sales: Actual vs Target</span></h3>
+                    <button onclick="downloadChart('targetChart', 'Target_Comparison')" class="text-slate-400 hover:text-primary transition-colors text-xs flex items-center gap-2">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                </div>
                 <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#2563eb]"></span> Actual</div>
                     <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full border-2 border-[#db2777]"></span> Target</div>
@@ -633,15 +850,59 @@
         });
     }
 
+    // Deals Progress Chart (Manager Only)
+    @if(auth()->user()->role === 'Manager')
+    const progressData = @json($dealsProgress ?? []);
+    if(document.getElementById('dealsProgressChart')) {
+        new Chart(document.getElementById('dealsProgressChart'), {
+            type: 'bar',
+            data: {
+                labels: Object.keys(progressData),
+                datasets: [{
+                    data: Object.values(progressData),
+                    backgroundColor: colors.warning,
+                    borderRadius: 6,
+                    barThickness: 32,
+                }]
+            },
+            options: {
+                ...baseOptions,
+                plugins: {
+                    ...baseOptions.plugins,
+                    datalabels: {
+                        color: colors.secondary,
+                        anchor: 'end',
+                        align: 'top',
+                        font: { size: 10, weight: 'bold' },
+                        formatter: (v) => v
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#f1f5f9' },
+                        ticks: { stepSize: 1, font: { size: 10 } }
+                    },
+                    x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+    }
+    @endif
+
     // 5. Target Chart (Actual vs Target Logic)
     let targetChart = null;
+    const sbuTargetDepts = {!! json_encode(\App\Models\Target::where('type', 'department')->whereIn('department', ['Creative', 'Digital', 'Tech'])->pluck('target_amount', 'department')) !!};
+    const salesTargetDepts = {!! json_encode(\App\Models\Target::where('type', 'department')->whereIn('department', ['AM', 'BD'])->pluck('target_amount', 'department')) !!};
+
     const targetData = {
         sbuActual: {{ $sbuActual }},
         salesActual: {{ $salesActual }},
         sbuTarget: {{ $sbuTarget }},
         salesTarget: {{ $salesTarget }},
         sbuBreakdown: @json($sbuDeptActuals),
-        salesBreakdown: @json($salesDeptActuals)
+        salesBreakdown: @json($salesDeptActuals),
+        sbuTargetsBreakdown: sbuTargetDepts,
+        salesTargetsBreakdown: salesTargetDepts,
     };
 
     function updateTargetChart(mode) {
@@ -661,14 +922,12 @@
         } else if (mode === 'sbu') {
             labels = Object.keys(targetData.sbuBreakdown);
             actuals = Object.values(targetData.sbuBreakdown);
-            // In SBU only mode, we show the overall SBU target as a separate bar or just comparison
-            // For now, let's keep it simple: breakdown of departments vs overall target
-            targets = labels.map(() => 0); // No per-dept targets yet
+            targets = labels.map(label => targetData.sbuTargetsBreakdown[label] || 0);
             title = "SBU Department Breakdown";
         } else {
             labels = Object.keys(targetData.salesBreakdown);
             actuals = Object.values(targetData.salesBreakdown);
-            targets = labels.map(() => 0);
+            targets = labels.map(label => targetData.salesTargetsBreakdown[label] || 0);
             title = "Sales Department Breakdown";
         }
 
@@ -686,17 +945,15 @@
             ]
         };
 
-        // Only add target dataset if it's the "both" view
-        if (mode === 'both') {
-            chartData.datasets.push({
-                label: 'Target',
-                data: targets,
-                backgroundColor: colors.pink + '44',
-                borderColor: colors.pink,
-                borderWidth: 2,
-                borderRadius: 6,
-            });
-        }
+        // Always add the target dataset to allow viewing vs target metrics within specific groups
+        chartData.datasets.push({
+            label: 'Target',
+            data: targets,
+            backgroundColor: colors.pink + '44',
+            borderColor: colors.pink,
+            borderWidth: 2,
+            borderRadius: 6,
+        });
 
         if (targetChart) {
             targetChart.data = chartData;
@@ -714,7 +971,7 @@
                             anchor: 'end',
                             align: 'top',
                             offset: 4,
-                            formatter: (v) => v > 0 ? 'LKR ' + (v / 1000000).toFixed(1) + 'M' : '',
+                            formatter: (v) => v > 0 ? '{{ $deals->pluck('currency')->unique()->count() === 1 ? $deals->first()->currency : 'LKR' }} ' + (v / 1000000).toFixed(1) + 'M' : '',
                             font: { weight: 'bold', size: 10 }
                         }
                     },
@@ -736,6 +993,34 @@
     // Initialize Target Chart
     updateTargetChart('sbu');
 
+    // 6. Chart Export Functionality
+    window.downloadChart = function(canvasId, filename) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+            console.error('Canvas not found:', canvasId);
+            return;
+        }
+        
+        // Create a temporary link to trigger download
+        const link = document.createElement('a');
+        link.download = filename + '_' + new Date().toISOString().slice(0, 10) + '.png';
+        
+        // Use a temporary canvas to add a white background (since our dashboard uses transparency)
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+        const ctx = tempCanvas.getContext('2d');
+        
+        // Fill white background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // Draw the original chart on top
+        ctx.drawImage(canvas, 0, 0);
+        
+        link.href = tempCanvas.toDataURL('image/png');
+        link.click();
+    }
 </script>
 @endpush
 @endsection

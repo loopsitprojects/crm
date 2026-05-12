@@ -6,6 +6,8 @@ use App\Models\Setting;
 use App\Models\SeniorManager;
 use App\Models\SystemCurrency;
 use App\Models\StandardTerm;
+use App\Models\Target;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -17,8 +19,50 @@ class SettingController extends Controller
         $managers = SeniorManager::all();
         $terms = StandardTerm::all();
         $currencies = SystemCurrency::all();
+        
+        $departmentTargets = Target::where('type', 'department')->get()->keyBy('department');
+        $userTargets = Target::where('type', 'user')->get()->keyBy('user_id');
+        $users = User::all();
 
-        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies'));
+        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'departmentTargets', 'userTargets', 'users'));
+    }
+
+    public function updateDepartmentTargets(Request $request)
+    {
+        $request->validate([
+            'targets' => 'array',
+            'targets.*' => 'numeric|min:0'
+        ]);
+
+        if ($request->has('targets')) {
+            foreach ($request->targets as $department => $amount) {
+                Target::updateOrCreate(
+                    ['type' => 'department', 'department' => $department],
+                    ['target_amount' => $amount]
+                );
+            }
+        }
+
+        return redirect()->route('settings.index')->with('success', 'Department targets updated successfully.');
+    }
+
+    public function updateUserTargets(Request $request)
+    {
+        $request->validate([
+            'targets' => 'array',
+            'targets.*' => 'numeric|min:0'
+        ]);
+
+        if ($request->has('targets')) {
+            foreach ($request->targets as $userId => $amount) {
+                Target::updateOrCreate(
+                    ['type' => 'user', 'user_id' => $userId],
+                    ['target_amount' => $amount]
+                );
+            }
+        }
+
+        return redirect()->route('settings.index')->with('success', 'User targets updated successfully.');
     }
 
     public function updateGeneral(Request $request)
