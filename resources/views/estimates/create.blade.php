@@ -466,37 +466,101 @@
         </form>
     </div>
 
+    <!-- Description Modal -->
+    <div id="descriptionModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeDescriptionModal()"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">
+                                Edit Description
+                            </h3>
+                            <div class="mt-2 w-full">
+                                <div id="modalQuillEditor" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" onclick="saveDescriptionModal()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-brand-pink text-base font-medium text-white hover:bg-brand-purple focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple sm:ml-3 sm:w-auto sm:text-sm">
+                        Save Description
+                    </button>
+                    <button type="button" onclick="closeDescriptionModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-purple sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts (restored to sidebar logic) -->
     <script>
-        function initQuill(id, inputName) {
-            const editorContainer = document.getElementById(id);
-            const hiddenInput = document.querySelector(`input[name="${inputName}"]`);
-            
-            const quill = new Quill(editorContainer, {
-                theme: 'snow',
-                placeholder: 'Item description...',
-                modules: {
-                    toolbar: [
-                        [{ 'header': [1, 2, false] }],
-                        ['bold', 'italic', 'underline'],
-                        [{ 'list': 'bullet' }]
-                    ]
-                }
-            });
+        let modalQuillInstance = null;
+        let currentDescriptionInput = null;
+        let currentDescriptionPreview = null;
 
-            // Set initial content if any
-            if (hiddenInput.value) {
-                quill.root.innerHTML = hiddenInput.value;
+        function initModalQuill() {
+            if (!modalQuillInstance) {
+                modalQuillInstance = new Quill('#modalQuillEditor', {
+                    theme: 'snow',
+                    placeholder: 'Item description...',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, false] }],
+                            ['bold', 'italic', 'underline'],
+                            [{ 'list': 'bullet' }]
+                        ]
+                    }
+                });
+            }
+        }
+
+        function openDescriptionModal(previewElement) {
+            const row = previewElement.closest('tr');
+            currentDescriptionPreview = previewElement;
+            currentDescriptionInput = row.querySelector('.description-hidden-input');
+
+            if (!modalQuillInstance) {
+                initModalQuill();
             }
 
-            // Sync content to hidden input
-            quill.on('text-change', function() {
-                hiddenInput.value = quill.root.innerHTML;
-                // Trigger auto-calculation if needed, though usually description doesn't affect price
-            });
+            // Load content
+            if (currentDescriptionInput.value) {
+                modalQuillInstance.root.innerHTML = currentDescriptionInput.value;
+            } else {
+                modalQuillInstance.root.innerHTML = '';
+            }
 
-            return quill;
+            document.getElementById('descriptionModal').classList.remove('hidden');
         }
+
+        function closeDescriptionModal() {
+            document.getElementById('descriptionModal').classList.add('hidden');
+            currentDescriptionInput = null;
+            currentDescriptionPreview = null;
+        }
+
+        function saveDescriptionModal() {
+            if (currentDescriptionInput && currentDescriptionPreview) {
+                const htmlContent = modalQuillInstance.root.innerHTML;
+                const textContent = modalQuillInstance.getText().trim();
+                
+                currentDescriptionInput.value = htmlContent;
+
+                if (textContent === '') {
+                    currentDescriptionPreview.innerHTML = '<span class="text-gray-400 italic">Click to edit description...</span>';
+                } else {
+                    currentDescriptionPreview.innerHTML = htmlContent;
+                }
+            }
+            closeDescriptionModal();
+        }
+
 
         function addItem() {
             const tbody = document.getElementById('items-body');
@@ -513,10 +577,12 @@
                     <i class="fas fa-grip-vertical text-gray-300"></i>
                 </td>
                 <td class="p-2 align-top">
-                    <div class="quill-wrapper">
-                        <div id="${editorId}" class="text-sm"></div>
+                    <div class="description-preview quill-content border border-gray-200 rounded p-2 text-xs text-gray-500 cursor-pointer hover:bg-gray-50 bg-white" 
+                         style="min-height: 40px; max-height: 80px; overflow-y: auto;" 
+                         onclick="openDescriptionModal(this)">
+                        <span class="text-gray-400 italic">Click to edit description...</span>
                     </div>
-                    <input type="hidden" name="${inputName}" required data-required="true">
+                    <input type="hidden" name="${inputName}" class="description-hidden-input" required data-required="true">
                 </td>
                 <td class="p-2 align-top">
                     <select name="items[${rowCount}][department]" required data-required="true" class="w-full rounded-md border-gray-200 text-xs py-1 px-1">
@@ -556,7 +622,6 @@
             `;
 
             tbody.appendChild(row);
-            initQuill(editorId, inputName);
             calculateRow(row.querySelector('input[name*="[quantity]"]'));
         }
 
@@ -720,6 +785,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            initModalQuill();
             addItem();
             calculateTotals();
 
@@ -826,10 +892,10 @@
                 }
                 errorDiv.textContent = message;
 
-                // If it is a quill hidden input, put the border on the quill container itself
-                if (input.classList.contains('quill-hidden-input')) {
-                    const quillContainer = parent.querySelector('.quill-editor');
-                    if (quillContainer) quillContainer.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+                // If it is a description hidden input, put the border on the preview box
+                if (input.classList.contains('description-hidden-input')) {
+                    const previewContainer = parent.querySelector('.description-preview');
+                    if (previewContainer) previewContainer.classList.add('border-red-500', 'ring-1', 'ring-red-500');
                 } else {
                     input.classList.add('border-red-500', 'ring-1', 'ring-red-500');
                 }
@@ -873,8 +939,8 @@
                             isValid = false;
                             showError(el, 'Required');
                             if (!firstErrorField) {
-                                // If hidden quill input, scroll to the parent td
-                                firstErrorField = el.classList.contains('quill-hidden-input') ? (el.closest('td') || el.parentNode) : el;
+                                // If hidden description input, scroll to the parent td
+                                firstErrorField = el.classList.contains('description-hidden-input') ? (el.closest('td') || el.parentNode) : el;
                             }
                         }
                     });
