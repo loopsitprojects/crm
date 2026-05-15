@@ -17,37 +17,35 @@
     }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">All Customers</h3>
-            <div class="relative" @click.away="showPicker = false">
-                <button @click="showPicker = !showPicker" 
-                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
-                    <i class="fas fa-columns mr-2"></i>Columns
-                </button>
-                <div x-show="showPicker" 
-                    x-transition:enter="transition ease-out duration-100"
-                    x-transition:enter-start="transform opacity-0 scale-95"
-                    x-transition:enter-end="transform opacity-100 scale-100"
-                    class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
-                    style="display: none;">
-                    <div class="p-4">
-                        <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Visible Columns</h5>
-                        <div class="space-y-3">
-                            @foreach([
-                                'name' => 'Name',
-                                'email' => 'Email',
-                                'phone' => 'Phone',
-                                'address' => 'Address',
-                                'actions' => 'Actions'
-                            ] as $key => $label)
-                                <label class="flex items-center group cursor-pointer">
-                                    <input type="checkbox" :checked="isColumnVisible('{{ $key }}')" @change="toggleColumn('{{ $key }}')"
-                                        class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
-                                    <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
-                                </label>
-                            @endforeach
-                        </div>
+            {{-- Columns button hidden --}}
+        </div>
+
+        <!-- Search -->
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <form action="{{ route('customers.index') }}" method="GET"
+                class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div class="relative">
+                    <label for="search" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" name="search" id="search" value="{{ request('search') }}"
+                            placeholder="Customer Name or Brand"
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 pl-10 pr-3 border">
                     </div>
                 </div>
-            </div>
+                <div class="flex space-x-2">
+                    <button type="submit" title="Search"
+                        class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors h-10 flex items-center justify-center">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <a href="{{ route('customers.index') }}"
+                        class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm font-medium transition-colors h-10 flex items-center">
+                        Reset
+                    </a>
+                </div>
+            </form>
         </div>
 
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">

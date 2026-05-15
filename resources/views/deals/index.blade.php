@@ -324,14 +324,14 @@
 
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1 flex items-center">
-                                    Customer <span class="text-red-500">*</span> <i
+                                    Brand <span class="text-red-500">*</span> <i
                                         class="fas fa-info-circle ml-1 opacity-50 text-[10px]"></i>
                                 </label>
-                                <select name="customer_id" id="company_select" placeholder="Search Customer..." required
+                                <select name="customer_id" id="company_select" placeholder="Search Brand..." required
                                     class="cust-column">
-                                    <option value="">Search Customer...</option>
+                                    <option value="">Search Brand...</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                        <option value="{{ $customer->id }}">{{ $customer->brand }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -543,14 +543,14 @@
 
                             <div>
                                 <label class="block text-sm font-bold text-gray-700 mb-1 flex items-center">
-                                    Customer <span class="text-red-500">*</span> <i
+                                    Brand <span class="text-red-500">*</span> <i
                                         class="fas fa-info-circle ml-1 opacity-50 text-[10px]"></i>
                                 </label>
-                                <select name="customer_id" id="edit_company_select" placeholder="Search Customer..." required
+                                <select name="customer_id" id="edit_company_select" placeholder="Search Brand..." required
                                     class="cust-column">
-                                    <option value="">Search Customer...</option>
+                                    <option value="">Search Brand...</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                        <option value="{{ $customer->id }}">{{ $customer->brand }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -1359,11 +1359,11 @@
                     no_results: function(data, escape) {
                         return '<div class="no-results p-4 text-center border-t border-gray-100 bg-gray-50">' +
                                '<div class="mb-2 text-red-500 font-bold">' +
-                               '<i class="fas fa-exclamation-circle mr-2"></i>Customer Not Found' +
+                               '<i class="fas fa-exclamation-circle mr-2"></i>Brand Not Found' +
                                '</div>' +
-                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the customer list. Please add the customer first.</p>' +
+                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the brand list. Please add a new customer to register this brand.</p>' +
                                '<a href="{{ route('customers.create') }}" target="_blank" class="inline-flex items-center justify-center bg-brand-purple text-white text-[10px] font-bold py-1.5 px-3 rounded hover:bg-brand-blue transition-all">' +
-                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Customer' +
+                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Brand' +
                                '</a>' +
                                '</div>';
                     }
@@ -1380,11 +1380,11 @@
                     no_results: function(data, escape) {
                         return '<div class="no-results p-4 text-center border-t border-gray-100 bg-gray-50">' +
                                '<div class="mb-2 text-red-500 font-bold">' +
-                               '<i class="fas fa-exclamation-circle mr-2"></i>Customer Not Found' +
+                               '<i class="fas fa-exclamation-circle mr-2"></i>Brand Not Found' +
                                '</div>' +
-                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the customer list. Please add the customer first.</p>' +
+                               '<p class="text-[11px] text-gray-500 mb-3 px-2 leading-relaxed">"' + escape(data.input) + '" is not in the brand list. Please add a new customer to register this brand.</p>' +
                                '<a href="{{ route('customers.create') }}" target="_blank" class="inline-flex items-center justify-center bg-brand-purple text-white text-[10px] font-bold py-1.5 px-3 rounded hover:bg-brand-blue transition-all">' +
-                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Customer' +
+                               '<i class="fas fa-plus-circle mr-1.5"></i>Add New Brand' +
                                '</a>' +
                                '</div>';
                     }

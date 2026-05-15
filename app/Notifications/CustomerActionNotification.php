@@ -7,21 +7,20 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class CustomerUpdateNotification extends Notification
+class CustomerActionNotification extends Notification
 {
-    use Queueable;
+    public $customer;
+    public $action;
+    public $user;
 
     /**
      * Create a new notification instance.
      */
-    public $request;
-
-    /**
-     * Create a new notification instance.
-     */
-    public function __construct($request)
+    public function __construct($customer, $action, $user)
     {
-        $this->request = $request;
+        $this->customer = $customer;
+        $this->action = $action;
+        $this->user = $user;
     }
 
     /**
@@ -42,10 +41,10 @@ class CustomerUpdateNotification extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'message' => ($this->request->user->name ?? 'A user') . ' requested a customer change: ' . ($this->request->customer->name ?? 'Unknown'),
-            'customer_id' => $this->request->customer_id,
-            'request_id' => $this->request->id,
-            'user_name' => $this->request->user->name ?? 'Unknown',
+            'message' => "{$this->user->name} {$this->action} customer: " . ($this->customer->name ?? 'Unknown'),
+            'customer_id' => $this->customer->id,
+            'user_name' => $this->user->name ?? 'Unknown',
         ];
     }
+
 }

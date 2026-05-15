@@ -13,9 +13,19 @@ class CustomerController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $customers = Customer::all();
+        $query = Customer::query();
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('brand', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->orderBy('name')->get();
         return view('customers.index', compact('customers'));
     }
 
@@ -55,6 +65,12 @@ class CustomerController extends Controller
 
         $customer = Customer::create($validated);
         $this->logAction("Created customer: {$customer->name}", $customer);
+
+        // Notify Super Admin
+        $admins = \App\Models\User::where('role', 'Super Admin')->get();
+        foreach ($admins as $admin) {
+            $admin->notify(new \App\Notifications\CustomerActionNotification($customer, 'added', auth()->user()));
+        }
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }
@@ -179,26 +195,17 @@ class CustomerController extends Controller
             'approved_credit_limit' => 'nullable|numeric|min:0',
         ]);
 
-        if (auth()->user()->role === 'Super Admin') {
-            $customer->update($validated);
-            $this->logAction("Updated customer: {$customer->name}", $customer);
-            return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
-        } else {
-            // Create Update Request
-            $updateRequest = \App\Models\CustomerUpdateRequest::create([
-                'customer_id' => $customer->id,
-                'user_id' => auth()->id(),
-                'data' => $validated,
-                'status' => 'pending'
-            ]);
+        $customer->update($validated);
+        $this->logAction("Updated customer: {$customer->name}", $customer);
 
-            // Notify Super Admin
+        // Notify Super Admin if done by a non-admin
+        if (auth()->user()->role !== 'Super Admin') {
             $admins = \App\Models\User::where('role', 'Super Admin')->get();
             foreach ($admins as $admin) {
-                $admin->notify(new \App\Notifications\CustomerUpdateNotification($updateRequest));
+                $admin->notify(new \App\Notifications\CustomerActionNotification($customer, 'edited', auth()->user()));
             }
-
-            return redirect()->route('customers.index')->with('success', 'Update requested successfully. Waiting for Admin approval.');
         }
+
+        return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
     }
 }

@@ -20,6 +20,16 @@
         .drag-handle:active {
             cursor: grabbing;
         }
+
+        /* Override Quill header labels */
+        .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="1"]::before,
+        .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="1"]::before {
+            content: 'Heading' !important;
+        }
+        .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="2"]::before,
+        .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="2"]::before {
+            content: 'Sub heading' !important;
+        }
     </style>
 @endpush
 

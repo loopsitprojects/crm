@@ -27,45 +27,7 @@
     }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">Manage Estimates</h3>
-            <div class="flex items-center space-x-3">
-                <div class="relative" @click.away="showPicker = false">
-                    <button @click="showPicker = !showPicker" 
-                        class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
-                        <i class="fas fa-columns mr-2"></i>Columns
-                    </button>
-                    <div x-show="showPicker" 
-                        x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="transform opacity-0 scale-95"
-                        x-transition:enter-end="transform opacity-100 scale-100"
-                        class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-30 overflow-hidden"
-                        style="display: none;">
-                        <div class="p-4">
-                            <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Visible Columns</h5>
-                            <div class="space-y-3">
-                                @foreach([
-                                    'reference' => 'Reference',
-                                    'customer' => 'Customer',
-                                    'brand' => 'Brand',
-                                    'date' => 'Date',
-                                    'amount' => 'Amount',
-                                    'status' => 'Status',
-                                    'actions' => 'Actions'
-                                ] as $key => $label)
-                                    <label class="flex items-center group cursor-pointer">
-                                        <input type="checkbox" :checked="isColumnVisible('{{ $key }}')" @change="toggleColumn('{{ $key }}')"
-                                            class="w-4 h-4 text-brand-blue border-gray-200 rounded focus:ring-brand-blue transition-colors">
-                                        <span class="ml-3 text-xs font-bold text-slate-600 group-hover:text-brand-blue transition-colors">{{ $label }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <a href="{{ route('estimates.create') }}"
-                    class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors">
-                    <i class="fas fa-plus mr-2"></i>Create Estimate
-                </a>
-            </div>
+            {{-- Columns and Create Estimate buttons hidden --}}
         </div>
 
 

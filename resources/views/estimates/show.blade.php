@@ -122,9 +122,11 @@
             <table class="w-full mb-8">
                 <thead>
                     <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b-2 border-brand-teal">
-                        <th class="py-3 text-left w-[52%]">Description</th>
-                        <th class="py-3 text-right w-24">Line Amount</th>
-                        <th class="py-3 text-right w-24">VAT</th>
+                        <th class="py-3 text-left w-[40%]">Description</th>
+                        <th class="py-3 text-right pr-4 w-20">Unit Cost</th>
+                        <th class="py-3 text-right pr-4 w-16">Qty</th>
+                        <th class="py-3 text-right pr-4 w-24">Line Amount</th>
+                        <th class="py-3 text-right pr-4 w-24">VAT</th>
                         <th class="py-3 text-right w-28">Amount</th>
                     </tr>
                 </thead>
@@ -139,8 +141,10 @@
                                     <p class="text-xs text-gray-500 mt-1"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
-                            <td class="py-4 text-right text-gray-600 align-top font-mono">{{ number_format($item->unit_price + $item->sscl_amount, 2) }}</td>
-                            <td class="py-4 text-right text-gray-600 align-top font-mono">{{ number_format($item->vat_amount, 2) }}</td>
+                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ $item->quantity }}</td>
+                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->amount + $item->sscl_amount, 2) }}</td>
+                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->vat_amount, 2) }}</td>
                             <td class="py-4 text-right font-medium text-gray-800 align-top font-mono">{{ number_format($item->total_with_vat, 2) }}</td>
                         </tr>
                     @endforeach
