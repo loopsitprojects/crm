@@ -181,7 +181,6 @@ class DealController extends Controller
         $usersByDepartment = $users->groupBy('department');
         $currencies = \App\Models\SystemCurrency::all();
         $seniorManagers = \App\Models\User::whereIn('role', ['HOD', 'Management'])
-            ->where('id', '!=', $user->id)
             ->get();
 
         // Helpers to get contribution/revenue/invoiced/paid for metrics (respects departmental share for HODs)

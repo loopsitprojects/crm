@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="bg-white rounded-lg shadow-md overflow-hidden" x-data="{ 
-        columns: $persist(['name', 'email', 'phone', 'address', 'actions']).as('customers_columns'),
+        columns: $persist(['name', 'email', 'brand', 'address', 'actions']).as('customers_columns'),
         showPicker: false,
         isColumnVisible(col) { return this.columns.includes(col); },
         toggleColumn(col) {
@@ -12,6 +12,13 @@
                 this.columns = this.columns.filter(c => c !== col);
             } else {
                 this.columns.push(col);
+            }
+        },
+        init() {
+            if (this.columns.includes('phone')) {
+                this.columns = this.columns.map(c => c === 'phone' ? 'brand' : c);
+            } else if (!this.columns.includes('brand')) {
+                this.columns.push('brand');
             }
         }
     }">
@@ -62,7 +69,7 @@
                         <th x-show="isColumnVisible('name')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th x-show="isColumnVisible('email')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email
                         </th>
-                        <th x-show="isColumnVisible('phone')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone
+                        <th x-show="isColumnVisible('brand')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand
                         </th>
                         <th x-show="isColumnVisible('address')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address
                         </th>
@@ -79,8 +86,8 @@
                             <td x-show="isColumnVisible('email')" class="px-6 py-4 white-space-nowrap">
                                 <div class="text-sm text-gray-500">{{ $customer->email }}</div>
                             </td>
-                            <td x-show="isColumnVisible('phone')" class="px-6 py-4 white-space-nowrap">
-                                <div class="text-sm text-gray-500">{{ $customer->telephone ?? $customer->phone ?? $customer->primary_contact_mobile ?? '-' }}</div>
+                            <td x-show="isColumnVisible('brand')" class="px-6 py-4 white-space-nowrap">
+                                <div class="text-sm text-gray-900">{{ $customer->brand ?? '-' }}</div>
                             </td>
                             <td x-show="isColumnVisible('address')" class="px-6 py-4">
                                 <div class="text-sm text-gray-500">{{ Str::limit($customer->billing_address ?? $customer->address, 30) ?? '-' }}</div>

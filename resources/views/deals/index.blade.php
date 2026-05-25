@@ -405,7 +405,7 @@
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none">
                                     <option value="">-- Select Deal Owner --</option>
                                     @foreach($seniorManagers as $manager)
-                                        <option value="{{ $manager->name }}" {{ (old('senior_manager') ?? $currentSupervisor) == $manager->name ? 'selected' : '' }}>
+                                        <option value="{{ $manager->name }}" {{ (old('senior_manager') ?? (auth()->user()->role === 'HOD' ? auth()->user()->name : $currentSupervisor)) == $manager->name ? 'selected' : '' }}>
                                             {{ $manager->name }}
                                         </option>
                                     @endforeach
