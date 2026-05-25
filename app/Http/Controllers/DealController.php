@@ -50,8 +50,50 @@ class DealController extends Controller
         $userDept = $user->department;
         $currentSupervisor = $user->supervisor ? $user->supervisor->name : null;
 
+        // Build filterable users list based on role
+        if (in_array($userRole, ['Super Admin', 'Management'])) {
+            // Super Admin & Management can see all users
+            $filterableUsers = \App\Models\User::orderBy('name')->get();
+        } elseif ($userRole === 'HOD') {
+            // HOD can see themselves + their subordinates (managers under them)
+            $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id')->toArray();
+            $filterableUsers = \App\Models\User::whereIn('id', array_merge([$user->id], $subordinateIds))->orderBy('name')->get();
+        } else {
+            // Manager can only see themselves
+            $filterableUsers = collect([$user]);
+        }
+
+        // Build filterable departments based on role
+        if (in_array($userRole, ['Super Admin', 'Management'])) {
+            // Super Admin & Management can see all departments
+            $filterableDepartments = \App\Models\User::distinct()->pluck('department')->filter()->sort()->values();
+        } else {
+            // HOD & Manager can only see their own department
+            $filterableDepartments = $userDept ? collect([$userDept]) : collect();
+        }
+
         // Group all deals by stage for display
         $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.items'])->orderBy('updated_at', 'desc');
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->input('start_date'));
+        }
+
+        if ($request->filled('close_date')) {
+            $query->whereDate('close_date', '<=', $request->input('close_date'));
+        }
+
+        // User filter
+        if ($request->filled('filter_user')) {
+            $query->where('user_id', $request->input('filter_user'));
+        }
+
+        // Department filter — filter deals by owner's department
+        if ($request->filled('filter_department')) {
+            $query->whereHas('owner', function ($q) use ($request) {
+                $q->where('department', $request->input('filter_department'));
+            });
+        }
 
         // RBAC Filtering
         if (!in_array($userRole, ['Super Admin', 'Management'])) {
@@ -277,7 +319,9 @@ class DealController extends Controller
             'usersByDepartment',
             'seniorManagers',
             'currentSupervisor',
-            'allDeals'
+            'allDeals',
+            'filterableUsers',
+            'filterableDepartments'
         ));
     }
 

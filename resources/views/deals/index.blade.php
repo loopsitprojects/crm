@@ -140,14 +140,72 @@
 
 
         <!-- Action Button -->
-        <div class="flex justify-between items-center mb-4">
-            <div class="flex items-center gap-3">
-                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">View Metrics As:</label>
-                <select id="metric-toggle" onchange="toggleMetrics(this.value)"
-                    class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs font-bold py-1.5 px-3">
-                    <option value="revenue">Revenue</option>
-                    <option value="contribution">Contribution</option>
-                </select>
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <div class="flex flex-wrap items-center gap-6">
+                <div class="flex items-center gap-3">
+                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">View Metrics As:</label>
+                    <select id="metric-toggle" onchange="toggleMetrics(this.value)"
+                        class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs font-bold py-1.5 px-3">
+                        <option value="revenue">Revenue</option>
+                        <option value="contribution">Contribution</option>
+                    </select>
+                </div>
+
+                <!-- Filter Form -->
+                <form action="{{ route('deals.index') }}" method="GET" class="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <label for="start_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Start Date:</label>
+                        <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Close Date:</label>
+                        <input type="date" name="close_date" id="close_date" value="{{ request('close_date') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="filter_user" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">User:</label>
+                        <select name="filter_user" id="filter_user"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border min-w-[140px]">
+                            @if(auth()->user()->role !== 'Manager')
+                                <option value="">All Users</option>
+                            @endif
+                            @foreach($filterableUsers as $filterUser)
+                                <option value="{{ $filterUser->id }}" {{ request('filter_user') == $filterUser->id ? 'selected' : '' }}>
+                                    {{ $filterUser->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="filter_department" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Department:</label>
+                        <select name="filter_department" id="filter_department"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border min-w-[120px]">
+                            @if(in_array(auth()->user()->role, ['Super Admin', 'Management']))
+                                <option value="">All Departments</option>
+                            @endif
+                            @foreach($filterableDepartments as $dept)
+                                <option value="{{ $dept }}" {{ request('filter_department') == $dept ? 'selected' : '' }}>
+                                    {{ $dept }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                        <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
+                            Filter
+                        </button>
+                        @if(request('start_date') || request('close_date') || request('filter_user') || request('filter_department'))
+                            <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                                Reset
+                            </a>
+                        @endif
+                    </div>
+                </form>
             </div>
 
             <button onclick="document.getElementById('createDealModal').classList.remove('hidden')"
@@ -922,6 +980,7 @@
                                     .then(data => {
                                         if (data.redirect) {
                                             window.location.href = data.redirect;
+                                            return;
                                         }
                                         if (data.job_number) {
                                             // Find or create job number badge
@@ -939,6 +998,8 @@
                                             text: `Deal moved to ${newStage} successfully.`,
                                             timer: 1500,
                                             showConfirmButton: false
+                                        }).then(() => {
+                                            window.location.reload();
                                         });
                                     })
                                     .catch(error => {
