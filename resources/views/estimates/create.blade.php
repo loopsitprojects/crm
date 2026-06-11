@@ -935,7 +935,7 @@
                             val = tempDiv.textContent.trim();
                         }
 
-                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) <= 0)) {
+                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0)) {
                             isValid = false;
                             showError(el, 'Required');
                             if (!firstErrorField) {

@@ -239,15 +239,15 @@
                                             </td>
                                             <td class="p-2 align-top">
                                                 <input type="hidden" name="items[{{ $index }}][position]" value="{{ $item->position ?? $index }}">
-                                                <input type="number" name="items[{{ $index }}][quantity]" required data-required="true" value="{{ $item->quantity ?: '' }}" placeholder="1" oninput="calculateRow(this)"
+                                                <input type="number" name="items[{{ $index }}][quantity]" required data-required="true" value="{{ isset($item->quantity) ? $item->quantity : '' }}" placeholder="1" oninput="calculateRow(this)"
                                                     class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                                             </td>
                                             <td class="p-2 align-top">
-                                                <input type="number" step="0.01" name="items[{{ $index }}][unit_price]" required data-required="true" value="{{ $item->unit_price ? number_format((float)$item->unit_price, 2, '.', '') : '' }}" placeholder="0.00" oninput="calculateRow(this)"
+                                                <input type="number" step="0.01" name="items[{{ $index }}][unit_price]" required data-required="true" value="{{ isset($item->unit_price) ? number_format((float)$item->unit_price, 2, '.', '') : '' }}" placeholder="0.00" oninput="calculateRow(this)"
                                                     class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                                             </td>
                                             <td class="p-2 align-top">
-                                                <input type="number" step="0.01" name="items[{{ $index }}][amount]" value="{{ $item->total_with_vat ? number_format((float)$item->total_with_vat, 2, '.', '') : '' }}" placeholder="0.00" readonly
+                                                <input type="number" step="0.01" name="items[{{ $index }}][amount]" value="{{ isset($item->total_with_vat) ? number_format((float)$item->total_with_vat, 2, '.', '') : '' }}" placeholder="0.00" readonly
                                                     class="w-full border-none bg-transparent text-sm py-1 px-1 text-right font-medium text-gray-700">
                                             </td>
                                             <td class="p-2 align-top text-center">
@@ -1078,7 +1078,7 @@
                             val = tempDiv.textContent.trim();
                         }
 
-                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) <= 0)) {
+                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0)) {
                             isValid = false;
                             showError(el, 'Required');
                             if (!firstErrorField) {

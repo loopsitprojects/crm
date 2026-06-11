@@ -366,12 +366,7 @@
                     </a>
                     <button type="submit"
                         class="px-8 py-3 rounded-lg bg-gradient-to-r from-brand-blue to-brand-teal text-white font-bold shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
-                        <i class="fas fa-save mr-2"></i>
-                        @if(Auth::user()->role === 'Super Admin')
-                            Update Customer
-                        @else
-                            Request Update
-                        @endif
+                        <i class="fas fa-save mr-2"></i>Save Customer
                     </button>
                 </div>
             </form>
