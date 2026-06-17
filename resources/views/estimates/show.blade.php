@@ -51,7 +51,7 @@
     <div class="max-w-[210mm] mx-auto bg-white shadow-2xl my-10 min-h-[297mm] relative print:shadow-none print:w-full print:m-0 print:border-none"
         id="invoice-container">
         <!-- Top Colored Bar -->
-        <div class="h-2 bg-brand-pink w-full print:bg-brand-pink"></div>
+        <div class="h-2 bg-brand-pink w-full absolute top-0 left-0 print:bg-brand-pink"></div>
 
         <div class="p-12">
             <!-- Header Section -->
@@ -369,7 +369,7 @@ window.addEventListener("load", function () {
     currentTable.appendChild(tbody);
     pageDiv.querySelector('.page-content').appendChild(currentTable);
 
-    let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
+    let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
 
     function attemptSplitRow(row, currentPageHeight, maxUsableHeight) {
         const remainingHeight = maxUsableHeight - currentPageHeight;
@@ -538,7 +538,7 @@ window.addEventListener("load", function () {
             pageDiv.querySelector('.page-content').appendChild(currentTable);
             
             newTbody.appendChild(row);
-            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
+            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
             tbody = newTbody;
         } else {
             tbody.appendChild(row);
