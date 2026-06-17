@@ -55,7 +55,7 @@
 
         <div class="p-12">
             <!-- Header Section -->
-            <div class="flex justify-between items-start mb-12">
+            <div class="flex justify-between items-start mb-12 estimate-header">
                 <!-- Company Details (Left) -->
                 <div class="w-1/2">
                     <img src="{{ asset('images/logo_loops.png') }}" alt="Company Logo" class="h-12 w-auto mb-6">
@@ -84,7 +84,7 @@
             </div>
 
             <!-- Client Info & Heading -->
-            <div class="mb-12 border-t border-b border-gray-100 py-6">
+            <div class="mb-12 border-t border-b border-gray-100 py-6 estimate-client">
                 <div class="flex justify-between items-start">
                     <div class="w-2/3">
                         <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Estimate For</h3>
@@ -119,7 +119,7 @@
             </div>
 
             <!-- Items Table -->
-            <table class="w-full mb-8">
+            <table class="w-full mb-8 estimate-table">
                 <thead>
                     <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b-2 border-brand-teal">
                         <th class="py-3 text-left w-[40%]">Description</th>
@@ -152,7 +152,7 @@
             </table>
 
             <!-- Totals & Notes -->
-            <div class="flex justify-between items-start mt-8">
+            <div class="flex justify-between items-start mt-8 estimate-totals">
                 <!-- Left: Terms & Signature -->
                 <div class="w-1/2 pr-8">
                     @if($estimate->special_terms || $estimate->additional_notes || $estimate->terms)
@@ -241,7 +241,7 @@
 
         @page {
             size: A4;
-            margin: 0mm;
+            margin: 15mm 0mm;
         }
 
         @media print {
@@ -251,6 +251,7 @@
                 visibility: visible; 
             }
             #invoice-container { 
+                display: block !important;
                 position: absolute; 
                 left: 0; 
                 top: 0; 
@@ -260,10 +261,169 @@
                 box-sizing: border-box; 
                 box-shadow: none !important; 
                 border: none !important;
-                min-height: 297mm !important;
+                min-height: calc(297mm - 30mm) !important;
                 height: auto !important;
             }
+            #paginated-estimate-view {
+                display: none !important;
+            }
+            thead { display: table-row-group !important; }
             .no-print { display: none !important; }
         }
     </style>
 @endsection
+
+@push('scripts')
+<script>
+window.addEventListener("load", function () {
+    // Only run on desktop screen mode
+    if (window.matchMedia("(max-width: 768px)").matches) return;
+    
+    const rawContainer = document.getElementById('invoice-container');
+    if (!rawContainer) return;
+
+    // A4 dimensions in pixels (at 96 DPI: 1mm = 3.779527559px)
+    const mmToPx = 3.779527559;
+    const pageHeight = 297 * mmToPx; // 1122.5px
+    const padding = 48; // p-12 is 48px padding (top and bottom)
+    const maxUsableHeight = pageHeight - (padding * 2); // 1026.5px
+
+    // Clone the sections
+    const header = rawContainer.querySelector('.estimate-header').cloneNode(true);
+    const client = rawContainer.querySelector('.estimate-client').cloneNode(true);
+    const originalTable = rawContainer.querySelector('.estimate-table');
+    const tableHeader = originalTable.querySelector('thead').cloneNode(true);
+    const tableRows = Array.from(originalTable.querySelectorAll('tbody tr')).map(tr => tr.cloneNode(true));
+    const totals = rawContainer.querySelector('.estimate-totals').cloneNode(true);
+
+    // Create a temporary element to measure heights in the exact same width environment
+    const measureContainer = document.createElement('div');
+    measureContainer.style.position = 'absolute';
+    measureContainer.style.visibility = 'hidden';
+    measureContainer.style.width = '210mm';
+    measureContainer.style.padding = '48px';
+    measureContainer.style.boxSizing = 'border-box';
+    document.body.appendChild(measureContainer);
+
+    function measureHeight(node) {
+        measureContainer.innerHTML = '';
+        const clone = node.cloneNode(true);
+        if (clone.tagName === 'TR') {
+            const tempTable = document.createElement('table');
+            tempTable.className = 'w-full estimate-table';
+            const tempTbody = document.createElement('tbody');
+            tempTbody.className = 'text-sm';
+            tempTbody.appendChild(clone);
+            tempTable.appendChild(tempTbody);
+            measureContainer.appendChild(tempTable);
+            return tempTable.offsetHeight;
+        } else {
+            measureContainer.appendChild(clone);
+            return clone.offsetHeight;
+        }
+    }
+
+    // Create container for paginated pages
+    const paginatedView = document.createElement('div');
+    paginatedView.id = 'paginated-estimate-view';
+    paginatedView.className = 'w-full no-print';
+
+    let currentPage = 1;
+    let pageDiv = createPageElement(currentPage);
+    paginatedView.appendChild(pageDiv);
+
+    // Add Header and Client Info to Page 1
+    pageDiv.querySelector('.page-content').appendChild(header);
+    pageDiv.querySelector('.page-content').appendChild(client);
+
+    // Create initial table on Page 1
+    let currentTable = document.createElement('table');
+    currentTable.className = 'w-full mb-8';
+    currentTable.appendChild(tableHeader.cloneNode(true));
+    let tbody = document.createElement('tbody');
+    tbody.className = 'text-sm';
+    currentTable.appendChild(tbody);
+    pageDiv.querySelector('.page-content').appendChild(currentTable);
+
+    let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
+
+    // Distribute table rows
+    tableRows.forEach(row => {
+        const rowHeight = measureHeight(row);
+
+        if (currentPageHeight + rowHeight > maxUsableHeight) {
+            // Row doesn't fit on current page! Create Page 2.
+            currentPage++;
+            pageDiv = createPageElement(currentPage);
+            paginatedView.appendChild(pageDiv);
+
+            currentTable = document.createElement('table');
+            currentTable.className = 'w-full mb-8';
+            
+            // As per instructions, do not repeat the headers on subsequent pages
+            const newTbody = document.createElement('tbody');
+            newTbody.className = 'text-sm';
+            currentTable.appendChild(newTbody);
+            pageDiv.querySelector('.page-content').appendChild(currentTable);
+            
+            newTbody.appendChild(row);
+            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
+            tbody = newTbody;
+        } else {
+            // Row fits on current page
+            tbody.appendChild(row);
+            currentPageHeight += rowHeight;
+        }
+    });
+
+    // Add Totals & Notes Section
+    const totalsHeight = measureHeight(totals);
+    if (currentPageHeight + totalsHeight > maxUsableHeight) {
+        // Totals don't fit on this page, create a new page for totals
+        currentPage++;
+        pageDiv = createPageElement(currentPage);
+        paginatedView.appendChild(pageDiv);
+        pageDiv.querySelector('.page-content').appendChild(totals);
+    } else {
+        pageDiv.querySelector('.page-content').appendChild(totals);
+    }
+
+    // Clean up measurement container
+    document.body.removeChild(measureContainer);
+
+    // Hide original container and insert paginated view
+    rawContainer.style.display = 'none';
+    rawContainer.parentNode.insertBefore(paginatedView, rawContainer.nextSibling);
+
+    // Helper to create page elements
+    function createPageElement(pageNum) {
+        const div = document.createElement('div');
+        div.className = 'a4-page bg-white shadow-2xl my-10 mx-auto relative';
+        div.style.width = '210mm';
+        div.style.height = '297mm';
+        div.style.boxSizing = 'border-box';
+        div.style.border = '1px solid #e5e7eb';
+        div.style.borderRadius = '4px';
+        div.style.overflow = 'hidden';
+        
+        const inner = document.createElement('div');
+        inner.className = 'page-content p-12';
+        inner.style.height = '100%';
+        inner.style.boxSizing = 'border-box';
+        div.appendChild(inner);
+
+        // Top Pink Accent
+        const topBar = document.createElement('div');
+        topBar.className = 'h-2 bg-brand-pink w-full absolute top-0 left-0';
+        div.appendChild(topBar);
+
+        // Bottom Grey Accent
+        const bottomBar = document.createElement('div');
+        bottomBar.className = 'absolute bottom-0 left-0 w-full h-2 bg-gray-100';
+        div.appendChild(bottomBar);
+
+        return div;
+    }
+});
+</script>
+@endpush
