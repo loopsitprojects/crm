@@ -225,8 +225,7 @@
 
     <style>
         /* Base styles for BOTH screen and print to ensure perfect match */
-        #invoice-container { 
-            background-color: #fff !important;
+        #invoice-container, #paginated-estimate-view, .a4-page, .a4-page * { 
             -webkit-print-color-adjust: exact !important; 
             print-color-adjust: exact !important; 
         }
@@ -241,16 +240,44 @@
 
         @page {
             size: A4;
-            margin: 15mm 0mm;
+            margin: 0mm;
         }
 
         @media print {
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             body * { visibility: hidden; }
-            #invoice-container, #invoice-container * { 
+            
+            #paginated-estimate-view, #paginated-estimate-view * {
+                visibility: visible;
+            }
+            #paginated-estimate-view {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #paginated-estimate-view .a4-page {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                page-break-after: always;
+                break-after: page;
+                width: 210mm !important;
+                height: 297mm !important;
+                position: relative !important;
+                display: block !important;
+                box-sizing: border-box !important;
+            }
+
+            body:not(.has-paginated-view) #invoice-container, 
+            body:not(.has-paginated-view) #invoice-container * { 
                 visibility: visible; 
             }
-            #invoice-container { 
+            body:not(.has-paginated-view) #invoice-container { 
                 display: block !important;
                 position: absolute; 
                 left: 0; 
@@ -261,11 +288,8 @@
                 box-sizing: border-box; 
                 box-shadow: none !important; 
                 border: none !important;
-                min-height: calc(297mm - 30mm) !important;
+                min-height: 297mm !important;
                 height: auto !important;
-            }
-            #paginated-estimate-view {
-                display: none !important;
             }
             thead { display: table-row-group !important; }
             .no-print { display: none !important; }
@@ -347,12 +371,160 @@ window.addEventListener("load", function () {
 
     let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
 
+    function attemptSplitRow(row, currentPageHeight, maxUsableHeight) {
+        const remainingHeight = maxUsableHeight - currentPageHeight;
+        if (remainingHeight < 150) {
+            return null;
+        }
+
+        const quillDiv = row.querySelector('.quill-content');
+        if (!quillDiv) return null;
+
+        const children = Array.from(quillDiv.childNodes);
+        const elementChildren = children.filter(node => node.nodeType === Node.ELEMENT_NODE);
+        if (elementChildren.length <= 1) {
+            // Check if it's a single list with multiple items that we can split
+            if (elementChildren.length === 1 && (elementChildren[0].nodeName === 'UL' || elementChildren[0].nodeName === 'OL')) {
+                const lis = Array.from(elementChildren[0].childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+                if (lis.length <= 1) return null;
+            } else {
+                return null;
+            }
+        }
+
+        // Create a temporary row to measure
+        const clonedRow = row.cloneNode(true);
+        const clonedQuill = clonedRow.querySelector('.quill-content');
+        clonedQuill.innerHTML = '';
+
+        let fitIndex = -1;
+        let listFitIndex = -1;
+
+        function measureClonedRowHeight(rowToMeasure) {
+            tbody.appendChild(rowToMeasure);
+            const h = measureHeight(rowToMeasure);
+            tbody.removeChild(rowToMeasure);
+            return h;
+        }
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            
+            if (child.nodeName === 'UL' || child.nodeName === 'OL') {
+                const listClone = child.cloneNode(false);
+                clonedQuill.appendChild(listClone);
+                
+                const lis = Array.from(child.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+                let addedSomeLi = false;
+                
+                for (let j = 0; j < lis.length; j++) {
+                    listClone.appendChild(lis[j].cloneNode(true));
+                    const currentHeight = measureClonedRowHeight(clonedRow);
+
+                    if (currentPageHeight + currentHeight > maxUsableHeight) {
+                        listClone.removeChild(listClone.lastChild);
+                        if (!addedSomeLi) {
+                            clonedQuill.removeChild(listClone);
+                        }
+                        break;
+                    } else {
+                        addedSomeLi = true;
+                        fitIndex = i;
+                        listFitIndex = j;
+                    }
+                }
+                
+                if (listFitIndex < lis.length - 1) {
+                    break;
+                }
+            } else {
+                if (child.nodeType !== Node.ELEMENT_NODE && child.textContent.trim() === '') {
+                    continue;
+                }
+                clonedQuill.appendChild(child.cloneNode(true));
+                const currentHeight = measureClonedRowHeight(clonedRow);
+
+                if (currentPageHeight + currentHeight > maxUsableHeight) {
+                    clonedQuill.removeChild(clonedQuill.lastChild);
+                    break;
+                } else {
+                    fitIndex = i;
+                    listFitIndex = -1;
+                }
+            }
+        }
+
+        if (fitIndex === -1) {
+            return null;
+        }
+
+        // Construct Row A and Row B
+        const rowA = row.cloneNode(true);
+        const quillA = rowA.querySelector('.quill-content');
+        quillA.innerHTML = '';
+
+        const rowB = row.cloneNode(true);
+        const quillB = rowB.querySelector('.quill-content');
+        quillB.innerHTML = '';
+
+        // Clear numeric columns in Row B
+        const cellsB = rowB.querySelectorAll('td');
+        for (let col = 1; col < cellsB.length; col++) {
+            cellsB[col].innerHTML = '';
+        }
+        const locB = rowB.querySelector('p.text-xs');
+        if (locB) locB.remove();
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            if (i < fitIndex) {
+                quillA.appendChild(child.cloneNode(true));
+            } else if (i > fitIndex) {
+                quillB.appendChild(child.cloneNode(true));
+            } else {
+                // i === fitIndex
+                if (child.nodeName === 'UL' || child.nodeName === 'OL') {
+                    const lis = Array.from(child.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+                    
+                    const listA = child.cloneNode(false);
+                    for (let j = 0; j <= listFitIndex; j++) {
+                        listA.appendChild(lis[j].cloneNode(true));
+                    }
+                    quillA.appendChild(listA);
+
+                    if (listFitIndex < lis.length - 1) {
+                        const listB = child.cloneNode(false);
+                        for (let j = listFitIndex + 1; j < lis.length; j++) {
+                            listB.appendChild(lis[j].cloneNode(true));
+                        }
+                        quillB.appendChild(listB);
+                    }
+                } else {
+                    quillA.appendChild(child.cloneNode(true));
+                }
+            }
+        }
+
+        return { rowA, rowB };
+    }
+
     // Distribute table rows
-    tableRows.forEach(row => {
+    const queue = [...tableRows];
+    while (queue.length > 0) {
+        const row = queue.shift();
         const rowHeight = measureHeight(row);
 
         if (currentPageHeight + rowHeight > maxUsableHeight) {
-            // Row doesn't fit on current page! Create Page 2.
+            const splitResult = attemptSplitRow(row, currentPageHeight, maxUsableHeight);
+            if (splitResult) {
+                tbody.appendChild(splitResult.rowA);
+                currentPageHeight += measureHeight(splitResult.rowA);
+                
+                queue.unshift(splitResult.rowB);
+                continue;
+            }
+
+            // Row doesn't fit on current page and couldn't be split! Create Page 2.
             currentPage++;
             pageDiv = createPageElement(currentPage);
             paginatedView.appendChild(pageDiv);
@@ -360,7 +532,6 @@ window.addEventListener("load", function () {
             currentTable = document.createElement('table');
             currentTable.className = 'w-full mb-8';
             
-            // As per instructions, do not repeat the headers on subsequent pages
             const newTbody = document.createElement('tbody');
             newTbody.className = 'text-sm';
             currentTable.appendChild(newTbody);
@@ -370,11 +541,10 @@ window.addEventListener("load", function () {
             currentPageHeight = measureHeight(pageDiv.querySelector('.page-content'));
             tbody = newTbody;
         } else {
-            // Row fits on current page
             tbody.appendChild(row);
             currentPageHeight += rowHeight;
         }
-    });
+    }
 
     // Add Totals & Notes Section
     const totalsHeight = measureHeight(totals);
@@ -394,11 +564,12 @@ window.addEventListener("load", function () {
     // Hide original container and insert paginated view
     rawContainer.style.display = 'none';
     rawContainer.parentNode.insertBefore(paginatedView, rawContainer.nextSibling);
+    document.body.classList.add('has-paginated-view');
 
     // Helper to create page elements
     function createPageElement(pageNum) {
         const div = document.createElement('div');
-        div.className = 'a4-page bg-white shadow-2xl my-10 mx-auto relative';
+        div.className = 'a4-page bg-white shadow-2xl my-4 mx-auto relative';
         div.style.width = '210mm';
         div.style.height = '297mm';
         div.style.boxSizing = 'border-box';
