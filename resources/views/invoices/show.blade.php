@@ -57,7 +57,7 @@
     <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8" id="invoice-container">
         
         <!-- Header with Logo for Proforma -->
-        <div class="flex justify-between items-center mb-[20px] mt-2">
+        <div class="flex justify-between items-center mb-[20px] mt-2 invoice-header">
             <div class="w-1/3">
                 <img src="{{ asset('images/logo_loops.png') }}" alt="Loops Logo" class="h-12 w-auto">
             </div>
@@ -70,9 +70,9 @@
         </div>
 
         <!-- THE MAIN GRID USING EXPLICIT BORDERS FOR BULLETPROOF PRINTING -->
-        <div class="border-t border-l border-black">
+        <div class="border-t border-l border-black invoice-grid-wrapper">
             <!-- Top Section: 2 Columns -->
-            <div class="flex">
+            <div class="flex invoice-date-section">
                 <div class="w-1/2 p-3 border-r border-b border-black flex items-center">
                     <span class="font-bold mr-2 text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
                 </div>
@@ -82,14 +82,14 @@
             </div>
 
             <!-- Supplier & Purchaser Section -->
-            <div class="flex">
+            <div class="flex invoice-supplier-section">
                 <div class="w-1/2 p-3 border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
-                        <div><span class="font-bold text-[13px]">Supplier's TIN:</span> 10246299 - 7000</div>
-                        <div><span class="font-bold text-[13px]">Supplier's Name:</span> Loops Digital (Pvt) Ltd</div>
-                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">291, Soloman Terrace, Colombo 05, Sri Lanka</span></div>
+                        <div><span class="font-bold text-[13px]">Supplier's TIN:</span> {{ \App\Models\Setting::get('company_vat') }}</div>
+                        <div><span class="font-bold text-[13px]">Supplier's Name:</span> {{ \App\Models\Setting::get('company_name') }}</div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_address_1') }} {{ \App\Models\Setting::get('company_address_2') }}</span></div>
                     </div>
-                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> +94 112 581 689</div>
+                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> {{ \App\Models\Setting::get('company_phone') }}</div>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
@@ -102,7 +102,7 @@
             </div>
 
             <!-- Delivery & Supply Section -->
-            <div class="flex">
+            <div class="flex invoice-delivery-section">
                 <div class="w-1/2 p-3 border-r border-b border-black">
                     <span class="font-bold text-[13px]">Date of Delivery:</span> N/A
                 </div>
@@ -112,7 +112,7 @@
             </div>
 
             <!-- Additional Info Section -->
-            <div class="p-3 border-r border-b border-black min-h-[60px]">
+            <div class="p-3 border-r border-b border-black min-h-[60px] invoice-info-section">
                 <div class="font-bold mb-1 text-[13px]">Additional Information if any:</div>
                 <div class="text-[13px]">
                     @if($invoice->estimate && $invoice->estimate->additional_notes)
@@ -124,7 +124,7 @@
             </div>
 
             <!-- Items Table Headers -->
-            <div class="flex font-bold text-[13px] text-center">
+            <div class="flex font-bold text-[13px] text-center invoice-table-header">
                 <div class="p-2 w-[8%] border-r border-b border-black">Ref</div>
                 <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
                 <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
@@ -142,7 +142,7 @@
                     }
                 @endphp
 
-                <div class="flex text-[13px] min-h-[45px]">
+                <div class="flex text-[13px] min-h-[45px] invoice-item-row">
                     <div class="p-2 w-[8%] border-r border-b border-black text-center flex items-center justify-center">{{ $i + 1 }}</div>
                     <div class="p-2 w-[42%] border-r border-b border-black text-left flex items-start pl-4 py-2">
                         <div class="quill-content w-full">
@@ -156,7 +156,7 @@
             @endforeach
 
             <!-- Totals Section -->
-            <div class="flex text-[13px] font-bold min-h-[35px]">
+            <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">Total Value of Supply:</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
             </div>
@@ -165,20 +165,20 @@
                 $totalVat = $totalExcludingVat * ($vatRate / 100);
                 $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
             @endphp
-            <div class="flex text-[13px] font-bold min-h-[35px]">
+            <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">VAT Amount (Total Value of Supply @ {{ number_format($vatRate, 2) }}%):</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalVat, 2) }}</div>
             </div>
-            <div class="flex text-[13px] font-bold min-h-[35px]">
+            <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">TOTAL AMOUNT INCLUDING VAT:</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat, 2) }}</div>
             </div>
             @if(!$invoice->is_proforma)
-            <div class="flex text-[13px] font-bold min-h-[35px]">
+            <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Advance Received amount:</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
             </div>
-            <div class="flex text-[13px] font-bold min-h-[35px]">
+            <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Balance Payable:</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
             </div>
@@ -191,33 +191,36 @@
                     $baseForAdvance = $isWithTax ? $invoice->total_amount : $totalExcludingVat;
                     $advanceAmount = ($baseForAdvance * $percentage) / 100;
                 @endphp
-                <div class="flex text-[13px] font-bold min-h-[35px]">
+                <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                     <div class="p-2 w-[80%] border-r border-b border-black text-right pr-3 flex items-center justify-end">
                         {{ (int)$percentage }}% Advance Payable
                     </div>
                     <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($advanceAmount, 2) }}</div>
                 </div>
             @else
-                <div class="p-3 border-r border-b border-black align-top min-h-[60px]">
+                <div class="p-3 border-r border-b border-black align-top min-h-[60px] invoice-totals-row">
                     <div class="font-bold mb-1 text-[13px]">Total Amount in words:</div>
                         {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} Rupees Only
                 </div>
             @endif
 
-            <div class="p-3 border-r border-b border-black align-top">
+            <div class="p-3 border-r border-b border-black align-top invoice-totals-row">
                 <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
             </div>
         </div>
         <!-- END MAIN GRID -->
-        
+
+        <!-- Computer Generated Invoice Footer Message -->
+        <div class="invoice-footer text-left text-xs text-gray-500 mt-4 font-medium italic border-t border-gray-300 pt-3">
+            This is a computer generated invoice, No manual signature requires
+        </div>
 
     </div>
     </div>
     <style>
         /* Base styles for BOTH screen and print to ensure perfect match */
-        #invoice-container { 
+        #invoice-container, #paginated-invoice-view, .a4-page, .a4-page * { 
             background-color: #fff !important;
-            border: 1px solid #000 !important; 
             -webkit-print-color-adjust: exact !important; 
             print-color-adjust: exact !important; 
         }
@@ -226,7 +229,7 @@
 
         @media screen {
             body { background: #f3f4f6; padding: 20px 0; }
-            #invoice-container { 
+            #invoice-container, .a4-page { 
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
                 margin-bottom: 30px;
             }
@@ -240,10 +243,39 @@
         @media print {
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             body * { visibility: hidden; }
-            #invoice-container, #invoice-container * { 
+            
+            #paginated-invoice-view, #paginated-invoice-view * {
+                visibility: visible;
+            }
+            #paginated-invoice-view {
+                display: block !important;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 210mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            #paginated-invoice-view .a4-page {
+                box-shadow: none !important;
+                border: 1px solid black !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                page-break-after: always;
+                break-after: page;
+                width: 210mm !important;
+                height: 297mm !important;
+                position: relative !important;
+                display: block !important;
+                box-sizing: border-box !important;
+            }
+
+            body:not(.has-paginated-view) #invoice-container, 
+            body:not(.has-paginated-view) #invoice-container * { 
                 visibility: visible; 
             }
-            #invoice-container { 
+            body:not(.has-paginated-view) #invoice-container { 
+                display: block !important;
                 position: absolute; 
                 left: 0; 
                 top: 0; 
@@ -259,3 +291,162 @@
         }
     </style>
 @endsection
+
+@push('scripts')
+<script>
+window.addEventListener("load", function () {
+    // Only run on desktop screen mode
+    if (window.matchMedia("(max-width: 768px)").matches) return;
+    
+    const rawContainer = document.getElementById('invoice-container');
+    if (!rawContainer) return;
+
+    // A4 dimensions in pixels (at 96 DPI: 1mm = 3.779527559px)
+    const mmToPx = 3.779527559;
+    const pageHeight = 297 * mmToPx; // 1122.5px
+    const padding = 24; // p-[24px] is 24px padding (top and bottom)
+    const borderSpacing = 2; // for borders
+    const maxUsableHeight = pageHeight - (padding * 2) - borderSpacing; // ~1072px
+
+    // Clone the sections
+    const header = rawContainer.querySelector('.invoice-header').cloneNode(true);
+    
+    // We want to clone Date, Supplier, Delivery, Info sections
+    const dateSec = rawContainer.querySelector('.invoice-date-section').cloneNode(true);
+    const supplierSec = rawContainer.querySelector('.invoice-supplier-section').cloneNode(true);
+    const deliverySec = rawContainer.querySelector('.invoice-delivery-section').cloneNode(true);
+    const infoSec = rawContainer.querySelector('.invoice-info-section').cloneNode(true);
+    
+    const tableHeader = rawContainer.querySelector('.invoice-table-header').cloneNode(true);
+    const itemRows = Array.from(rawContainer.querySelectorAll('.invoice-item-row')).map(row => row.cloneNode(true));
+    const totalsRows = Array.from(rawContainer.querySelectorAll('.invoice-totals-row')).map(row => row.cloneNode(true));
+    const footerEl = rawContainer.querySelector('.invoice-footer') ? rawContainer.querySelector('.invoice-footer').cloneNode(true) : null;
+
+    // Create a temporary element to measure heights in the exact same environment
+    const measureContainer = document.createElement('div');
+    measureContainer.style.position = 'absolute';
+    measureContainer.style.visibility = 'hidden';
+    measureContainer.style.width = '210mm';
+    measureContainer.style.padding = '24px';
+    measureContainer.style.boxSizing = 'border-box';
+    measureContainer.style.border = '1px solid black';
+    document.body.appendChild(measureContainer);
+
+    function measureHeight(node) {
+        measureContainer.innerHTML = '';
+        const clone = node.cloneNode(true);
+        if (clone.classList.contains('invoice-item-row') || clone.classList.contains('invoice-totals-row') || clone.classList.contains('invoice-table-header')) {
+            const tempGrid = document.createElement('div');
+            tempGrid.className = 'border-t border-l border-black';
+            tempGrid.appendChild(clone);
+            measureContainer.appendChild(tempGrid);
+            return tempGrid.offsetHeight;
+        } else {
+            measureContainer.appendChild(clone);
+            return clone.offsetHeight;
+        }
+    }
+
+    // Create container for paginated pages
+    const paginatedView = document.createElement('div');
+    paginatedView.id = 'paginated-invoice-view';
+    paginatedView.className = 'w-full no-print';
+
+    let currentPage = 1;
+    let pageDiv = createPageElement(currentPage);
+    paginatedView.appendChild(pageDiv);
+
+    // Page 1 gets header
+    pageDiv.querySelector('.page-content').appendChild(header);
+
+    // Create grid wrapper on Page 1
+    let currentGrid = document.createElement('div');
+    currentGrid.className = 'border-t border-l border-black';
+    currentGrid.appendChild(dateSec);
+    currentGrid.appendChild(supplierSec);
+    currentGrid.appendChild(deliverySec);
+    currentGrid.appendChild(infoSec);
+    currentGrid.appendChild(tableHeader.cloneNode(true));
+    pageDiv.querySelector('.page-content').appendChild(currentGrid);
+
+    let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+
+    // Distribute item rows
+    const queue = [...itemRows];
+    while (queue.length > 0) {
+        const row = queue.shift();
+        const rowHeight = measureHeight(row);
+
+        if (currentPageHeight + rowHeight > maxUsableHeight) {
+            // Row doesn't fit on current page! Create Page 2.
+            currentPage++;
+            pageDiv = createPageElement(currentPage);
+            paginatedView.appendChild(pageDiv);
+
+            currentGrid = document.createElement('div');
+            currentGrid.className = 'border-t border-l border-black';
+            currentGrid.appendChild(tableHeader.cloneNode(true));
+            pageDiv.querySelector('.page-content').appendChild(currentGrid);
+            
+            currentGrid.appendChild(row);
+            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+        } else {
+            currentGrid.appendChild(row);
+            currentPageHeight += rowHeight;
+        }
+    }
+
+    // Add Totals Rows
+    for (const row of totalsRows) {
+        const rowHeight = measureHeight(row);
+        if (currentPageHeight + rowHeight > maxUsableHeight) {
+            // Totals row doesn't fit! Create Page.
+            currentPage++;
+            pageDiv = createPageElement(currentPage);
+            paginatedView.appendChild(pageDiv);
+
+            currentGrid = document.createElement('div');
+            currentGrid.className = 'border-t border-l border-black';
+            pageDiv.querySelector('.page-content').appendChild(currentGrid);
+            
+            currentGrid.appendChild(row);
+            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+        } else {
+            currentGrid.appendChild(row);
+            currentPageHeight += rowHeight;
+        }
+    }
+
+    // Add footer to the last page
+    if (footerEl) {
+        pageDiv.querySelector('.page-content').appendChild(footerEl);
+    }
+
+    // Clean up measurement container
+    document.body.removeChild(measureContainer);
+
+    // Hide original container and insert paginated view
+    rawContainer.style.display = 'none';
+    rawContainer.parentNode.insertBefore(paginatedView, rawContainer.nextSibling);
+    document.body.classList.add('has-paginated-view');
+
+    // Helper to create page elements
+    function createPageElement(pageNum) {
+        const div = document.createElement('div');
+        div.className = 'a4-page bg-white border border-black my-4 mx-auto relative';
+        div.style.width = '210mm';
+        div.style.height = '297mm';
+        div.style.boxSizing = 'border-box';
+        div.style.position = 'relative';
+        
+        const inner = document.createElement('div');
+        inner.className = 'page-content p-[24px]';
+        inner.style.height = '100%';
+        inner.style.boxSizing = 'border-box';
+        div.appendChild(inner);
+
+        return div;
+    }
+});
+</script>
+@endpush

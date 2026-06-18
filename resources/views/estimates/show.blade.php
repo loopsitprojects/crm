@@ -119,21 +119,21 @@
             </div>
 
             <!-- Items Table -->
-            <table class="w-full mb-8 estimate-table">
+            <table class="w-full mb-8 estimate-table" style="border-collapse: collapse;">
                 <thead>
-                    <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider border-b-2 border-brand-teal">
-                        <th class="py-3 text-left w-[40%]">Description</th>
-                        <th class="py-3 text-right pr-4 w-20">Unit Cost</th>
-                        <th class="py-3 text-right pr-4 w-16">Qty</th>
-                        <th class="py-3 text-right pr-4 w-24">Line Amount</th>
-                        <th class="py-3 text-right pr-4 w-24">VAT</th>
-                        <th class="py-3 text-right w-28">Amount</th>
+                    <tr style="background-color: #f8fafc; border-bottom: 2px solid #0d9488;">
+                        <th class="py-3 pl-3 text-left w-[40%]" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">Description</th>
+                        <th class="py-3 text-right pr-3 w-20" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">Unit Cost</th>
+                        <th class="py-3 text-right pr-3 w-16" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">Qty</th>
+                        <th class="py-3 text-right pr-3 w-24" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">Line Amount</th>
+                        <th class="py-3 text-right pr-3 w-24" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">VAT</th>
+                        <th class="py-3 text-right pr-3 w-28" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; border: 1px solid #e2e8f0;">Amount</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm">
-                    @foreach($estimate->items as $item)
-                        <tr class="border-b border-gray-50">
-                            <td class="py-4 pr-4 pl-2">
+                    @foreach($estimate->items as $loop_item => $item)
+                        <tr style="background-color: {{ $loop_item % 2 === 0 ? '#ffffff' : '#f8fafc' }};">
+                            <td class="py-3 pl-3 pr-3" style="border: 1px solid #e2e8f0; vertical-align: top;">
                                 <div class="quill-content text-gray-800">
                                     {!! $item->description !!}
                                 </div>
@@ -141,80 +141,110 @@
                                     <p class="text-xs text-gray-500 mt-1"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
-                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->unit_price, 2) }}</td>
-                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ $item->quantity }}</td>
-                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->amount + $item->sscl_amount, 2) }}</td>
-                            <td class="py-4 text-right pr-4 text-gray-600 align-top font-mono">{{ number_format($item->vat_amount, 2) }}</td>
-                            <td class="py-4 text-right font-medium text-gray-800 align-top font-mono">{{ number_format($item->total_with_vat, 2) }}</td>
+                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ $item->quantity }}</td>
+                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->amount + $item->sscl_amount, 2) }}</td>
+                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->vat_amount, 2) }}</td>
+                            <td class="py-3 text-right pr-3 font-medium text-gray-800 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->total_with_vat, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
 
             <!-- Totals & Notes -->
-            <div class="flex justify-between items-start mt-8 estimate-totals">
-                <!-- Left: Terms & Signature -->
-                <div class="w-1/2 pr-8">
-                    @if($estimate->special_terms || $estimate->additional_notes || $estimate->terms)
-                        <div class="mb-8">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Terms & Conditions</h4>
-                            <div class="text-xs text-gray-600 space-y-2">
-                                @if($estimate->special_terms)
-                                    <p class="font-medium text-red-500">* {{ $estimate->special_terms }}</p>
-                                @endif
-                                @if($estimate->terms)
-                                    <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
-                                        @foreach(explode(', ', $estimate->terms) as $term)
-                                            <li>{{ $term }}</li>
-                                        @endforeach
-                                        @if($estimate->advance_percentage)
-                                            <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
-                                        @endif
-                                    </ul>
-                                @else
-                                    <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
-                                        @if($estimate->advance_percentage)
-                                            <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
-                                        @endif
-                                    </ul>
-                                @endif
-                            </div>
-                        </div>
-                    @endif
-
-
-
-                </div>
-
-                <!-- Right: Summary -->
-                <div class="w-2/5">
-                    <div class="bg-gray-50 rounded-lg p-6">
-                        <div class="flex justify-between mb-3 text-sm text-gray-600">
-                            <span>Subtotal</span>
-                            <span class="font-medium">{{ number_format($estimate->items->sum('amount') + $estimate->items->sum('sscl_amount'), 2) }}</span>
-                        </div>
-
-                        @php
-                            $totalVAT = $estimate->items->sum('vat_amount');
-                        @endphp
-
-                        @if($totalVAT > 0)
-                            <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                <span>VAT ({{ number_format(\App\Models\Setting::get('vat_rate', 15), 2) }}%)</span>
-                                <span class="font-medium">{{ number_format($totalVAT, 2) }}</span>
+            <div class="estimate-totals mt-8">
+                <div class="flex justify-between items-start">
+                    <!-- Left: Terms & Signature -->
+                    <div class="w-1/2 pr-8">
+                        @if($estimate->special_terms || $estimate->additional_notes || $estimate->terms)
+                            <div class="mb-8">
+                                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Terms & Conditions</h4>
+                                <div class="text-xs text-gray-600 space-y-2">
+                                    @if($estimate->special_terms)
+                                        <p class="font-medium text-red-500">* {{ $estimate->special_terms }}</p>
+                                    @endif
+                                    @if($estimate->terms)
+                                        <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
+                                            @foreach(explode(', ', $estimate->terms) as $term)
+                                                <li>{{ $term }}</li>
+                                            @endforeach
+                                            @if($estimate->advance_percentage)
+                                                <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
+                                            @endif
+                                        </ul>
+                                    @else
+                                        <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
+                                            @if($estimate->advance_percentage)
+                                                <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
+                                            @endif
+                                        </ul>
+                                    @endif
+                                </div>
                             </div>
                         @endif
+                    </div>
 
-                        <div class="border-t border-gray-200 my-3"></div>
+                    <!-- Right: Summary -->
+                    <div class="w-2/5">
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            @php
+                                $positiveItems = $estimate->items->where('unit_price', '>=', 0);
+                                $discountItems = $estimate->items->where('unit_price', '<', 0);
+                                
+                                $subtotalBase = $positiveItems->sum('amount');
+                                $positiveSSCL = $positiveItems->sum('sscl_amount');
+                                $positiveVAT = $positiveItems->sum('vat_amount');
+                                
+                                // Discount includes its own tax impact (negative amounts)
+                                $discountBase = abs($discountItems->sum('amount'));
+                                $discountSSCL = abs($discountItems->sum('sscl_amount'));
+                                $discountVAT = abs($discountItems->sum('vat_amount'));
+                                $totalDiscount = $discountBase + $discountSSCL + $discountVAT;
+                                
+                                $totalSSCL = $positiveSSCL - $discountSSCL;
+                                $totalVAT = $positiveVAT - $discountVAT;
+                                
+                                $calculatedTotal = ($subtotalBase + $positiveSSCL + $positiveVAT) - $totalDiscount;
+                            @endphp
+                            <div class="flex justify-between mb-3 text-sm text-gray-600">
+                                <span>Subtotal</span>
+                                <span class="font-medium">{{ number_format($subtotalBase, 2) }}</span>
+                            </div>
 
-                        <div class="flex justify-between items-center text-brand-purple">
-                            <span class="font-bold text-lg">Total</span>
-                            <span class="font-bold text-2xl">{{ number_format($estimate->total_amount, 2) }}</span>
-                        </div>
-                        <div class="text-right text-xs text-gray-500 mt-1">
-                            {{ $estimate->currency ?? 'LKR' }}
+                            @if($positiveSSCL > 0)
+                                <div class="flex justify-between mb-3 text-sm text-gray-600">
+                                    <span>SSCL ({{ number_format(\App\Models\Setting::get('sscl_rate', 2.5), 2) }}%)</span>
+                                    <span class="font-medium">{{ number_format($totalSSCL, 2) }}</span>
+                                </div>
+                            @endif
+
+                            @if($positiveVAT > 0)
+                                <div class="flex justify-between mb-3 text-sm text-gray-600">
+                                    <span>VAT ({{ number_format(\App\Models\Setting::get('vat_rate', 15), 2) }}%)</span>
+                                    <span class="font-medium">{{ number_format($totalVAT, 2) }}</span>
+                                </div>
+                            @endif
+
+                            @if($totalDiscount > 0)
+                                <div class="flex justify-between mb-3 text-sm text-gray-600">
+                                    <span class="text-gray-500 font-medium">Discount</span>
+                                    <span class="font-bold text-red-500 font-mono">-{{ number_format($totalDiscount, 2) }}</span>
+                                </div>
+                            @endif
+
+                            <div class="flex justify-between items-center text-brand-purple">
+                                <span class="font-bold text-lg">Total</span>
+                                <span class="font-bold text-2xl">{{ number_format($calculatedTotal, 2) }}</span>
+                            </div>
+                            <div class="text-right text-xs text-gray-500 mt-1">
+                                {{ $estimate->currency ?? 'LKR' }}
+                            </div>
                         </div>
                     </div>
+                </div>
+                <!-- Computer Generated Invoice Footer Message -->
+                <div class="text-left text-xs text-gray-400 mt-10 font-medium italic border-t border-gray-100 pt-4">
+                    This is a computer generated invoice, No manual signature requires
                 </div>
             </div>
 
@@ -293,6 +323,10 @@
             }
             thead { display: table-row-group !important; }
             .no-print { display: none !important; }
+            .estimate-table, .estimate-table th, .estimate-table td {
+                border: 1px solid #e2e8f0 !important;
+                border-collapse: collapse !important;
+            }
         }
     </style>
 @endsection
@@ -362,7 +396,8 @@ window.addEventListener("load", function () {
 
     // Create initial table on Page 1
     let currentTable = document.createElement('table');
-    currentTable.className = 'w-full mb-8';
+    currentTable.className = 'w-full mb-8 estimate-table';
+    currentTable.style.borderCollapse = 'collapse';
     currentTable.appendChild(tableHeader.cloneNode(true));
     let tbody = document.createElement('tbody');
     tbody.className = 'text-sm';
@@ -530,7 +565,9 @@ window.addEventListener("load", function () {
             paginatedView.appendChild(pageDiv);
 
             currentTable = document.createElement('table');
-            currentTable.className = 'w-full mb-8';
+            currentTable.className = 'w-full mb-8 estimate-table';
+            currentTable.style.borderCollapse = 'collapse';
+            currentTable.appendChild(tableHeader.cloneNode(true));
             
             const newTbody = document.createElement('tbody');
             newTbody.className = 'text-sm';

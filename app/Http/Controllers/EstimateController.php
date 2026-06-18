@@ -136,7 +136,7 @@ class EstimateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|integer|min:0',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|between:-999999,999999',
             'items.*.position' => 'required|integer',
             'items.*.department' => 'required|string',
             'items.*.revenue_category' => 'required|string',
@@ -226,15 +226,12 @@ class EstimateController extends Controller
             // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
-
             if ($request->has('sscl_applicable')) {
                 $sscl = $amount * (\App\Models\Setting::get('sscl_rate', 2.5) / 100);
             }
-
             if ($request->has('vat_applicable')) {
                 $vat = ($amount + $sscl) * (\App\Models\Setting::get('vat_rate', 15) / 100);
             }
-
             $totalWithVat = $amount + $vat + $sscl;
 
             $estimate->items()->create([
@@ -516,7 +513,7 @@ class EstimateController extends Controller
             'items' => 'required|array|min:1',
             'items.*.description' => 'required|string',
             'items.*.quantity' => 'required|integer|min:0',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'required|numeric|between:-999999,999999',
             'items.*.position' => 'required|integer',
             'items.*.department' => 'required|string',
             'items.*.revenue_category' => 'required|string',
@@ -622,17 +619,15 @@ class EstimateController extends Controller
             $unitPrice = $item['unit_price'];
             $amount = $quantity * $unitPrice;
 
+            // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
-
             if ($request->has('sscl_applicable')) {
                 $sscl = $amount * (\App\Models\Setting::get('sscl_rate', 2.5) / 100);
             }
-
             if ($request->has('vat_applicable')) {
                 $vat = ($amount + $sscl) * (\App\Models\Setting::get('vat_rate', 15) / 100);
             }
-
             $totalWithVat = $amount + $vat + $sscl;
 
             $estimate->items()->create([

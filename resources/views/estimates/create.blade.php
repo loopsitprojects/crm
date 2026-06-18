@@ -212,6 +212,10 @@
                                         <span class="text-gray-500 font-medium">VAT Amount</span>
                                         <span class="font-bold text-gray-700 font-mono" id="display_vat">0.00</span>
                                     </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-500 font-medium">Discount</span>
+                                        <span class="font-bold text-gray-700 font-mono" id="display_discount">0.00</span>
+                                    </div>
                                 </div>
                                 <div class="flex flex-col justify-center items-end border-l border-gray-50 pl-8">
                                     <span class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Grand Total</span>
@@ -609,7 +613,7 @@
                     <input type="number" name="items[${rowCount}][quantity]" required data-required="true" value="" placeholder="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                 </td>
                 <td class="p-2 align-top">
-                    <input type="number" step="0.01" name="items[${rowCount}][unit_price]" required data-required="true" value="" placeholder="0.00" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
+                    <input type="text" step="0.01" name="items[${rowCount}][unit_price]" required data-required="true" value="" placeholder="0.00" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                 </td>
                 <td class="p-2 align-top">
                     <input type="number" step="0.01" name="items[${rowCount}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1 px-1 text-right font-medium text-gray-700">
@@ -653,6 +657,7 @@
             let subtotalBase = 0;
             let totalSSCL = 0;
             let totalVAT = 0;
+            let discountTotal = 0;
 
             const ssclApplicable = document.getElementById('sscl_applicable').checked;
             const vatApplicable = document.getElementById('vat_applicable').checked;
@@ -663,6 +668,9 @@
                 const baseAmount = qty * price;
 
                 subtotalBase += baseAmount;
+                if (price < 0) {
+                    discountTotal += baseAmount;
+                }
                 if (ssclApplicable) totalSSCL += baseAmount * ssclRate;
                 if (vatApplicable) totalVAT += (baseAmount + (ssclApplicable ? baseAmount * ssclRate : 0)) * vatRate;
             });
@@ -673,6 +681,10 @@
             document.getElementById('display_sscl').textContent = totalSSCL.toFixed(2);
             document.getElementById('display_vat').textContent = totalVAT.toFixed(2);
             document.getElementById('display_total').textContent = grandTotal.toFixed(2);
+            const discountElem = document.getElementById('display_discount');
+            if (discountElem) {
+                discountElem.textContent = Math.abs(discountTotal).toFixed(2);
+            }
         }
 
         function calculateAllRows() {
@@ -935,7 +947,7 @@
                             val = tempDiv.textContent.trim();
                         }
 
-                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0)) {
+                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0 && !el.name.includes('[unit_price]'))) {
                             isValid = false;
                             showError(el, 'Required');
                             if (!firstErrorField) {
