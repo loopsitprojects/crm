@@ -280,6 +280,16 @@
                                 <input type="text" name="heading" value="{{ isset($deal) ? $deal->title : '' }}" placeholder="E.g. Web Development"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
                             </div>
+
+                            <!-- Invoice Type -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Invoice Type <span class="text-red-500">*</span></label>
+                                <select name="invoice_type" id="invoice_type" required
+                                    class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
+                                    <option value="invoice">Invoice</option>
+                                    <option value="tax_invoice" selected>Tax Invoice</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -320,13 +330,19 @@
                                         <span class="text-sm font-medium text-gray-700">No</span>
                                     </label>
                                 </div>
-                                <div id="proforma_details" class="space-y-3">
-                                    <input type="number" step="1" name="proforma_percentage" placeholder="Percentage %"
-                                        class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
-                                    <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
-                                        <option value="with_tax">With Tax</option>
-                                        <option value="without_tax">Without Tax</option>
-                                    </select>
+                                <div id="proforma_details" class="space-y-3 pt-4 border-t border-gray-50">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Proforma Percentage %</label>
+                                        <input type="number" step="1" name="proforma_percentage" placeholder="Percentage %"
+                                            class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Proforma Tax Setting</label>
+                                        <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
+                                            <option value="with_tax">With Tax</option>
+                                            <option value="without_tax">Without Tax</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 

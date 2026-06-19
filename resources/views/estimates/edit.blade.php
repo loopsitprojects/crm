@@ -360,6 +360,16 @@
                                 <input type="text" name="heading" value="{{ old('heading', $estimate->heading) }}" placeholder="E.g. Web Development"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
                             </div>
+
+                            <!-- Invoice Type -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Invoice Type <span class="text-red-500">*</span></label>
+                                <select name="invoice_type" id="invoice_type" required
+                                    class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
+                                    <option value="invoice" {{ ($estimate->invoice_type ?? 'tax_invoice') == 'invoice' ? 'selected' : '' }}>Invoice</option>
+                                    <option value="tax_invoice" {{ ($estimate->invoice_type ?? 'tax_invoice') == 'tax_invoice' ? 'selected' : '' }}>Tax Invoice</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -400,13 +410,19 @@
                                         <span class="text-sm font-medium text-gray-700">No</span>
                                     </label>
                                 </div>
-                                <div id="proforma_details" class="{{ ($estimate->proforma_invoice ?? 'yes') == 'no' ? 'hidden' : '' }} space-y-3">
-                                    <input type="number" step="1" name="proforma_percentage" value="{{ old('proforma_percentage', (int)$estimate->proforma_percentage) }}" placeholder="Percentage %"
-                                        class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
-                                    <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
-                                        <option value="with_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'with_tax' ? 'selected' : '' }}>With Tax</option>
-                                        <option value="without_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'without_tax' ? 'selected' : '' }}>Without Tax</option>
-                                    </select>
+                                <div id="proforma_details" class="{{ ($estimate->proforma_invoice ?? 'yes') == 'no' ? 'hidden' : '' }} space-y-3 pt-4 border-t border-gray-50">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Proforma Percentage %</label>
+                                        <input type="number" step="1" name="proforma_percentage" value="{{ old('proforma_percentage', (int)$estimate->proforma_percentage) }}" placeholder="Percentage %"
+                                            class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Proforma Tax Setting</label>
+                                        <select name="proforma_tax" class="w-full rounded-md border-gray-200 text-xs py-1.5 px-3">
+                                            <option value="with_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'with_tax' ? 'selected' : '' }}>With Tax</option>
+                                            <option value="without_tax" {{ ($estimate->proforma_tax ?? 'with_tax') == 'without_tax' ? 'selected' : '' }}>Without Tax</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
@@ -953,6 +969,9 @@
             const checkedThirdParty = document.querySelector('input[name="third_party_cost"]:checked');
             if (checkedThirdParty) toggleThirdPartySection(checkedThirdParty.value);
 
+            const checkedProforma = document.querySelector('input[name="proforma_invoice"]:checked');
+            if (checkedProforma) toggleProformaFields(checkedProforma.value);
+
             Sortable.create(document.getElementById('items-body'), {
                 handle: '.drag-handle',
                 animation: 150,
@@ -1093,7 +1112,7 @@
                             val = tempDiv.textContent.trim();
                         }
 
-                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0)) {
+                        if (!val || val.trim() === "" || (el.type === 'number' && parseFloat(val) < 0 && !el.name.includes('[unit_price]'))) {
                             isValid = false;
                             showError(el, 'Required');
                             if (!firstErrorField) {
