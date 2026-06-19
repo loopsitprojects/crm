@@ -243,7 +243,10 @@
                                                     class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                                             </td>
                                             <td class="p-2 align-top">
-                                                                    <input type="text" step="0.01" name="items[{{ $index }}][unit_price]" required data-required="true" value="{{ isset($item->unit_price) ? number_format((float)$item->unit_price, 2, '.', '') : '' }}" placeholder="0.00" oninput="calculateRow(this)"
+                                                <input type="text" step="0.01" name="items[{{ $index }}][unit_price]" required data-required="true" 
+                                                    value="{{ isset($item->total_with_vat) && $item->quantity > 0 ? number_format((float)($item->total_with_vat / $item->quantity), 2, '.', '') : (isset($item->unit_price) ? number_format((float)$item->unit_price, 2, '.', '') : '') }}" 
+                                                    data-base-price="{{ isset($item->unit_price) ? number_format((float)$item->unit_price, 2, '.', '') : '' }}"
+                                                    placeholder="0.00" oninput="updateBasePrice(this); calculateRow(this)"
                                                     class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                                             </td>
                                             <td class="p-2 align-top">
@@ -756,7 +759,7 @@
                     <input type="number" name="items[${newIndex}][quantity]" required data-required="true" value="" placeholder="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                 </td>
                 <td class="p-2 align-top">
-                    <input type="number" step="0.01" name="items[${newIndex}][unit_price]" required data-required="true" value="" placeholder="0.00" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
+                    <input type="text" step="0.01" name="items[${newIndex}][unit_price]" required data-required="true" value="" placeholder="0.00" oninput="updateBasePrice(this); calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                 </td>
                 <td class="p-2 align-top">
                     <input type="number" step="0.01" name="items[${newIndex}][amount]" placeholder="0.00" readonly class="w-full border-none bg-transparent text-sm py-1 px-1 text-right font-medium text-gray-700">
@@ -775,23 +778,39 @@
         const ssclRate = {{ $ssclRate / 100 }};
         const vatRate = {{ $vatRate / 100 }};
 
+        function updateBasePrice(input) {
+            // Save typed value as the base price
+            input.setAttribute('data-base-price', input.value);
+        }
+
         function calculateRow(input) {
             const row = input.closest('tr');
-            const qty = parseFloat(row.querySelector('input[name*="[quantity]"]').value) || 0;
-            const price = parseFloat(row.querySelector('input[name*="[unit_price]"]').value) || 0;
-            const baseAmount = qty * price;
+            const qtyInput = row.querySelector('input[name*="[quantity]"]');
+            const priceInput = row.querySelector('input[name*="[unit_price]"]');
+            
+            const qty = parseFloat(qtyInput.value) || 0;
+            
+            let basePrice = priceInput.getAttribute('data-base-price');
+            if (basePrice === null || basePrice === '') {
+                basePrice = priceInput.value || '0';
+                priceInput.setAttribute('data-base-price', basePrice);
+            }
+            const parsedBasePrice = parseFloat(basePrice) || 0;
 
             const ssclApplicable = document.getElementById('sscl_applicable').checked;
             const vatApplicable = document.getElementById('vat_applicable').checked;
 
-            let sscl = 0;
-            let vat = 0;
+            let ssclPerUnit = 0;
+            let vatPerUnit = 0;
 
-            if (ssclApplicable) sscl = baseAmount * ssclRate;
-            if (vatApplicable) vat = (baseAmount + sscl) * vatRate;
+            if (ssclApplicable) ssclPerUnit = parsedBasePrice * ssclRate;
+            if (vatApplicable) vatPerUnit = (parsedBasePrice + ssclPerUnit) * vatRate;
 
-            const totalWithTaxes = baseAmount + sscl + vat;
-            row.querySelector('input[name*="[amount]"]').value = totalWithTaxes.toFixed(2);
+            const taxInclusivePrice = parsedBasePrice + ssclPerUnit + vatPerUnit;
+            priceInput.value = taxInclusivePrice.toFixed(2);
+
+            const baseAmount = qty * taxInclusivePrice;
+            row.querySelector('input[name*="[amount]"]').value = baseAmount.toFixed(2);
 
             calculateTotals();
         }
@@ -807,11 +826,18 @@
 
             document.querySelectorAll('#items-body tr').forEach(row => {
                 const qty = parseFloat(row.querySelector('input[name*="[quantity]"]').value) || 0;
-                const price = parseFloat(row.querySelector('input[name*="[unit_price]"]').value) || 0;
-                const baseAmount = qty * price;
+                const priceInput = row.querySelector('input[name*="[unit_price]"]');
+                
+                let basePrice = priceInput.getAttribute('data-base-price');
+                if (basePrice === null || basePrice === '') {
+                    basePrice = priceInput.value || '0';
+                    priceInput.setAttribute('data-base-price', basePrice);
+                }
+                const parsedBasePrice = parseFloat(basePrice) || 0;
+                const baseAmount = qty * parsedBasePrice;
 
                 subtotalBase += baseAmount;
-                if (price < 0) {
+                if (parsedBasePrice < 0) {
                     discountTotal += baseAmount; // baseAmount is negative
                 }
                 if (ssclApplicable) totalSSCL += baseAmount * ssclRate;

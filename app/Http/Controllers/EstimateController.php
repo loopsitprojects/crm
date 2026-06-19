@@ -223,23 +223,44 @@ class EstimateController extends Controller
         foreach ($request->items as $item) {
             $quantity = $item['quantity'];
             $unitPrice = $item['unit_price'];
-            $amount = $quantity * $unitPrice;
+
+            // Calculate the taxFactor to back out the base unit price
+            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5) / 100;
+            $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
+            
+            $ssclApplicable = $request->has('sscl_applicable');
+            $vatApplicable = $request->has('vat_applicable');
+
+            $taxFactor = 1.0;
+            if ($ssclApplicable) {
+                $taxFactor += $ssclRate;
+            }
+            if ($vatApplicable) {
+                $taxFactor += $vatRate;
+            }
+            if ($ssclApplicable && $vatApplicable) {
+                $taxFactor += ($ssclRate * $vatRate); // compounded part
+            }
+
+            // The unit price in the request is the tax-inclusive price, so we divide by taxFactor to get base price
+            $baseUnitPrice = $unitPrice / $taxFactor;
+            $amount = $quantity * $baseUnitPrice;
 
             // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
-            if ($request->has('sscl_applicable')) {
-                $sscl = $amount * (\App\Models\Setting::get('sscl_rate', 2.5) / 100);
+            if ($ssclApplicable) {
+                $sscl = $amount * $ssclRate;
             }
-            if ($request->has('vat_applicable')) {
-                $vat = ($amount + $sscl) * (\App\Models\Setting::get('vat_rate', 15) / 100);
+            if ($vatApplicable) {
+                $vat = ($amount + $sscl) * $vatRate;
             }
             $totalWithVat = $amount + $vat + $sscl;
 
             $estimate->items()->create([
                 'description' => $item['description'],
                 'quantity' => $quantity,
-                'unit_price' => $unitPrice,
+                'unit_price' => $baseUnitPrice,
                 'amount' => $amount,
                 'vat_amount' => $vat,
                 'sscl_amount' => $sscl,
@@ -621,23 +642,44 @@ class EstimateController extends Controller
         foreach ($request->items as $item) {
             $quantity = $item['quantity'];
             $unitPrice = $item['unit_price'];
-            $amount = $quantity * $unitPrice;
+
+            // Calculate the taxFactor to back out the base unit price
+            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5) / 100;
+            $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
+            
+            $ssclApplicable = $request->has('sscl_applicable');
+            $vatApplicable = $request->has('vat_applicable');
+
+            $taxFactor = 1.0;
+            if ($ssclApplicable) {
+                $taxFactor += $ssclRate;
+            }
+            if ($vatApplicable) {
+                $taxFactor += $vatRate;
+            }
+            if ($ssclApplicable && $vatApplicable) {
+                $taxFactor += ($ssclRate * $vatRate); // compounded part
+            }
+
+            // The unit price in the request is the tax-inclusive price, so we divide by taxFactor to get base price
+            $baseUnitPrice = $unitPrice / $taxFactor;
+            $amount = $quantity * $baseUnitPrice;
 
             // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
-            if ($request->has('sscl_applicable')) {
-                $sscl = $amount * (\App\Models\Setting::get('sscl_rate', 2.5) / 100);
+            if ($ssclApplicable) {
+                $sscl = $amount * $ssclRate;
             }
-            if ($request->has('vat_applicable')) {
-                $vat = ($amount + $sscl) * (\App\Models\Setting::get('vat_rate', 15) / 100);
+            if ($vatApplicable) {
+                $vat = ($amount + $sscl) * $vatRate;
             }
             $totalWithVat = $amount + $vat + $sscl;
 
             $estimate->items()->create([
                 'description' => $item['description'],
                 'quantity' => $quantity,
-                'unit_price' => $unitPrice,
+                'unit_price' => $baseUnitPrice,
                 'amount' => $amount,
                 'vat_amount' => $vat,
                 'sscl_amount' => $sscl,
