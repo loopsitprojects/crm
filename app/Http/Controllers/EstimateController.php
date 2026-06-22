@@ -130,6 +130,8 @@ class EstimateController extends Controller
             'brand_name' => 'required|string|max:255',
             'date' => 'required|date',
             'attention_to' => 'nullable|string',
+            'date_of_delivery' => 'nullable|date',
+            'place_of_supply' => 'nullable|string|max:255',
             'currency' => 'required|string',
             'senior_manager' => 'nullable|string',
             'deal_id' => 'nullable|exists:deals,id',
@@ -215,6 +217,8 @@ class EstimateController extends Controller
             'po_applicable' => $request->po_applicable ?? 'no',
             'po_number' => $request->po_number,
             'po_file_path' => $poPath,
+            'date_of_delivery' => $request->date_of_delivery,
+            'place_of_supply' => $request->place_of_supply,
         ]);
 
         $grandTotal = 0;
@@ -531,6 +535,8 @@ class EstimateController extends Controller
             'brand_name' => 'required|string|max:255',
             'date' => 'required|date',
             'attention_to' => 'nullable|string',
+            'date_of_delivery' => 'nullable|date',
+            'place_of_supply' => 'nullable|string|max:255',
             'currency' => 'required|string',
             'senior_manager' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -631,6 +637,8 @@ class EstimateController extends Controller
             'po_applicable' => $request->po_applicable ?? 'no',
             'po_number' => $request->po_number,
             'po_file_path' => $poPath,
+            'date_of_delivery' => $request->date_of_delivery,
+            'place_of_supply' => $request->place_of_supply,
         ]);
 
         // Delete existing items and recreate

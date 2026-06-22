@@ -40,7 +40,9 @@ class Estimate extends Model
         'vat_applicable',
         'po_applicable',
         'po_number',
-        'po_file_path'
+        'po_file_path',
+        'date_of_delivery',
+        'place_of_supply'
     ];
 
     public function customer()

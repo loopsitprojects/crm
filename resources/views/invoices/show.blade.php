@@ -126,10 +126,10 @@
             <!-- Delivery & Supply Section -->
             <div class="flex invoice-delivery-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">N/A</span>
+                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">{{ $invoice->estimate && $invoice->estimate->date_of_delivery ? \Carbon\Carbon::parse($invoice->estimate->date_of_delivery)->format('d-m-Y') : 'N/A' }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Place of Supply:</span> <span class="text-[13px]">N/A</span>
+                    <span class="font-bold text-[13px]">Place of Supply:</span> <span class="text-[13px]">{{ $invoice->estimate && $invoice->estimate->place_of_supply ? $invoice->estimate->place_of_supply : 'N/A' }}</span>
                 </div>
             </div>
 
@@ -153,7 +153,7 @@
                 <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
                 <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
                 <div class="p-2 w-[18%] border-r border-b border-black">Unit Price</div>
-                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
+                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Including<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
             </div>
 
             <!-- Item Rows - Dynamic -->
@@ -174,8 +174,11 @@
                         </div>
                     </div>
                     <div class="p-2 w-[12%] border-r border-b border-black text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
-                    <div class="p-2 w-[18%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($item->unit_price, 2) }}</div>
-                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($itemAmountNoVat, 2) }}</div>
+                    @php
+                        $displayUnitPrice = $item->quantity != 0 ? ($item->amount + $item->sscl_amount) / $item->quantity : $item->unit_price;
+                    @endphp
+                    <div class="p-2 w-[18%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($displayUnitPrice, 2) }}</div>
+                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($item->total_with_vat, 2) }}</div>
                 </div>
             @endforeach
 
