@@ -96,7 +96,7 @@
             <!-- Top Section: 2 Columns -->
             <div class="flex invoice-date-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
+                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ $invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->format('d-m-Y') : \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
                     <span class="font-bold text-[13px]">{{ $invoice->is_proforma ? 'Proforma Invoice No.:' : (($invoice->estimate && $invoice->estimate->invoice_type === 'invoice') ? 'Invoice No.:' : 'Tax Invoice No.:') }}</span> <span class="text-[13px]">{{ $invoice->invoice_number }}</span>
@@ -176,9 +176,10 @@
                     <div class="p-2 w-[12%] border-r border-b border-black text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
                     @php
                         $displayUnitPrice = $item->quantity != 0 ? ($item->amount + $item->sscl_amount) / $item->quantity : $item->unit_price;
+                        $amountIncludingVat = $displayUnitPrice * $item->quantity;
                     @endphp
                     <div class="p-2 w-[18%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($displayUnitPrice, 2) }}</div>
-                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($item->total_with_vat, 2) }}</div>
+                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($amountIncludingVat, 2) }}</div>
                 </div>
             @endforeach
 
