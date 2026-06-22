@@ -153,7 +153,7 @@
                 <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
                 <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
                 <div class="p-2 w-[18%] border-r border-b border-black">Unit Price</div>
-                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Including<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
+                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
             </div>
 
             <!-- Item Rows - Dynamic -->
