@@ -30,12 +30,12 @@
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">From</span>
-                            <input type="date" name="start_date" value="{{ $startDate->format('Y-m-d') }}" 
+                            <input type="month" name="start_date" value="{{ $startDate ? $startDate->format('Y-m') : '' }}" 
                                 class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">To</span>
-                            <input type="date" name="end_date" value="{{ $endDate->format('Y-m-d') }}" 
+                            <input type="month" name="end_date" value="{{ $endDate ? $endDate->format('Y-m') : '' }}" 
                                 class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                     </div>

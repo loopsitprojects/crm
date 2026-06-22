@@ -139,6 +139,8 @@
                 <div class="text-[13px]">
                     @if($invoice->estimate && $invoice->estimate->additional_notes)
                         {{ $invoice->estimate->additional_notes }}
+                    @elseif($invoice->estimate && $invoice->estimate->heading)
+                        {{ $invoice->estimate->heading }}
                     @else
                         N/A
                     @endif

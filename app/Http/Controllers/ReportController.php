@@ -14,8 +14,24 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : now()->startOfMonth();
-        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : now()->endOfMonth();
+        $startDateVal = $request->input('start_date');
+        $startDate = null;
+        if ($startDateVal) {
+            if (preg_match('/^\d{4}-\d{2}$/', $startDateVal)) {
+                $startDateVal .= '-01';
+            }
+            $startDate = Carbon::parse($startDateVal);
+        }
+
+        $endDateVal = $request->input('end_date');
+        $endDate = null;
+        if ($endDateVal) {
+            if (preg_match('/^\d{4}-\d{2}$/', $endDateVal)) {
+                $endDate = Carbon::parse($endDateVal)->endOfMonth();
+            } else {
+                $endDate = Carbon::parse($endDateVal);
+            }
+        }
         $department = $request->input('department');
         $customerName = $request->input('customer_name');
         $stageFilter = $request->input('stage');
@@ -42,7 +58,13 @@ class ReportController extends Controller
 
         // Base Query with RBAC & Filters
         $applyFilters = function ($query) use ($startDate, $endDate, $department, $customerName, $isRestricted, $user, $sbuDepts, $salesDepts) {
-            $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            if ($startDate && $endDate) {
+                $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            } elseif ($startDate) {
+                $query->where('close_date', '>=', $startDate->startOfDay());
+            } elseif ($endDate) {
+                $query->where('close_date', '<=', $endDate->endOfDay());
+            }
 
             if ($department) {
                 if ($department === 'SBU') {
@@ -118,8 +140,14 @@ class ReportController extends Controller
         }
 
         $invoiceQuery = Invoice::with('customer', 'estimate.deal')
-            ->where('invoices.is_proforma', false)
-            ->whereBetween('invoices.created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            ->where('invoices.is_proforma', false);
+        if ($startDate && $endDate) {
+            $invoiceQuery->whereBetween('invoices.created_at', [$startDate->startOfDay(), $endDate->endOfDay()]);
+        } elseif ($startDate) {
+            $invoiceQuery->where('invoices.created_at', '>=', $startDate->startOfDay());
+        } elseif ($endDate) {
+            $invoiceQuery->where('invoices.created_at', '<=', $endDate->endOfDay());
+        }
         
         // Add table name to dealQuery as well if it's used in joins later
         // (Currently not used in joins that would cause ambiguity, but good practice)
@@ -259,8 +287,14 @@ class ReportController extends Controller
         $revenueByDeptQuery = DB::table('invoices')
             ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
             ->join('deals', 'quotations.deal_id', '=', 'deals.id')
-            ->whereBetween('invoices.created_at', [$startDate, $endDate])
             ->where('invoices.status', 'paid');
+        if ($startDate && $endDate) {
+            $revenueByDeptQuery->whereBetween('invoices.created_at', [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $revenueByDeptQuery->where('invoices.created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $revenueByDeptQuery->where('invoices.created_at', '<=', $endDate);
+        }
 
         if ($isRestricted) {
             $revenueByDeptQuery->where(function ($q) use ($user) {
@@ -398,8 +432,24 @@ class ReportController extends Controller
 
     public function exportCsv(Request $request)
     {
-        $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : now()->startOfMonth();
-        $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : now()->endOfMonth();
+        $startDateVal = $request->input('start_date');
+        $startDate = null;
+        if ($startDateVal) {
+            if (preg_match('/^\d{4}-\d{2}$/', $startDateVal)) {
+                $startDateVal .= '-01';
+            }
+            $startDate = Carbon::parse($startDateVal);
+        }
+
+        $endDateVal = $request->input('end_date');
+        $endDate = null;
+        if ($endDateVal) {
+            if (preg_match('/^\d{4}-\d{2}$/', $endDateVal)) {
+                $endDate = Carbon::parse($endDateVal)->endOfMonth();
+            } else {
+                $endDate = Carbon::parse($endDateVal);
+            }
+        }
         $department = $request->input('department');
         $type = $request->input('type', 'deals');
         $reportType = $request->input('report_type');
@@ -413,7 +463,14 @@ class ReportController extends Controller
 
         if ($type === 'detailed') {
             // Updated to match the new Deal-based detailed report logic
-            $dealQuery = Deal::whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            $dealQuery = Deal::query();
+            if ($startDate && $endDate) {
+                $dealQuery->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            } elseif ($startDate) {
+                $dealQuery->where('close_date', '>=', $startDate->startOfDay());
+            } elseif ($endDate) {
+                $dealQuery->where('close_date', '<=', $endDate->endOfDay());
+            }
             
             if ($isRestricted) {
                 $dealQuery->where(function ($q) use ($user) {
@@ -513,7 +570,14 @@ class ReportController extends Controller
                 fclose($file);
             };
         } elseif ($type === 'invoices') {
-            $query = Invoice::whereBetween('created_at', [$startDate, $endDate])->with('customer', 'estimate.deal');
+            $query = Invoice::with('customer', 'estimate.deal');
+            if ($startDate && $endDate) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $query->where('created_at', '>=', $startDate);
+            } elseif ($endDate) {
+                $query->where('created_at', '<=', $endDate);
+            }
 
             if ($isRestricted) {
                 $query->whereHas('estimate.deal', function ($q) use ($user) {
@@ -586,7 +650,14 @@ class ReportController extends Controller
                 fclose($file);
             };
         } else {
-            $query = Deal::whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()])->with('customer', 'owner');
+            $query = Deal::with('customer', 'owner');
+            if ($startDate && $endDate) {
+                $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+            } elseif ($startDate) {
+                $query->where('close_date', '>=', $startDate->startOfDay());
+            } elseif ($endDate) {
+                $query->where('close_date', '<=', $endDate->endOfDay());
+            }
 
             if ($reportType === 'pending') {
                 $query->whereNotIn('stage', ['Closed Won', 'Rejected']);

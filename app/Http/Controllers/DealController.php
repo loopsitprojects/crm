@@ -76,11 +76,23 @@ class DealController extends Controller
         $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.items'])->orderBy('updated_at', 'desc');
 
         if ($request->filled('start_date')) {
-            $query->whereDate('created_at', '>=', $request->input('start_date'));
+            $startDateVal = $request->input('start_date');
+            if (preg_match('/^\d{4}-\d{2}$/', $startDateVal)) {
+                $startDateVal .= '-01';
+            }
+            $query->whereDate('created_at', '>=', $startDateVal);
         }
 
         if ($request->filled('close_date')) {
-            $query->whereDate('close_date', '<=', $request->input('close_date'));
+            $closeDateVal = $request->input('close_date');
+            if (preg_match('/^\d{4}-\d{2}$/', $closeDateVal)) {
+                try {
+                    $closeDateVal = \Carbon\Carbon::parse($closeDateVal)->endOfMonth()->toDateString();
+                } catch (\Exception $e) {
+                    $closeDateVal .= '-31';
+                }
+            }
+            $query->whereDate('close_date', '<=', $closeDateVal);
         }
 
         // User filter

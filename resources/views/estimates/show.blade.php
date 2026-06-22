@@ -225,12 +225,7 @@
                                 </div>
                             @endif
 
-                            @if($totalDiscount > 0)
-                                <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                    <span class="text-gray-500 font-medium">Discount</span>
-                                    <span class="font-bold text-red-500 font-mono">-{{ number_format($totalDiscount, 2) }}</span>
-                                </div>
-                            @endif
+
 
                             <div class="flex justify-between items-center text-brand-purple">
                                 <span class="font-bold text-lg">Total</span>

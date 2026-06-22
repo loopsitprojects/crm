@@ -154,14 +154,14 @@
                 <!-- Filter Form -->
                 <form action="{{ route('deals.index') }}" method="GET" class="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
                     <div class="flex items-center gap-2">
-                        <label for="start_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Start Date:</label>
-                        <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
+                        <label for="start_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Start Month:</label>
+                        <input type="month" name="start_date" id="start_date" value="{{ request('start_date') ? (strlen(request('start_date')) > 7 ? substr(request('start_date'), 0, 7) : request('start_date')) : '' }}"
                             class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <label for="close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Close Date:</label>
-                        <input type="date" name="close_date" id="close_date" value="{{ request('close_date') }}"
+                        <label for="close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Close Month:</label>
+                        <input type="month" name="close_date" id="close_date" value="{{ request('close_date') ? (strlen(request('close_date')) > 7 ? substr(request('close_date'), 0, 7) : request('close_date')) : '' }}"
                             class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
                     </div>
 
