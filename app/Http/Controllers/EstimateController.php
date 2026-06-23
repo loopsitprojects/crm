@@ -235,19 +235,8 @@ class EstimateController extends Controller
             $ssclApplicable = $request->has('sscl_applicable');
             $vatApplicable = $request->has('vat_applicable');
 
-            $taxFactor = 1.0;
-            if ($ssclApplicable) {
-                $taxFactor += $ssclRate;
-            }
-            if ($vatApplicable) {
-                $taxFactor += $vatRate;
-            }
-            if ($ssclApplicable && $vatApplicable) {
-                $taxFactor += ($ssclRate * $vatRate); // compounded part
-            }
-
-            // The unit price in the request is the tax-inclusive price, so we divide by taxFactor to get base price
-            $baseUnitPrice = $unitPrice / $taxFactor;
+            // The unit price in the request is now the base unit price directly
+            $baseUnitPrice = $unitPrice;
             $amount = $quantity * $baseUnitPrice;
 
             // Tax Calculation (Backend Fallback/Verification)
@@ -430,7 +419,7 @@ class EstimateController extends Controller
             'customer_id' => $estimate->customer_id,
             'invoice_number' => $newInvoiceNumber,
             'date' => now(),
-            'due_date' => now()->addDays(30),
+            'due_date' => \Carbon\Carbon::parse($estimate->date)->addMonth(),
             'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
             'status' => 'unpaid',
         ]);
@@ -658,19 +647,8 @@ class EstimateController extends Controller
             $ssclApplicable = $request->has('sscl_applicable');
             $vatApplicable = $request->has('vat_applicable');
 
-            $taxFactor = 1.0;
-            if ($ssclApplicable) {
-                $taxFactor += $ssclRate;
-            }
-            if ($vatApplicable) {
-                $taxFactor += $vatRate;
-            }
-            if ($ssclApplicable && $vatApplicable) {
-                $taxFactor += ($ssclRate * $vatRate); // compounded part
-            }
-
-            // The unit price in the request is the tax-inclusive price, so we divide by taxFactor to get base price
-            $baseUnitPrice = $unitPrice / $taxFactor;
+            // The unit price in the request is now the base unit price directly
+            $baseUnitPrice = $unitPrice;
             $amount = $quantity * $baseUnitPrice;
 
             // Tax Calculation (Backend Fallback/Verification)
@@ -843,7 +821,7 @@ class EstimateController extends Controller
                     'customer_id' => $estimate->customer_id,
                     'invoice_number' => $newInvoiceNumber,
                     'date' => now(),
-                    'due_date' => now()->addDays(30),
+                    'due_date' => \Carbon\Carbon::parse($estimate->date)->addMonth(),
                     'total_amount' => $estimate->total_amount,
                     'status' => 'unpaid',
                     'is_proforma' => true,

@@ -91,6 +91,8 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Heading
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -107,6 +109,7 @@
                                 {{ $estimate->reference_number }}
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->heading ?: 'N/A' }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                     <i class="fas fa-user-circle mr-1"></i> {{ $estimate->user->name ?? 'Unknown' }}

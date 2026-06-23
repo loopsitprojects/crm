@@ -95,6 +95,14 @@ class DealController extends Controller
             $query->whereDate('close_date', '<=', $closeDateVal);
         }
 
+        if ($request->filled('created_date')) {
+            $query->whereDate('created_at', '=', $request->input('created_date'));
+        }
+
+        if ($request->filled('expected_close_date')) {
+            $query->whereDate('close_date', '=', $request->input('expected_close_date'));
+        }
+
         // User filter
         if ($request->filled('filter_user')) {
             $query->where('user_id', $request->input('filter_user'));

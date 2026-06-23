@@ -22,7 +22,7 @@
             this.activeRef = ref;
             this.showAttachments = true;
         }
-    }">
+    }" x-init="if (!columns.includes('heading')) { columns.splice(columns.indexOf('customer') + 1, 0, 'heading'); }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">All Invoices</h3>
             <div class="relative" @click.away="showPicker = false">
@@ -42,6 +42,7 @@
                             @foreach([
                                 'invoice_no' => 'Invoice #',
                                 'customer' => 'Customer',
+                                'heading' => 'Project Heading',
                                 'date' => 'Date',
                                 'due_date' => 'Due Date',
                                 'amount' => 'Amount',
@@ -132,6 +133,8 @@
                         </th>
                         <th x-show="isColumnVisible('customer')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
+                        <th x-show="isColumnVisible('heading')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Heading
+                        </th>
                         <th x-show="isColumnVisible('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th x-show="isColumnVisible('due_date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date
                         </th>
@@ -150,8 +153,11 @@
                                 {{ $invoice->invoice_number }}
                             </td>
                             <td x-show="isColumnVisible('customer')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->customer->name }}</td>
-                            <td x-show="isColumnVisible('date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->date }}</td>
-                            <td x-show="isColumnVisible('due_date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->due_date }}</td>
+                            <td x-show="isColumnVisible('heading')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
+                                {{ $invoice->estimate->heading ?? 'N/A' }}
+                            </td>
+                            <td x-show="isColumnVisible('date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? $invoice->estimate->date : $invoice->date }}</td>
+                            <td x-show="isColumnVisible('due_date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->addMonth()->toDateString() : $invoice->due_date }}</td>
                             <td x-show="isColumnVisible('amount')" class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 {{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->total_amount, 2) }}</td>
                             <td x-show="isColumnVisible('status')" class="px-6 py-4 white-space-nowrap">

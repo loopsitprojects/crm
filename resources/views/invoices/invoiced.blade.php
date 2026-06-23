@@ -89,6 +89,8 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Heading
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount
                         </th>
@@ -103,6 +105,7 @@
                                 {{ $estimate->reference_number }}
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->heading ?: 'N/A' }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 {{ $estimate->currency ?? 'LKR' }} {{ number_format($estimate->total_amount, 2) }}</td>

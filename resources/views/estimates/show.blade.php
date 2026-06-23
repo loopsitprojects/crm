@@ -141,7 +141,7 @@
                                     <p class="text-xs text-gray-500 mt-1"><b>Loc:</b> {{ $item->locations }}</p>
                                 @endif
                             </td>
-                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->unit_price, 2) }}</td>
+                            <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->quantity != 0 ? ($item->amount + $item->sscl_amount) / $item->quantity : $item->unit_price, 2) }}</td>
                             <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ $item->quantity }}</td>
                             <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->amount + $item->sscl_amount, 2) }}</td>
                             <td class="py-3 text-right pr-3 text-gray-600 font-mono" style="border: 1px solid #e2e8f0; vertical-align: top;">{{ number_format($item->vat_amount, 2) }}</td>
@@ -191,32 +191,26 @@
                                 $positiveItems = $estimate->items->where('unit_price', '>=', 0);
                                 $discountItems = $estimate->items->where('unit_price', '<', 0);
                                 
-                                $subtotalBase = $positiveItems->sum('amount');
+                                $positiveBase = $positiveItems->sum('amount');
                                 $positiveSSCL = $positiveItems->sum('sscl_amount');
                                 $positiveVAT = $positiveItems->sum('vat_amount');
+                                
+                                $subtotalBase = $positiveBase + $positiveSSCL;
                                 
                                 // Discount includes its own tax impact (negative amounts)
                                 $discountBase = abs($discountItems->sum('amount'));
                                 $discountSSCL = abs($discountItems->sum('sscl_amount'));
                                 $discountVAT = abs($discountItems->sum('vat_amount'));
-                                $totalDiscount = $discountBase + $discountSSCL + $discountVAT;
+                                $totalDiscount = ($discountBase + $discountSSCL) + $discountVAT;
                                 
-                                $totalSSCL = $positiveSSCL - $discountSSCL;
                                 $totalVAT = $positiveVAT - $discountVAT;
                                 
-                                $calculatedTotal = ($subtotalBase + $positiveSSCL + $positiveVAT) - $totalDiscount;
+                                $calculatedTotal = ($subtotalBase + $positiveVAT) - $totalDiscount;
                             @endphp
                             <div class="flex justify-between mb-3 text-sm text-gray-600">
                                 <span>Subtotal</span>
                                 <span class="font-medium">{{ number_format($subtotalBase, 2) }}</span>
                             </div>
-
-                            @if($positiveSSCL > 0)
-                                <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                    <span>SSCL ({{ number_format(\App\Models\Setting::get('sscl_rate', 2.5), 2) }}%)</span>
-                                    <span class="font-medium">{{ number_format($totalSSCL, 2) }}</span>
-                                </div>
-                            @endif
 
                             @if($positiveVAT > 0)
                                 <div class="flex justify-between mb-3 text-sm text-gray-600">

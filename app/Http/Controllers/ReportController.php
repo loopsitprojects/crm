@@ -523,14 +523,173 @@ class ReportController extends Controller
             });
 
             $filename = "detailed_report_" . now()->format('YmdHis') . ".csv";
-            $headers = [
-                'Inv Date', 'Est Date', 'Inv No', 'Est No', 'Job No', 'Invoiced Month/ Closing month', 
-                'Client Name', 'TIN', 'Brand', 'Description', 'Line Amount', 'SSCL', 'VAT', 
-                'Total Amount', 'Con Confirmed', 'Revenue Category', 'Department', 'Data Inputter', 
-                'Stages', 'Advance payment Status', 'Payment Status', 'Balance Due'
+
+            $columnsMap = [
+                'inv_date' => [
+                    'header' => 'Inv Date',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $invoice->date ?? 'N/A';
+                    }
+                ],
+                'est_date' => [
+                    'header' => 'Est Date',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $estimate->date ?? 'N/A';
+                    }
+                ],
+                'close_date' => [
+                    'header' => 'Close Date',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : 'N/A';
+                    }
+                ],
+                'inv_no' => [
+                    'header' => 'Inv No',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $invoice->invoice_number ?? 'N/A';
+                    }
+                ],
+                'est_no' => [
+                    'header' => 'Est No',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $estimate->reference_number ?? 'N/A';
+                    }
+                ],
+                'job_no' => [
+                    'header' => 'Job No',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->job_number ?? 'N/A';
+                    }
+                ],
+                'month_combined' => [
+                    'header' => 'Invoiced Month/ Closing month',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return ($invoice && isset($invoice->date)) ? date('M Y', strtotime($invoice->date)) : ($deal->close_date ? date('M Y', strtotime($deal->close_date)) : 'N/A');
+                    }
+                ],
+                'client' => [
+                    'header' => 'Client Name',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->customer->name ?? 'N/A';
+                    }
+                ],
+                'tin' => [
+                    'header' => 'TIN',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->customer->customer_tax_number ?? 'N/A';
+                    }
+                ],
+                'currency' => [
+                    'header' => 'Currency',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->currency ?? 'LKR';
+                    }
+                ],
+                'brand' => [
+                    'header' => 'Brand',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $estimate->brand_name ?? 'N/A';
+                    }
+                ],
+                'description' => [
+                    'header' => 'Description',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->description ?? $deal->title;
+                    }
+                ],
+                'amount' => [
+                    'header' => 'Line Amount',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->amount ?? ($deal->revenue ?? 0);
+                    }
+                ],
+                'sscl' => [
+                    'header' => 'SSCL',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->sscl_amount ?? 0;
+                    }
+                ],
+                'vat' => [
+                    'header' => 'VAT',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->vat_amount ?? 0;
+                    }
+                ],
+                'total' => [
+                    'header' => 'Total Amount',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->total_with_vat ?? ($deal->revenue ?? 0);
+                    }
+                ],
+                'con_confirmed' => [
+                    'header' => 'Con Confirmed',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->contribution ?? 0;
+                    }
+                ],
+                'category' => [
+                    'header' => 'Revenue Category',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $item->revenue_category ?? 'N/A';
+                    }
+                ],
+                'department' => [
+                    'header' => 'Department',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->owner->department ?? 'N/A';
+                    }
+                ],
+                'inputter' => [
+                    'header' => 'Data Inputter',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->owner->name ?? 'N/A';
+                    }
+                ],
+                'stage' => [
+                    'header' => 'Stages',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $deal->stage ?? 'N/A';
+                    }
+                ],
+                'advance_status' => [
+                    'header' => 'Advance payment Status',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $advanceStatus;
+                    }
+                ],
+                'payment_status' => [
+                    'header' => 'Payment Status',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return strtoupper($invoice->status ?? 'pending');
+                    }
+                ],
+                'balance_due' => [
+                    'header' => 'Balance Due',
+                    'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
+                        return $balanceDue;
+                    }
+                ],
             ];
 
-            $callback = function () use ($data, $headers) {
+            $selectedColumns = $request->input('columns');
+            if ($selectedColumns) {
+                $selectedKeys = explode(',', $selectedColumns);
+                $activeColumns = [];
+                foreach ($selectedKeys as $key) {
+                    if (isset($columnsMap[$key])) {
+                        $activeColumns[$key] = $columnsMap[$key];
+                    }
+                }
+            } else {
+                $activeColumns = $columnsMap;
+            }
+
+            $headers = [];
+            foreach ($activeColumns as $key => $colData) {
+                $headers[] = $colData['header'];
+            }
+
+            $callback = function () use ($data, $activeColumns, $headers) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, $headers);
                 foreach ($data as $deal) {
@@ -542,30 +701,11 @@ class ReportController extends Controller
                     $balanceDue = ($invoice && ($invoice->status ?? '') === 'paid') ? 0 : $total;
                     $advanceStatus = ($estimate && ($estimate->advance_received_amount ?? 0) > 0) ? 'RECEIVED' : 'PENDING';
 
-                    fputcsv($file, [
-                        $invoice->date ?? 'N/A',
-                        $estimate->date ?? 'N/A',
-                        $invoice->invoice_number ?? 'N/A',
-                        $estimate->reference_number ?? 'N/A',
-                        $deal->job_number ?? 'N/A',
-                        ($invoice && isset($invoice->date)) ? date('M Y', strtotime($invoice->date)) : ($deal->close_date ? date('M Y', strtotime($deal->close_date)) : 'N/A'),
-                        $deal->customer->name ?? 'N/A',
-                        $deal->customer->customer_tax_number ?? 'N/A',
-                        $estimate->brand_name ?? 'N/A',
-                        $item->description ?? $deal->title,
-                        $item->amount ?? ($deal->revenue ?? 0),
-                        $item->sscl_amount ?? 0,
-                        $item->vat_amount ?? 0,
-                        $item->total_with_vat ?? ($deal->revenue ?? 0),
-                        $deal->contribution ?? 0,
-                        $item->revenue_category ?? 'N/A',
-                        $deal->owner->department ?? 'N/A',
-                        $deal->owner->name ?? 'N/A',
-                        $deal->stage ?? 'N/A',
-                        $advanceStatus,
-                        strtoupper($invoice->status ?? 'pending'),
-                        $balanceDue
-                    ]);
+                    $row = [];
+                    foreach ($activeColumns as $key => $colData) {
+                        $row[] = $colData['value']($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue);
+                    }
+                    fputcsv($file, $row);
                 }
                 fclose($file);
             };

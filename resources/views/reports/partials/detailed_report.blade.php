@@ -55,7 +55,7 @@
                     </div>
                 </div>
             </div>
-            <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'detailed'])) }}" 
+            <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'detailed'])) }}" id="export-csv-btn"
                class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -155,6 +155,45 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const toggles = document.querySelectorAll('.column-toggle');
+        const exportBtn = document.getElementById('export-csv-btn');
+
+        // Load from localStorage or use default (all checked)
+        let savedCols = localStorage.getItem('detailed_report_columns');
+        if (savedCols) {
+            try {
+                savedCols = JSON.parse(savedCols);
+                toggles.forEach(toggle => {
+                    const colId = toggle.getAttribute('data-column');
+                    toggle.checked = savedCols.includes(colId);
+                });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        const updateExportUrl = () => {
+            if (!exportBtn) return;
+            const checkedCols = [];
+            toggles.forEach(toggle => {
+                if (toggle.checked) {
+                    checkedCols.push(toggle.getAttribute('data-column'));
+                }
+            });
+
+            // Save to localStorage
+            localStorage.setItem('detailed_report_columns', JSON.stringify(checkedCols));
+
+            // Get current URL
+            let baseUrl = exportBtn.getAttribute('data-base-url');
+            if (!baseUrl) {
+                baseUrl = exportBtn.href;
+                exportBtn.setAttribute('data-base-url', baseUrl);
+            }
+            const url = new URL(baseUrl);
+            url.searchParams.set('columns', checkedCols.join(','));
+            exportBtn.href = url.toString();
+        };
+
         const updateVisibility = () => {
             toggles.forEach(toggle => {
                 const colId = toggle.getAttribute('data-column');
@@ -163,6 +202,7 @@
                     cell.style.display = toggle.checked ? '' : 'none';
                 });
             });
+            updateExportUrl();
         };
 
         toggles.forEach(toggle => {

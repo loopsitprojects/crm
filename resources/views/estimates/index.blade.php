@@ -24,7 +24,7 @@
             this.activeRef = ref;
             this.showAttachments = true;
         }
-    }">
+    }" x-init="if (!columns.includes('heading')) { columns.splice(columns.indexOf('brand') + 1, 0, 'heading'); }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 class="text-lg font-semibold text-gray-700">Manage Estimates</h3>
             {{-- Columns and Create Estimate buttons hidden --}}
@@ -87,6 +87,8 @@
                         </th>
                         <th x-show="isColumnVisible('brand')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Brand
                         </th>
+                        <th x-show="isColumnVisible('heading')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Heading
+                        </th>
                         <th x-show="isColumnVisible('date')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th x-show="isColumnVisible('amount')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount
                         </th>
@@ -116,6 +118,9 @@
                                 @else
                                     <span class="text-gray-400 text-xs italic">No Brand</span>
                                 @endif
+                            </td>
+                            <td x-show="isColumnVisible('heading')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
+                                {{ $estimate->heading ?: 'N/A' }}
                             </td>
                             <td x-show="isColumnVisible('date')" class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
                             <td x-show="isColumnVisible('amount')" class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">

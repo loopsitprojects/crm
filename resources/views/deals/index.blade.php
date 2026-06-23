@@ -166,6 +166,18 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        <label for="created_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Deals Created Date:</label>
+                        <input type="date" name="created_date" id="created_date" value="{{ request('created_date') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="expected_close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Deals Expected Closing Date:</label>
+                        <input type="date" name="expected_close_date" id="expected_close_date" value="{{ request('expected_close_date') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
+                    </div>
+
+                    <div class="flex items-center gap-2">
                         <label for="filter_user" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">User:</label>
                         <select name="filter_user" id="filter_user"
                             class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border min-w-[140px]">
@@ -199,7 +211,7 @@
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
                         </button>
-                        @if(request('start_date') || request('close_date') || request('filter_user') || request('filter_department'))
+                        @if(request('start_date') || request('close_date') || request('created_date') || request('expected_close_date') || request('filter_user') || request('filter_department'))
                             <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                                 Reset
                             </a>
@@ -928,26 +940,65 @@
 
                         if (fromStage === newStage) return;
 
-                        // If moving to Rejected, force open Edit Modal for reason
+                        // If moving to Rejected, prompt for reason directly
                         if (newStage === 'Rejected') {
-                            // Revert visual move (simple append to 'from' container)
+                            // Revert visual move immediately, we will reload or append on success
                             evt.from.appendChild(item);
                             
-                            // Trigger edit modal
-                            const editBtn = item.querySelector('button[onclick*="editDeal"]');
-                            if (editBtn) {
-                                editBtn.click();
-                                // Set stage to Rejected and trigger change event after modal opens
-                                setTimeout(() => {
-                                    const stageSelect = document.getElementById('edit_stage');
-                                    if (stageSelect) {
-                                        stageSelect.value = 'Rejected';
-                                        stageSelect.dispatchEvent(new Event('change'));
-                                        // Focus the reason field
-                                        document.getElementById('edit_rejection_reason').focus();
+                            Swal.fire({
+                                title: 'Reject Deal',
+                                text: 'Please enter the reason for rejection:',
+                                input: 'textarea',
+                                inputPlaceholder: 'Enter rejection reason...',
+                                showCancelButton: true,
+                                confirmButtonColor: '#d33',
+                                cancelButtonColor: '#3085d6',
+                                confirmButtonText: 'Reject Deal',
+                                inputValidator: (value) => {
+                                    if (!value) {
+                                        return 'You must enter a rejection reason!';
                                     }
-                                }, 200);
-                            }
+                                }
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    fetch(`/deals/${dealId}/stage`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                        },
+                                        body: JSON.stringify({
+                                            stage: 'Rejected',
+                                            rejection_reason: result.value
+                                        })
+                                    })
+                                    .then(response => {
+                                        if (!response.ok) {
+                                            return response.json().then(err => { throw err; });
+                                        }
+                                        return response.json();
+                                    })
+                                    .then(data => {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Status Updated',
+                                            text: 'Deal rejected successfully.',
+                                            timer: 1500,
+                                            showConfirmButton: false
+                                        }).then(() => {
+                                            window.location.reload();
+                                        });
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Update Failed',
+                                            text: error.message || 'An error occurred while rejecting the deal.'
+                                        });
+                                    });
+                                }
+                            });
                             return;
                         }
 

@@ -77,6 +77,8 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer
                         </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project Heading
+                        </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date
                         </th>
@@ -98,8 +100,9 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->customer->name }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->date }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->due_date }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate->heading ?? 'N/A' }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? $invoice->estimate->date : $invoice->date }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->addMonth()->toDateString() : $invoice->due_date }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 {{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap">
