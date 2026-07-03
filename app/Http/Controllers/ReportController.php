@@ -53,7 +53,7 @@ class ReportController extends Controller
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
         // Category Mappings
-        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         $salesDepts = ['AM', 'BD'];
 
         // Base Query with RBAC & Filters
@@ -458,7 +458,7 @@ class ReportController extends Controller
         $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
 
         // Category Mappings
-        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         $salesDepts = ['AM', 'BD'];
 
         if ($type === 'detailed') {

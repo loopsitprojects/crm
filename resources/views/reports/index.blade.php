@@ -47,7 +47,7 @@
                     <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Department / Category</label>
                     <select name="department" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
                         <option value="">All Departments</option>
-                        @foreach(['Creative', 'Digital', 'Tech'] as $d)
+                        @foreach(['Creative', 'Digital', 'Tech', 'PM', 'Corporate'] as $d)
                             <option value="{{ $d }}" {{ $department == $d ? 'selected' : '' }}>{{ $d }}</option>
                         @endforeach
                     </select>

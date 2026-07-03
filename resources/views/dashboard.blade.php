@@ -891,7 +891,7 @@
 
     // 5. Target Chart (Actual vs Target Logic)
     let targetChart = null;
-    const sbuTargetDepts = {!! json_encode(\App\Models\Target::where('type', 'department')->whereIn('department', ['Creative', 'Digital', 'Tech'])->pluck('target_amount', 'department')) !!};
+    const sbuTargetDepts = {!! json_encode(\App\Models\Target::where('type', 'department')->whereIn('department', ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'])->pluck('target_amount', 'department')) !!};
     const salesTargetDepts = {!! json_encode(\App\Models\Target::where('type', 'department')->whereIn('department', ['AM', 'BD'])->pluck('target_amount', 'department')) !!};
 
     const targetData = {

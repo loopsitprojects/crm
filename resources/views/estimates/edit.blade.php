@@ -224,6 +224,7 @@
                                                     <option value="digital" {{ $item->department == 'digital' ? 'selected' : '' }}>Digital</option>
                                                     <option value="play" {{ $item->department == 'play' ? 'selected' : '' }}>Play</option>
                                                     <option value="tech" {{ $item->department == 'tech' ? 'selected' : '' }}>Tech</option>
+                                                    <option value="PM" {{ $item->department == 'PM' ? 'selected' : '' }}>PM</option>
                                                     <option value="Corporate" {{ $item->department == 'Corporate' ? 'selected' : '' }}>Corporate</option>
                                                 </select>
                                             </td>
@@ -495,6 +496,7 @@
                                                                 <option value="digital" {{ $cost->department == 'digital' ? 'selected' : '' }}>Digital</option>
                                                                 <option value="play" {{ $cost->department == 'play' ? 'selected' : '' }}>Play</option>
                                                                 <option value="tech" {{ $cost->department == 'tech' ? 'selected' : '' }}>Tech</option>
+                                                                <option value="PM" {{ $cost->department == 'PM' ? 'selected' : '' }}>PM</option>
                                                                 <option value="Corporate" {{ $cost->department == 'Corporate' ? 'selected' : '' }}>Corporate</option>
                                                             </select>
                                                         </td>
@@ -754,6 +756,7 @@
                         <option value="digital">Digital</option>
                         <option value="play">Play</option>
                         <option value="tech">Tech</option>
+                        <option value="PM">PM</option>
                         <option value="Corporate">Corporate</option>
                     </select>
                 </td>
@@ -769,7 +772,7 @@
                 </td>
                 <td class="p-2 align-top">
                     <input type="hidden" name="items[${newIndex}][position]" value="${newIndex}">
-                    <input type="number" name="items[${newIndex}][quantity]" required data-required="true" value="" placeholder="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
+                    <input type="number" name="items[${newIndex}][quantity]" required data-required="true" value="1" placeholder="1" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
                 </td>
                 <td class="p-2 align-top">
                     <input type="number" step="0.01" name="items[${newIndex}][unit_price]" required data-required="true" value="" placeholder="0.00" oninput="calculateRow(this)" class="w-full rounded-md border-gray-200 text-sm py-1 px-1 text-right">
@@ -796,22 +799,31 @@
             const qtyInput = row.querySelector('input[name*="[quantity]"]');
             const priceInput = row.querySelector('input[name*="[unit_price]"]');
             
+            if ((qtyInput.value === '' || parseFloat(qtyInput.value) === 0) && priceInput.value !== '') {
+                qtyInput.value = 1;
+            }
+            
             const qty = parseFloat(qtyInput.value) || 0;
             const parsedBasePrice = parseFloat(priceInput.value) || 0;
 
             const ssclApplicable = document.getElementById('sscl_applicable').checked;
             const vatApplicable = document.getElementById('vat_applicable').checked;
 
-            let ssclPerUnit = 0;
-            let vatPerUnit = 0;
-
-            if (ssclApplicable) ssclPerUnit = parsedBasePrice * ssclRate;
-            if (vatApplicable) vatPerUnit = (parsedBasePrice + ssclPerUnit) * vatRate;
-
-            const taxInclusivePrice = parsedBasePrice + ssclPerUnit + vatPerUnit;
-
-            const baseAmount = qty * taxInclusivePrice;
-            row.querySelector('input[name*="[amount]"]').value = baseAmount.toFixed(2);
+            // Round base amount
+            const baseAmount = Math.round(qty * parsedBasePrice * 100) / 100;
+            
+            let rowSSCL = 0;
+            if (ssclApplicable) {
+                rowSSCL = Math.round(baseAmount * ssclRate * 100) / 100;
+            }
+            
+            let rowVAT = 0;
+            if (vatApplicable) {
+                rowVAT = Math.round((baseAmount + rowSSCL) * vatRate * 100) / 100;
+            }
+            
+            const totalWithVat = baseAmount + rowSSCL + rowVAT;
+            row.querySelector('input[name*="[amount]"]').value = totalWithVat.toFixed(2);
 
             calculateTotals();
         }
@@ -830,14 +842,23 @@
                 const priceInput = row.querySelector('input[name*="[unit_price]"]');
                 
                 const parsedBasePrice = parseFloat(priceInput.value) || 0;
-                const baseAmount = qty * parsedBasePrice;
+                const baseAmount = Math.round(qty * parsedBasePrice * 100) / 100;
 
                 subtotalBase += baseAmount;
                 if (parsedBasePrice < 0) {
                     discountTotal += baseAmount; // baseAmount is negative
                 }
-                if (ssclApplicable) totalSSCL += baseAmount * ssclRate;
-                if (vatApplicable) totalVAT += (baseAmount + (ssclApplicable ? baseAmount * ssclRate : 0)) * vatRate;
+                
+                let rowSSCL = 0;
+                if (ssclApplicable) {
+                    rowSSCL = Math.round(baseAmount * ssclRate * 100) / 100;
+                    totalSSCL += rowSSCL;
+                }
+                
+                if (vatApplicable) {
+                    const rowVAT = Math.round((baseAmount + rowSSCL) * vatRate * 100) / 100;
+                    totalVAT += rowVAT;
+                }
             });
 
             const grandTotal = subtotalBase + totalSSCL + totalVAT;
@@ -957,6 +978,7 @@
                         <option value="digital">Digital</option>
                         <option value="play">Play</option>
                         <option value="tech">Tech</option>
+                        <option value="PM">PM</option>
                         <option value="Corporate">Corporate</option>
                     </select>
                 </td>

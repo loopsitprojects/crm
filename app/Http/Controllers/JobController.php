@@ -72,7 +72,7 @@ class JobController extends Controller
         } else {
             $users = \App\Models\User::where('id', $user->id)->get();
         }
-        $departments = ['Creative', 'Digital', 'Play', 'Tech']; // Default departments
+        $departments = ['Creative', 'Digital', 'Play', 'Tech', 'PM', 'Corporate']; // Default departments
 
         return view('jobs.index', compact('jobs', 'users', 'departments'));
     }

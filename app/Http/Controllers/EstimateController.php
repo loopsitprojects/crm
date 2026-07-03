@@ -107,7 +107,7 @@ class EstimateController extends Controller
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
         $currencies = \App\Models\SystemCurrency::all();
-        $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
+        $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
         $estimateBrands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
         $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
@@ -229,26 +229,26 @@ class EstimateController extends Controller
             $unitPrice = $item['unit_price'];
 
             // Calculate the taxFactor to back out the base unit price
-            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5) / 100;
+            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641) / 100;
             $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
             
             $ssclApplicable = $request->has('sscl_applicable');
             $vatApplicable = $request->has('vat_applicable');
 
             // The unit price in the request is now the base unit price directly
-            $baseUnitPrice = $unitPrice;
-            $amount = $quantity * $baseUnitPrice;
+            $baseUnitPrice = round($unitPrice, 2);
+            $amount = round($quantity * $baseUnitPrice, 2);
 
             // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
             if ($ssclApplicable) {
-                $sscl = $amount * $ssclRate;
+                $sscl = round($amount * $ssclRate, 2);
             }
             if ($vatApplicable) {
-                $vat = ($amount + $sscl) * $vatRate;
+                $vat = round(($amount + $sscl) * $vatRate, 2);
             }
-            $totalWithVat = $amount + $vat + $sscl;
+            $totalWithVat = round($amount + $vat + $sscl, 2);
 
             $estimate->items()->create([
                 'description' => $item['description'],
@@ -271,7 +271,7 @@ class EstimateController extends Controller
             $grandTotal += $totalWithVat;
         }
 
-        $estimate->update(['total_amount' => $grandTotal]);
+        $estimate->update(['total_amount' => round($grandTotal, 2)]);
 
 
         // Handle Third Party Costs (Move before Sync)
@@ -486,7 +486,7 @@ class EstimateController extends Controller
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
         $currencies = \App\Models\SystemCurrency::all();
-        $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5);
+        $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641);
         $vatRate = \App\Models\Setting::get('vat_rate', 15);
         $estimateBrands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
         $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
@@ -641,26 +641,26 @@ class EstimateController extends Controller
             $unitPrice = $item['unit_price'];
 
             // Calculate the taxFactor to back out the base unit price
-            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5) / 100;
+            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641) / 100;
             $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
             
             $ssclApplicable = $request->has('sscl_applicable');
             $vatApplicable = $request->has('vat_applicable');
 
             // The unit price in the request is now the base unit price directly
-            $baseUnitPrice = $unitPrice;
-            $amount = $quantity * $baseUnitPrice;
+            $baseUnitPrice = round($unitPrice, 2);
+            $amount = round($quantity * $baseUnitPrice, 2);
 
             // Tax Calculation (Backend Fallback/Verification)
             $sscl = 0;
             $vat = 0;
             if ($ssclApplicable) {
-                $sscl = $amount * $ssclRate;
+                $sscl = round($amount * $ssclRate, 2);
             }
             if ($vatApplicable) {
-                $vat = ($amount + $sscl) * $vatRate;
+                $vat = round(($amount + $sscl) * $vatRate, 2);
             }
-            $totalWithVat = $amount + $vat + $sscl;
+            $totalWithVat = round($amount + $vat + $sscl, 2);
 
             $estimate->items()->create([
                 'description' => $item['description'],
@@ -683,7 +683,7 @@ class EstimateController extends Controller
             $grandTotal += $totalWithVat;
         }
 
-        $estimate->update(['total_amount' => $grandTotal]);
+        $estimate->update(['total_amount' => round($grandTotal, 2)]);
 
 
         // Handle Third Party Costs (Move before Sync)

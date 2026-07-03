@@ -24,6 +24,8 @@ class User extends Authenticatable
             'Creative' => 'Creative',
             'Digital' => 'Digital',
             'Tech' => 'Tech',
+            'PM' => 'PM',
+            'Corporate' => 'Corporate',
         ],
         'Sales' => [
             'AM' => 'AM',

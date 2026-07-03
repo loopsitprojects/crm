@@ -168,13 +168,13 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">SSCL Rate (%)</label>
                                     <div class="relative rounded-md shadow-sm">
                                         <input type="number" step="0.0001" name="sscl_rate"
-                                            value="{{ \App\Models\Setting::get('sscl_rate', 2.5) }}"
+                                            value="{{ \App\Models\Setting::get('sscl_rate', 2.5641) }}"
                                             class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm pr-8">
                                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                             <span class="text-gray-500 sm:text-sm">%</span>
                                         </div>
                                     </div>
-
+                                    <p class="text-xs text-gray-500 mt-1">SSCL rate is used in tax calculations.</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">VAT Rate (%)</label>

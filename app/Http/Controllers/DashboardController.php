@@ -48,7 +48,7 @@ class DashboardController extends Controller
         }
         $managers = $managers->pluck('name', 'id');
 
-        $departments = ['Creative', 'Digital', 'Tech'];
+        $departments = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         if (in_array($userRole, ['HOD', 'Manager']) && $userDept) {
             $departments = [$userDept];
         }
@@ -57,7 +57,7 @@ class DashboardController extends Controller
         $stages = array_combine($stages, $stages);
 
         // Define Category Mappings
-        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         $salesDepts = ['AM', 'BD'];
 
         // 2. Base Query context
@@ -403,7 +403,7 @@ class DashboardController extends Controller
         })->filter(fn($item) => $item['contribution'] > 0)->sortByDesc('contribution')->values();
         
         // Target Type Logic
-        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         $salesDepts = ['AM', 'BD'];
         
         $sbuActual = 0;
@@ -520,7 +520,7 @@ class DashboardController extends Controller
         $userDept = $user->department;
 
         // Category Mappings
-        $sbuDepts = ['Creative', 'Digital', 'Tech'];
+        $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
         $salesDepts = ['AM', 'BD'];
 
         $query = Deal::with(['owner', 'customer', 'estimates' => function($q) {

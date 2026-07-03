@@ -546,7 +546,6 @@
                                             @endforeach
                                         @endforeach
                                         <option value="Play">Play</option>
-                                        <option value="Corporate">Corporate</option>
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
@@ -757,7 +756,6 @@
                                             @endforeach
                                         @endforeach
                                         <option value="Play">Play</option>
-                                        <option value="Corporate">Corporate</option>
                                     </select>
                                 </div>
                                 <div class="w-[48%] md:w-2/12 relative">
