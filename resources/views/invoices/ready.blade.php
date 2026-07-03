@@ -138,22 +138,6 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
-                                @php
-                                    $user = auth()->user();
-                                    $canEdit = false;
-                                    if ($user->role === 'Super Admin') {
-                                        $canEdit = true;
-                                    } elseif ($user->role === 'Management') {
-                                        $canEdit = !in_array($estimate->status, ['invoiced']);
-                                    }
-                                @endphp
-
-                                @if($canEdit)
-                                    <a href="{{ route('estimates.edit', $estimate) }}" class="text-gray-600 hover:text-brand-blue mr-3"
-                                        title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                @endif
 
                                 @if(auth()->user()->role === 'Super Admin')
                                     <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
