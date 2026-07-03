@@ -189,16 +189,21 @@
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
             </div>
             @php
+                $vatApplicable = $invoice->estimate ? $invoice->estimate->vat_applicable : false;
                 $vatRate = \App\Models\Setting::get('vat_rate', 15);
-                $totalVat = $totalExcludingVat * ($vatRate / 100);
+                $totalVat = $vatApplicable ? ($totalExcludingVat * ($vatRate / 100)) : 0;
                 $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
             @endphp
+            @if($vatApplicable)
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 flex items-center justify-end">VAT Amount (Total Value of Supply @ {{ number_format($vatRate, 2) }}%):</div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalVat, 2) }}</div>
             </div>
+            @endif
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
-                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">TOTAL AMOUNT INCLUDING VAT:</div>
+                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">
+                    {{ $vatApplicable ? 'TOTAL AMOUNT INCLUDING VAT:' : 'TOTAL AMOUNT:' }}
+                </div>
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat, 2) }}</div>
             </div>
             @if(!$invoice->is_proforma)
@@ -229,7 +234,7 @@
                 <div class="p-3 border-l border-r border-b border-black align-top min-h-[60px] invoice-totals-row">
                     <div class="font-bold mb-1 text-[13px]">Total Amount in words:</div>
                     <div class="text-[13px]">
-                        {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} Rupees Only
+                        {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} {{ ($invoice->estimate->deal->currency ?? 'LKR') === 'LKR' ? 'Rupees' : ($invoice->estimate->deal->currency ?? 'LKR') }} Only
                     </div>
                 </div>
             @endif
