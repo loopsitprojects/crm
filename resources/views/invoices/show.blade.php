@@ -1,79 +1,107 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Invoice - {{ $invoice->invoice_number }}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            pink: '{{ \App\Models\Setting::get("brand_pink", "#ff0878") }}',
+                            purple: '{{ \App\Models\Setting::get("brand_purple", "#8035ca") }}',
+                            blue: '{{ \App\Models\Setting::get("brand_blue", "#0057be") }}',
+                            teal: '{{ \App\Models\Setting::get("brand_teal", "#2fc9c3") }}',
+                        },
+                        primary: '{{ \App\Models\Setting::get("brand_pink", "#ff0878") }}',
+                        secondary: '#0057be',
+                        dark: '#1f2937',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Force base font size for all text elements inside the invoice container */
+        #invoice-container, 
+        #invoice-container div, 
+        #invoice-container span, 
+        #invoice-container p,
+        #paginated-invoice-view,
+        #paginated-invoice-view div,
+        #paginated-invoice-view span,
+        #paginated-invoice-view p,
+        #measure-container,
+        #measure-container div,
+        #measure-container span,
+        #measure-container p {
+            font-size: 13px;
+        }
+        /* Preserve large title size */
+        #invoice-container .invoice-header div,
+        #paginated-invoice-view .invoice-header div,
+        #measure-container .invoice-header div {
+            font-size: 17px;
+        }
+        /* Preserve footer text size */
+        #invoice-container .invoice-footer,
+        #paginated-invoice-view .invoice-footer,
+        #measure-container .invoice-footer {
+            font-size: 12px;
+        }
 
-@push('head')
-<style>
-    /* Force base font size for all text elements inside the invoice container */
-    #invoice-container, 
-    #invoice-container div, 
-    #invoice-container span, 
-    #invoice-container p,
-    #paginated-invoice-view,
-    #paginated-invoice-view div,
-    #paginated-invoice-view span,
-    #paginated-invoice-view p {
-        font-size: 13px;
-    }
-    /* Preserve large title size */
-    #invoice-container .invoice-header div,
-    #paginated-invoice-view .invoice-header div {
-        font-size: 17px;
-    }
-    /* Preserve footer text size */
-    #invoice-container .invoice-footer,
-    #paginated-invoice-view .invoice-footer {
-        font-size: 12px;
-    }
-
-    .quill-content h1 {
-        font-size: 1.125rem; /* text-lg */
-        font-weight: 700; /* font-bold */
-        text-transform: uppercase;
-        margin-bottom: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .quill-content h2 {
-        font-size: 1rem; /* text-base */
-        font-weight: 600; /* font-semibold */
-        font-style: italic;
-        margin-bottom: 0.25rem;
-        margin-top: 0.5rem;
-    }
-    .quill-content ul {
-        list-style-type: disc;
-        padding-left: 1.5rem;
-        margin-top: 0.25rem;
-        margin-bottom: 0.25rem;
-    }
-    .quill-content p {
-        margin-bottom: 0.25rem;
-    }
-    /* Reset margins for first and last children to keep table cells neat */
-    .quill-content > *:first-child { margin-top: 0; }
-    .quill-content > *:last-child { margin-bottom: 0; }
-</style>
-@endpush
-
-@section('header')
-    <div class="flex justify-between items-center no-print">
-        <span>Invoice Details</span>
-        <div>
-            <a href="{{ route('invoices.index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm mr-2">
-                <i class="fas fa-arrow-left mr-1"></i> Back
+        .quill-content h1 {
+            font-size: 1.125rem; /* text-lg */
+            font-weight: 700; /* font-bold */
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .quill-content h2 {
+            font-size: 1rem; /* text-base */
+            font-weight: 600; /* font-semibold */
+            font-style: italic;
+            margin-bottom: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        .quill-content ul {
+            list-style-type: disc;
+            padding-left: 1.5rem;
+            margin-top: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .quill-content p {
+            margin-bottom: 0.25rem;
+        }
+        /* Reset margins for first and last children to keep table cells neat */
+        .quill-content > *:first-child { margin-top: 0; }
+        .quill-content > *:last-child { margin-bottom: 0; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen py-8">
+    <div class="max-w-4xl mx-auto flex justify-between items-center mb-6 px-4 no-print">
+        <span class="text-lg font-bold text-gray-800">Invoice Details</span>
+        <div class="flex items-center space-x-2">
+            <a href="{{ route('invoices.index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm transition-all flex items-center shadow-md">
+                <i class="fas fa-arrow-left mr-1.5"></i> Back
             </a>
-            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm mr-2">
-                <i class="fas fa-print mr-1"></i> Print
+            <button id="download-btn" onclick="downloadPDF()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm transition-all flex items-center shadow-md">
+                <i class="fas fa-download mr-1.5"></i> Download PDF
             </button>
             <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm">
-                    <i class="fas fa-copy mr-1"></i> Duplicate to Estimate
+                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm transition-all flex items-center shadow-md">
+                    <i class="fas fa-copy mr-1.5"></i> Duplicate to Estimate
                 </button>
             </form>
         </div>
     </div>
-@endsection
-
-@section('content')
 
     <!-- MAIN BORDERED CONTAINER -->
     <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8" id="invoice-container">
@@ -208,12 +236,12 @@
             </div>
             @if(!$invoice->is_proforma)
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
-                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Advance Received amount:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
+                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end" style="border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000;">Advance Received amount:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end" style="border-right: 1px solid #000; border-bottom: 1px solid #000;">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
             </div>
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
-                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Balance Payable:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
+                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end" style="border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000;">Balance Payable:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end" style="border-right: 1px solid #000; border-bottom: 1px solid #000;">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
             </div>
             @endif
 
@@ -270,6 +298,29 @@
             }
         }
 
+        /* PDF Generation Specific Styles to strip screen spacing/margins/shadows */
+        body.generating-pdf {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        body.generating-pdf #paginated-invoice-view {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.generating-pdf .a4-page {
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            height: 296.5mm !important;
+            page-break-after: always;
+            break-after: page;
+        }
+        body.generating-pdf .a4-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
+
         @page {
             size: A4;
             margin: 0mm;
@@ -293,7 +344,7 @@
             }
             #paginated-invoice-view .a4-page {
                 box-shadow: none !important;
-                border: 1px solid black !important;
+                border: none !important;
                 border-radius: 0 !important;
                 margin: 0 !important;
                 page-break-after: always;
@@ -303,6 +354,10 @@
                 position: relative !important;
                 display: block !important;
                 box-sizing: border-box !important;
+            }
+            #paginated-invoice-view .a4-page:last-child {
+                page-break-after: avoid !important;
+                break-after: avoid !important;
             }
 
             body:not(.has-paginated-view) #invoice-container, 
@@ -325,163 +380,205 @@
             .no-print { display: none !important; }
         }
     </style>
-@endsection
+    <!-- html2pdf.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+    function downloadPDF() {
+        // Toggle PDF generation styles to remove screen margins and shadows
+        document.body.classList.add('generating-pdf');
 
-@push('scripts')
-<script>
-window.addEventListener("load", function () {
-    // Only run on desktop screen mode
-    if (window.matchMedia("(max-width: 768px)").matches) return;
-    
-    const rawContainer = document.getElementById('invoice-container');
-    if (!rawContainer) return;
-
-    // A4 dimensions in pixels (at 96 DPI: 1mm = 3.779527559px)
-    const mmToPx = 3.779527559;
-    const pageHeight = 297 * mmToPx; // 1122.5px
-    const padding = 24; // p-[24px] is 24px padding (top and bottom)
-    const borderSpacing = 2; // for borders
-    const maxUsableHeight = pageHeight - (padding * 2) - borderSpacing; // ~1072px
-
-    // Clone the sections
-    const header = rawContainer.querySelector('.invoice-header').cloneNode(true);
-    
-    // We want to clone Date, Supplier, Delivery, Info sections
-    const dateSec = rawContainer.querySelector('.invoice-date-section').cloneNode(true);
-    const supplierSec = rawContainer.querySelector('.invoice-supplier-section').cloneNode(true);
-    const deliverySec = rawContainer.querySelector('.invoice-delivery-section').cloneNode(true);
-    const infoSec = rawContainer.querySelector('.invoice-info-section').cloneNode(true);
-    
-    const tableHeader = rawContainer.querySelector('.invoice-table-header').cloneNode(true);
-    const itemRows = Array.from(rawContainer.querySelectorAll('.invoice-item-row')).map(row => row.cloneNode(true));
-    const totalsRows = Array.from(rawContainer.querySelectorAll('.invoice-totals-row')).map(row => row.cloneNode(true));
-    const footerEl = rawContainer.querySelector('.invoice-footer') ? rawContainer.querySelector('.invoice-footer').cloneNode(true) : null;
-
-    // Create a temporary element to measure heights in the exact same environment
-    const measureContainer = document.createElement('div');
-    measureContainer.style.position = 'absolute';
-    measureContainer.style.visibility = 'hidden';
-    measureContainer.style.width = '210mm';
-    measureContainer.style.padding = '24px';
-    measureContainer.style.boxSizing = 'border-box';
-    measureContainer.style.border = '1px solid black';
-    document.body.appendChild(measureContainer);
-
-    function measureHeight(node) {
-        measureContainer.innerHTML = '';
-        const clone = node.cloneNode(true);
-        if (clone.classList.contains('invoice-item-row') || clone.classList.contains('invoice-totals-row') || clone.classList.contains('invoice-table-header')) {
-            const tempGrid = document.createElement('div');
-            tempGrid.className = 'border-t border-l border-black';
-            tempGrid.appendChild(clone);
-            measureContainer.appendChild(tempGrid);
-            return tempGrid.offsetHeight;
-        } else {
-            measureContainer.appendChild(clone);
-            return clone.offsetHeight;
-        }
-    }
-
-    // Create container for paginated pages
-    const paginatedView = document.createElement('div');
-    paginatedView.id = 'paginated-invoice-view';
-    paginatedView.className = 'w-full no-print';
-
-    let currentPage = 1;
-    let pageDiv = createPageElement(currentPage);
-    paginatedView.appendChild(pageDiv);
-
-    // Page 1 gets header
-    pageDiv.querySelector('.page-content').appendChild(header);
-
-    // Create grid wrapper on Page 1
-    let currentGrid = document.createElement('div');
-    currentGrid.className = 'border-t border-black';
-    currentGrid.appendChild(dateSec);
-    currentGrid.appendChild(supplierSec);
-    currentGrid.appendChild(deliverySec);
-    currentGrid.appendChild(infoSec);
-    currentGrid.appendChild(tableHeader.cloneNode(true));
-    pageDiv.querySelector('.page-content').appendChild(currentGrid);
-
-    let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
-
-    // Distribute item rows
-    const queue = [...itemRows];
-    while (queue.length > 0) {
-        const row = queue.shift();
-        const rowHeight = measureHeight(row);
-
-        if (currentPageHeight + rowHeight > maxUsableHeight) {
-            // Row doesn't fit on current page! Create Page 2.
-            currentPage++;
-            pageDiv = createPageElement(currentPage);
-            paginatedView.appendChild(pageDiv);
-
-            currentGrid = document.createElement('div');
-            currentGrid.className = 'border-t border-black';
-            currentGrid.appendChild(tableHeader.cloneNode(true));
-            pageDiv.querySelector('.page-content').appendChild(currentGrid);
-            
-            currentGrid.appendChild(row);
-            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
-        } else {
-            currentGrid.appendChild(row);
-            currentPageHeight += rowHeight;
-        }
-    }
-
-    // Add Totals Rows
-    for (const row of totalsRows) {
-        const rowHeight = measureHeight(row);
-        if (currentPageHeight + rowHeight > maxUsableHeight) {
-            // Totals row doesn't fit! Create Page.
-            currentPage++;
-            pageDiv = createPageElement(currentPage);
-            paginatedView.appendChild(pageDiv);
-
-            currentGrid = document.createElement('div');
-            currentGrid.className = 'border-t border-black';
-            pageDiv.querySelector('.page-content').appendChild(currentGrid);
-            
-            currentGrid.appendChild(row);
-            currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
-        } else {
-            currentGrid.appendChild(row);
-            currentPageHeight += rowHeight;
-        }
-    }
-
-    // Add footer to the last page
-    if (footerEl) {
-        pageDiv.querySelector('.page-content').appendChild(footerEl);
-    }
-
-    // Clean up measurement container
-    document.body.removeChild(measureContainer);
-
-    // Hide original container and insert paginated view
-    rawContainer.style.display = 'none';
-    rawContainer.parentNode.insertBefore(paginatedView, rawContainer.nextSibling);
-    document.body.classList.add('has-paginated-view');
-
-    // Helper to create page elements
-    function createPageElement(pageNum) {
-        const div = document.createElement('div');
-        div.className = 'a4-page bg-white border border-black my-4 mx-auto relative';
-        div.style.width = '210mm';
-        div.style.height = '297mm';
-        div.style.boxSizing = 'border-box';
-        div.style.position = 'relative';
+        const element = document.getElementById('paginated-invoice-view') || document.getElementById('invoice-container');
         
-        const inner = document.createElement('div');
-        inner.className = 'page-content p-[24px]';
-        inner.style.height = '100%';
-        inner.style.boxSizing = 'border-box';
-        div.appendChild(inner);
-
-        return div;
+        const btn = document.getElementById('download-btn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Generating PDF...';
+        
+        const opt = {
+            margin:       0,
+            filename:     'Invoice-{{ $invoice->invoice_number }}.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                logging: false,
+                letterRendering: true
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
+        
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            document.body.classList.remove('generating-pdf');
+        }).catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            document.body.classList.remove('generating-pdf');
+            alert('Failed to generate PDF. Please try again.');
+        });
     }
-});
-</script>
-@endpush
+
+    window.addEventListener("load", function () {
+        // Only run on desktop screen mode
+        if (window.matchMedia("(max-width: 768px)").matches) return;
+        
+        const rawContainer = document.getElementById('invoice-container');
+        if (!rawContainer) return;
+
+        // A4 dimensions in pixels (at 96 DPI: 1mm = 3.779527559px)
+        const mmToPx = 3.779527559;
+        const pageHeight = 297 * mmToPx; // 1122.5px
+        const padding = 24; // p-[24px] is 24px padding (top and bottom)
+        const borderSpacing = 2; // for borders
+
+        // Clone the sections
+        const header = rawContainer.querySelector('.invoice-header').cloneNode(true);
+        
+        // We want to clone Date, Supplier, Delivery, Info sections
+        const dateSec = rawContainer.querySelector('.invoice-date-section').cloneNode(true);
+        const supplierSec = rawContainer.querySelector('.invoice-supplier-section').cloneNode(true);
+        const deliverySec = rawContainer.querySelector('.invoice-delivery-section').cloneNode(true);
+        const infoSec = rawContainer.querySelector('.invoice-info-section').cloneNode(true);
+        
+        const tableHeader = rawContainer.querySelector('.invoice-table-header').cloneNode(true);
+        const itemRows = Array.from(rawContainer.querySelectorAll('.invoice-item-row')).map(row => row.cloneNode(true));
+        const totalsRows = Array.from(rawContainer.querySelectorAll('.invoice-totals-row')).map(row => row.cloneNode(true));
+        const footerEl = rawContainer.querySelector('.invoice-footer') ? rawContainer.querySelector('.invoice-footer').cloneNode(true) : null;
+
+        // Create a temporary element to measure heights in the exact same environment
+        const measureContainer = document.createElement('div');
+        measureContainer.id = 'measure-container';
+        measureContainer.style.position = 'absolute';
+        measureContainer.style.visibility = 'hidden';
+        measureContainer.style.width = '210mm';
+        measureContainer.style.padding = '24px';
+        measureContainer.style.boxSizing = 'border-box';
+        measureContainer.style.border = '1px solid black';
+        document.body.appendChild(measureContainer);
+
+        function measureHeight(node) {
+            measureContainer.innerHTML = '';
+            const clone = node.cloneNode(true);
+            if (clone.classList.contains('invoice-item-row') || clone.classList.contains('invoice-totals-row') || clone.classList.contains('invoice-table-header')) {
+                const tempGrid = document.createElement('div');
+                tempGrid.className = 'border-t border-l border-black';
+                tempGrid.appendChild(clone);
+                measureContainer.appendChild(tempGrid);
+                return tempGrid.offsetHeight;
+            } else {
+                measureContainer.appendChild(clone);
+                return clone.offsetHeight;
+            }
+        }
+
+        // Measure footer height dynamically and set maxUsableHeight with a safety buffer
+        const footerHeight = footerEl ? measureHeight(footerEl) : 40;
+        const maxUsableHeight = pageHeight - (padding * 2) - borderSpacing - footerHeight - 25; // ~1007px
+
+        // Create container for paginated pages
+        const paginatedView = document.createElement('div');
+        paginatedView.id = 'paginated-invoice-view';
+        paginatedView.className = 'w-full no-print';
+
+        let currentPage = 1;
+        let pageDiv = createPageElement(currentPage);
+        paginatedView.appendChild(pageDiv);
+
+        // Page 1 gets header
+        pageDiv.querySelector('.page-content').appendChild(header);
+
+        // Create grid wrapper on Page 1
+        let currentGrid = document.createElement('div');
+        currentGrid.className = 'border-t border-black';
+        currentGrid.appendChild(dateSec);
+        currentGrid.appendChild(supplierSec);
+        currentGrid.appendChild(deliverySec);
+        currentGrid.appendChild(infoSec);
+        currentGrid.appendChild(tableHeader.cloneNode(true));
+        pageDiv.querySelector('.page-content').appendChild(currentGrid);
+
+        let currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+
+        // Distribute item rows
+        const queue = [...itemRows];
+        while (queue.length > 0) {
+            const row = queue.shift();
+            const rowHeight = measureHeight(row);
+
+            if (currentPageHeight + rowHeight > maxUsableHeight) {
+                // Row doesn't fit on current page! Create Page 2.
+                currentPage++;
+                pageDiv = createPageElement(currentPage);
+                paginatedView.appendChild(pageDiv);
+
+                currentGrid = document.createElement('div');
+                currentGrid.className = 'border-t border-black';
+                currentGrid.appendChild(tableHeader.cloneNode(true));
+                pageDiv.querySelector('.page-content').appendChild(currentGrid);
+                
+                currentGrid.appendChild(row);
+                currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+            } else {
+                currentGrid.appendChild(row);
+                currentPageHeight += rowHeight;
+            }
+        }
+
+        // Add Totals Rows
+        for (const row of totalsRows) {
+            const rowHeight = measureHeight(row);
+            if (currentPageHeight + rowHeight > maxUsableHeight) {
+                // Totals row doesn't fit! Create Page.
+                currentPage++;
+                pageDiv = createPageElement(currentPage);
+                paginatedView.appendChild(pageDiv);
+
+                currentGrid = document.createElement('div');
+                currentGrid.className = 'border-t border-black';
+                pageDiv.querySelector('.page-content').appendChild(currentGrid);
+                
+                currentGrid.appendChild(row);
+                currentPageHeight = measureHeight(pageDiv.querySelector('.page-content')) - (padding * 2);
+            } else {
+                currentGrid.appendChild(row);
+                currentPageHeight += rowHeight;
+            }
+        }
+
+        // Add footer to the last page
+        if (footerEl) {
+            pageDiv.querySelector('.page-content').appendChild(footerEl);
+        }
+
+        // Clean up measurement container
+        document.body.removeChild(measureContainer);
+
+        // Hide original container and insert paginated view
+        rawContainer.style.display = 'none';
+        rawContainer.parentNode.insertBefore(paginatedView, rawContainer.nextSibling);
+        document.body.classList.add('has-paginated-view');
+
+        // Helper to create page elements
+        function createPageElement(pageNum) {
+            const div = document.createElement('div');
+            div.className = 'a4-page bg-white border border-black my-4 mx-auto relative';
+            div.style.width = '210mm';
+            div.style.height = '297mm';
+            div.style.boxSizing = 'border-box';
+            div.style.position = 'relative';
+            
+            const inner = document.createElement('div');
+            inner.className = 'page-content p-[24px]';
+            inner.style.height = '100%';
+            inner.style.boxSizing = 'border-box';
+            div.appendChild(inner);
+
+            return div;
+        }
+    });
+    </script>
+</body>
+</html>

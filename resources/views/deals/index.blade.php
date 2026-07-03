@@ -261,7 +261,7 @@
                                                     {{-- Estimate/Invoice Link (Show only in late stages) --}}
                                                 @if(in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
                                                     @if($taxInvoice)
-                                                        <a href="{{ route('invoices.show', $taxInvoice->id) }}"
+                                                        <a href="{{ route('invoices.show', $taxInvoice->id) }}" target="_blank"
                                                             class="text-brand-pink hover:text-brand-purple transition-colors" 
                                                             title="View Invoice">
                                                             <i class="fas fa-file-invoice-dollar text-xs"></i>
