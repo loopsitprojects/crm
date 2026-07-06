@@ -65,7 +65,7 @@
             display: none;
         }
     </style>
-    <div class="h-full flex flex-col">
+    <div class="min-h-full flex flex-col">
         <!-- Top Stats -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
@@ -229,8 +229,8 @@
 
 
             <!-- Kanban Board -->
-            <div class="flex-1 overflow-x-auto overflow-y-hidden">
-                <div class="flex h-full space-x-4 pb-4" style="min-width: max-content;">
+            <div class="overflow-x-auto overflow-y-visible">
+                <div class="flex space-x-4 pb-4" style="min-width: max-content;">
                     @foreach($stages as $stage)
                         <div class="w-80 flex-shrink-0 flex flex-col bg-gray-100 rounded-lg">
                             <div class="p-3 bg-gray-200 rounded-t-lg border-b border-gray-300 flex justify-between items-center">
@@ -245,7 +245,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex-1 p-2 overflow-y-auto kanban-col" data-stage="{{ $stage }}">
+                            <div class="p-2 kanban-col" data-stage="{{ $stage }}">
                                 @foreach($dealsByStage->get($stage, collect()) as $deal)
                                     <div class="bg-white p-3 rounded shadow-sm mb-3 cursor-move hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
                                         data-id="{{ $deal->id }}">

@@ -172,13 +172,13 @@
             <!-- Header -->
             <header class="bg-white shadow-sm z-10">
                 <div class="flex items-center justify-between px-6 py-4">
-                    <div class="flex items-center">
+                    <div class="flex items-center flex-1 mr-6">
                         @unless(View::hasSection('no_sidebar'))
                         <button class="md:hidden text-gray-500 focus:outline-none">
                             <i class="fas fa-bars"></i>
                         </button>
                         @endunless
-                        <h2 class="text-xl font-semibold text-gray-700 ml-4">@yield('header')</h2>
+                        <h2 class="text-xl font-semibold text-gray-700 ml-4 flex-1">@yield('header')</h2>
                     </div>
                     <div x-data="{ 
                         open: false, 

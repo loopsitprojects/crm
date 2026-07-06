@@ -35,7 +35,7 @@
 @endpush
 
 @section('header')
-    <div class="flex justify-between items-center no-print px-4 py-2 bg-gray-100 border-b border-gray-200">
+    <div class="flex justify-between items-center no-print w-full">
         <span class="font-semibold text-gray-700">Estimate Preview</span>
         <div class="space-x-2">
             <button onclick="window.print()"
