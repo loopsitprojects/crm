@@ -179,7 +179,7 @@
                                 @endif
 
                                 <!-- View -->
-                                <a href="{{ route('estimates.show', $estimate) }}"
+                                <a href="{{ route('estimates.show', $estimate) }}" target="_blank"
                                     class="text-brand-blue hover:text-brand-purple" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
@@ -189,7 +189,7 @@
                                     if ($user->role === 'Super Admin') {
                                         $canEditOrDelete = true;
                                     } elseif ($user->role === 'Management') {
-                                        $canEditOrDelete = !in_array($estimate->status, ['invoiced']);
+                                        $canEditOrDelete = !in_array($estimate->status, ['invoiced', 'approved']);
                                     } else {
                                         $canEditOrDelete = $estimate->status === 'draft';
                                     }

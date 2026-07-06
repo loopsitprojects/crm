@@ -1,5 +1,8 @@
 @extends('layouts.app')
 
+@section('no_sidebar')
+@endsection
+
 @push('head')
 <style>
     /* Force base font size for all text elements inside the invoice container */
@@ -57,16 +60,16 @@
     <div class="flex justify-between items-center no-print">
         <span>Invoice Details</span>
         <div>
-            <a href="{{ route('invoices.index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm mr-2">
-                <i class="fas fa-arrow-left mr-1"></i> Back
+            <a href="{{ route('invoices.index') }}" class="bg-brand-blue text-white px-4 py-2 rounded-md hover:bg-brand-purple text-sm mr-2 inline-flex items-center">
+                <i class="fas fa-arrow-left mr-1.5"></i> Back
             </a>
-            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm mr-2">
-                <i class="fas fa-print mr-1"></i> Print
+            <button onclick="downloadPDF()" class="bg-slate-700 text-white px-4 py-2 rounded-md hover:bg-slate-800 text-sm mr-2 inline-flex items-center">
+                <i class="fas fa-download mr-1.5"></i> Download as PDF
             </button>
             <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm">
-                    <i class="fas fa-copy mr-1"></i> Duplicate to Estimate
+                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm inline-flex items-center">
+                    <i class="fas fa-copy mr-1.5"></i> Duplicate to Estimate
                 </button>
             </form>
         </div>
@@ -328,7 +331,30 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
+    function downloadPDF() {
+        let element = document.getElementById('paginated-invoice-view');
+        if (!element || element.style.display === 'none') {
+            element = document.getElementById('invoice-container');
+        }
+        
+        const opt = {
+            margin:       0,
+            filename:     '{{ $invoice->invoice_number }}.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true,
+                logging: false
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
+        
+        html2pdf().set(opt).from(element).save();
+    }
+
 window.addEventListener("load", function () {
     // Only run on desktop screen mode
     if (window.matchMedia("(max-width: 768px)").matches) return;

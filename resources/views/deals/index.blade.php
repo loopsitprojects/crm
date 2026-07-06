@@ -67,7 +67,7 @@
     </style>
     <div class="h-full flex flex-col">
         <!-- Top Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-4 mb-6">
             <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project</h4>
                 <div class="mt-2">
@@ -255,23 +255,48 @@
                                                     $canEdit = $deal->canEdit(); 
                                                     $dealEstimates = $deal->estimates;
                                                     $hasEstimate = $dealEstimates->isNotEmpty(); 
+                                                    $estimate = $dealEstimates->first();
+                                                    $tempInvoice = $estimate ? $estimate->tempInvoice : null;
                                                     $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
                                                 @endphp
                                                 <div class="flex items-center gap-1.5 ml-2">
                                                     {{-- Estimate/Invoice Link (Show only in late stages) --}}
                                                 @if(in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
                                                     @if($taxInvoice)
-                                                        <a href="{{ route('invoices.show', $taxInvoice->id) }}"
-                                                            class="text-brand-pink hover:text-brand-purple transition-colors" 
-                                                            title="View Invoice">
-                                                            <i class="fas fa-file-invoice-dollar text-xs"></i>
-                                                        </a>
-                                                    @elseif($hasEstimate)
-                                                        <a href="{{ $canEdit ? route('estimates.edit', $dealEstimates->first()->id) : route('estimates.show', $dealEstimates->first()->id) }}"
-                                                            class="text-purple-500 hover:text-purple-700 transition-colors" 
-                                                            title="{{ $canEdit ? 'Edit Estimate' : 'View Estimate' }}">
-                                                            <i class="fas fa-file-invoice text-xs"></i>
-                                                        </a>
+                                                         <a href="{{ route('invoices.show', $taxInvoice->id) }}" target="_blank"
+                                                             class="text-brand-pink hover:text-brand-purple transition-colors" 
+                                                             title="View Invoice">
+                                                             <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                                         </a>
+                                                     @elseif($tempInvoice)
+                                                         <a href="{{ route('temp-invoices.edit', $tempInvoice->id) }}"
+                                                             class="text-orange-500 hover:text-orange-700 transition-colors" 
+                                                             title="Process Temp Invoice">
+                                                             <i class="fas fa-file-signature text-xs"></i>
+                                                         </a>
+                                                     @elseif($hasEstimate)
+                                                         <div class="flex items-center space-x-1.5">
+                                                            @if($canEdit)
+                                                                <a href="{{ route('estimates.edit', $estimate->id) }}"
+                                                                    class="text-purple-500 hover:text-purple-700 transition-colors" 
+                                                                    title="Edit Estimate">
+                                                                    <i class="fas fa-file-invoice text-xs"></i>
+                                                                </a>
+                                                            @else
+                                                                <a href="{{ route('estimates.show', $estimate->id) }}" target="_blank"
+                                                                    class="text-purple-500 hover:text-purple-700 transition-colors" 
+                                                                    title="View Estimate">
+                                                                    <i class="fas fa-file-invoice text-xs"></i>
+                                                                </a>
+                                                            @endif
+                                                            @if($canEdit && in_array($estimate->status, ['accepted', 'ready_to_invoice']))
+                                                                <button onclick="createTempInvoice({{ $deal->id }})"
+                                                                    class="text-green-500 hover:text-green-700 transition-colors" 
+                                                                    title="Create Invoice">
+                                                                    <i class="fas fa-file-invoice-dollar text-xs"></i>
+                                                                </button>
+                                                            @endif
+                                                        </div>
                                                     @elseif($canEdit)
                                                         <button onclick="createEstimate({{ $deal->id }})"
                                                             class="text-green-500 hover:text-green-700 transition-colors" title="Create Estimate">
@@ -1549,6 +1574,39 @@
                     window.location.href = data.redirect;
                 } else {
                     Swal.fire('Error', data.message || 'Failed to create estimate', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            });
+        }
+
+        function createTempInvoice(dealId) {
+            Swal.fire({
+                title: 'Creating Invoice...',
+                text: 'Please wait while we set up the temporary invoice.',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(`/deals/${dealId}/create-invoice`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    Swal.fire('Error', data.message || 'Failed to create temporary invoice', 'error');
                 }
             })
             .catch(error => {

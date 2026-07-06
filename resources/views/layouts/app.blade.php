@@ -90,6 +90,7 @@
 
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
+        @unless(View::hasSection('no_sidebar'))
         <aside class="w-64 bg-dark text-white flex-shrink-0 hidden md:flex flex-col">
             <div class="p-4 flex items-center justify-center h-20 border-b border-gray-700">
                 <img src="{{ asset('images/logo_loops_light.png') }}" alt="Loops Integrated" class="h-12 w-auto">
@@ -164,6 +165,7 @@
                 </div>
             </div>
         </aside>
+        @endunless
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -171,9 +173,11 @@
             <header class="bg-white shadow-sm z-10">
                 <div class="flex items-center justify-between px-6 py-4">
                     <div class="flex items-center">
+                        @unless(View::hasSection('no_sidebar'))
                         <button class="md:hidden text-gray-500 focus:outline-none">
                             <i class="fas fa-bars"></i>
                         </button>
+                        @endunless
                         <h2 class="text-xl font-semibold text-gray-700 ml-4">@yield('header')</h2>
                     </div>
                     <div x-data="{ 

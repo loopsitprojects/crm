@@ -60,6 +60,11 @@ class Estimate extends Model
         return $this->hasMany(Invoice::class, 'quotation_id');
     }
 
+    public function tempInvoice()
+    {
+        return $this->hasOne(TempInvoice::class, 'quotation_id');
+    }
+
     public function items()
     {
         return $this->hasMany(EstimateItem::class, 'quotation_id');

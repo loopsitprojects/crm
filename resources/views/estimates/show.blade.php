@@ -1,5 +1,8 @@
 @extends('layouts.app')
 
+@section('no_sidebar')
+@endsection
+
 @push('head')
 <style>
     .quill-content h1 {

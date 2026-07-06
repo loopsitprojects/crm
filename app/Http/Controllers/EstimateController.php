@@ -10,6 +10,7 @@ use App\Models\Setting;
 use App\Models\StandardTerm;
 use App\Models\SystemCurrency;
 use App\Models\ThirdPartyCost;
+use App\Models\TempInvoice;
 use App\Notifications\EstimateCreatedNotification;
 use App\Notifications\EstimateStatusChangedNotification;
 use App\Notifications\EstimateInvoicedNotification;
@@ -27,7 +28,7 @@ class EstimateController extends Controller
     {
         $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
             $q->whereNotNull('file_path')->where('file_path', '!=', '');
-        }])->whereIn('status', ['draft', 'ready_to_invoice']);
+        }])->whereIn('status', ['draft', 'ready_to_invoice', 'approved']);
 
         // RBAC Access Control
         $user = auth()->user();
@@ -372,8 +373,63 @@ class EstimateController extends Controller
             return back()->with('error', 'Estimate status cannot be reverted once it is ' . ucfirst(str_replace('_', ' ', $estimate->status)) . '.');
         }
 
+        if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
+            if ($estimate->po_applicable === 'yes' && !$estimate->po_file_path) {
+                return back()->with('error', 'A PO document must be uploaded before moving to Ready to Invoice.');
+            }
+        }
+
         $oldStatus = $estimate->status;
         $estimate->update(['status' => $request->status]);
+
+        // Auto-create TempInvoice when status is updated to ready_to_invoice
+        if ($request->status === 'ready_to_invoice') {
+            $existingTemp = TempInvoice::where('quotation_id', $estimate->id)->first();
+            if (!$existingTemp) {
+                \Illuminate\Support\Facades\DB::beginTransaction();
+                try {
+                    $latestTemp = TempInvoice::orderBy('id', 'desc')->first();
+                    $sequence = 1;
+                    if ($latestTemp && preg_match('/TEMP_(\d+)$/', $latestTemp->temp_invoice_number, $matches)) {
+                        $sequence = intval($matches[1]) + 1;
+                    }
+                    $tempInvoiceNumber = 'TEMP_' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
+                    $tempInvoice = TempInvoice::create([
+                        'quotation_id' => $estimate->id,
+                        'customer_id' => $estimate->customer_id,
+                        'temp_invoice_number' => $tempInvoiceNumber,
+                        'date' => now()->format('Y-m-d'),
+                        'due_date' => now()->addMonth()->format('Y-m-d'),
+                        'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
+                        'status' => 'unpaid',
+                        'is_proforma' => 0
+                    ]);
+
+                    foreach ($estimate->items as $item) {
+                        $tempInvoice->items()->create([
+                            'description' => $item->description,
+                            'type' => $item->type,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'amount' => $item->amount,
+                            'sscl_amount' => $item->sscl_amount,
+                            'vat_amount' => $item->vat_amount,
+                            'total_with_vat' => $item->total_with_vat,
+                            'department' => $item->department,
+                            'revenue_category' => $item->revenue_category,
+                        ]);
+                    }
+
+                    \Illuminate\Support\Facades\DB::commit();
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\DB::rollBack();
+                    \Illuminate\Support\Facades\Log::error('Failed to auto-create temp invoice: ' . $e->getMessage());
+                    return back()->with('error', 'Failed to update status: ' . $e->getMessage());
+                }
+            }
+        }
+
         $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate);
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, $request->status, auth()->user()));
@@ -381,9 +437,6 @@ class EstimateController extends Controller
         $message = "Estimate status updated to " . ucfirst($request->status) . ".";
 
         if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
-            if ($estimate->po_applicable === 'yes' && !$estimate->po_file_path) {
-                return back()->with('error', 'A PO document must be uploaded before moving to Ready to Invoice.');
-            }
             return redirect()->route('invoices.ready')->with('success', $message);
         } elseif ($request->status === 'approved' || $request->status === 'invoiced') {
             return redirect()->route('invoices.invoiced')->with('success', $message);
@@ -440,7 +493,7 @@ class EstimateController extends Controller
             ]);
         }
 
-        $estimate->update(['status' => 'invoiced']);
+        $estimate->update(['status' => 'approved']);
         $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
         
         if ($estimate->deal) {
@@ -474,9 +527,9 @@ class EstimateController extends Controller
         $readonly = !$canEditDeal;
 
         if (!$readonly && $user->role !== 'Super Admin') {
-            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced') {
+            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced' || $estimate->status === 'approved') {
                 $readonly = true;
-            } elseif ($user->role === 'Management' && $estimate->status === 'invoiced') {
+            } elseif ($user->role === 'Management' && ($estimate->status === 'invoiced' || $estimate->status === 'approved')) {
                 $readonly = true;
             } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
                 $readonly = true;
@@ -509,11 +562,11 @@ class EstimateController extends Controller
         }
 
         if ($user->role !== 'Super Admin') {
-            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced') {
-                abort(403, 'This estimate is locked because it is ready to invoice or already invoiced.');
+            if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced' || $estimate->status === 'approved') {
+                abort(403, 'This estimate is locked because it is ready to invoice, approved, or already invoiced.');
             }
-            if ($user->role === 'Management' && $estimate->status === 'invoiced') {
-                abort(403, 'Management cannot edit Invoiced estimates.');
+            if ($user->role === 'Management' && ($estimate->status === 'invoiced' || $estimate->status === 'approved')) {
+                abort(403, 'Management cannot edit Invoiced or Approved estimates.');
             } elseif ($user->role !== 'Management' && $estimate->status !== 'draft') {
                 abort(403, 'You can only edit Draft estimates.');
             }

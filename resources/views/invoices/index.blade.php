@@ -199,7 +199,7 @@
                                         @endif
                                     </button>
                                 @endif
-                                <a href="{{ route('invoices.show', $invoice) }}" class="text-brand-blue hover:text-brand-purple"
+                                <a href="{{ route('invoices.show', $invoice) }}" target="_blank" class="text-brand-blue hover:text-brand-purple"
                                     title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>

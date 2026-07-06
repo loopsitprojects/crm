@@ -121,7 +121,7 @@
                                         @endif
                                     </button>
                                 @endif
-                                <a href="{{ route('estimates.show', $estimate) }}"
+                                <a href="{{ route('estimates.show', $estimate) }}" target="_blank"
                                     class="text-brand-blue hover:text-brand-purple mr-3" title="View Estimate">
                                     <i class="fas fa-eye"></i>
                                 </a>

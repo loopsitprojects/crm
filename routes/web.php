@@ -43,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/deals/{deal}', [DealController::class, 'destroy'])->name('deals.destroy');
     Route::post('/deals/{deal}/stage', [DealController::class, 'updateStage'])->name('deals.updateStage');
     Route::post('/deals/{deal}/create-estimate', [DealController::class, 'createEstimate'])->name('deals.createEstimate');
+    Route::post('/deals/{deal}/create-invoice', [DealController::class, 'createInvoice'])->name('deals.createInvoice');
 
     // Jobs
     Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
@@ -63,6 +64,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
     Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
     Route::resource('invoices', InvoiceController::class);
+    Route::resource('temp-invoices', \App\Http\Controllers\TempInvoiceController::class)->only(['edit', 'update']);
+    Route::post('temp-invoices/{tempInvoice}/revert', [InvoiceController::class, 'revertToPending'])->name('temp-invoices.revert');
+
 
     // Super Admin Only Routes
     Route::middleware(['role:Super Admin'])->group(function () {
