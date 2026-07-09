@@ -207,4 +207,20 @@ class SettingController extends Controller
 
         return redirect()->route('settings.index')->with('success', 'Currency updated successfully.');
     }
+
+    public function updateMaintenance(Request $request)
+    {
+        // Role Check (Super Admin only)
+        if (!auth()->user()->hasRole('super_admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'maintenance_mode' => 'required|in:0,1',
+        ]);
+
+        Setting::set('maintenance_mode', $request->maintenance_mode, 'system');
+
+        return redirect()->route('settings.index')->with('success', 'Maintenance mode status updated successfully.');
+    }
 }

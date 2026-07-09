@@ -17,6 +17,13 @@ Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.post');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+Route::get('maintenance', function () {
+    if (\App\Models\Setting::get('maintenance_mode') != 1) {
+        return redirect()->route('login');
+    }
+    return view('errors.maintenance');
+})->name('maintenance');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/notifications/mark-as-read', function () {
@@ -86,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/tax', [SettingController::class, 'updateTax'])->name('settings.updateTax');
         Route::post('settings/department-targets', [SettingController::class, 'updateDepartmentTargets'])->name('settings.updateDepartmentTargets');
         Route::post('settings/user-targets', [SettingController::class, 'updateUserTargets'])->name('settings.updateUserTargets');
+        Route::post('settings/maintenance', [SettingController::class, 'updateMaintenance'])->name('settings.updateMaintenance');
         
         Route::post('settings/managers', [SettingController::class, 'storeManager'])->name('settings.storeManager');
         Route::get('settings/managers/{manager}/delete', [SettingController::class, 'destroyManager'])->name('settings.destroyManager.get');

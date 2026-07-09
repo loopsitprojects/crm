@@ -40,6 +40,11 @@
                         id="btn-currencies">
                         <i class="fas fa-coins mr-2 text-yellow-500"></i> Currencies
                     </button>
+                    <button onclick="showSection('maintenance')"
+                        class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
+                        id="btn-maintenance">
+                        <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
+                    </button>
                 @endif
             </div>
 
@@ -463,6 +468,32 @@
                                 </div>
                             </div>
                         </div>
+                    </section>
+                    
+                    <!-- Maintenance Mode Section -->
+                    <section id="section-maintenance" class="settings-section hidden space-y-6">
+                        <form action="{{ route('settings.updateMaintenance') }}" method="POST">
+                            @csrf
+                            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                    <h3 class="text-lg font-bold text-gray-800">Maintenance Mode</h3>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
+                                        Save Changes
+                                    </button>
+                                </div>
+                                <div class="p-6">
+                                    <div class="max-w-md">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">System Status</label>
+                                        <select name="maintenance_mode" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="0" {{ \App\Models\Setting::get('maintenance_mode') != 1 ? 'selected' : '' }}>Active (Normal Operation)</option>
+                                            <option value="1" {{ \App\Models\Setting::get('maintenance_mode') == 1 ? 'selected' : '' }}>Maintenance Mode (Block non-Super Admins)</option>
+                                        </select>
+                                        <p class="text-xs text-gray-500 mt-2">When Maintenance Mode is active, all active non-Super Admin users will be logged out immediately and prevented from accessing any part of the system.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     </section>
                 @endif
             </div>
