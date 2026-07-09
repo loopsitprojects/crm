@@ -97,24 +97,78 @@ class DealController extends Controller
             $query->whereDate('close_date', '<=', $closeDateVal);
         }
 
-        if ($request->filled('created_date')) {
-            $query->whereDate('created_at', '=', $request->input('created_date'));
+        // Deals Created Date Filter (Presets + Custom Range)
+        if ($request->filled('created_date_type')) {
+            $type = $request->input('created_date_type');
+            if ($type === 'this_month') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_month') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_quarter') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->subQuarter()->endOfQuarter()->endOfDay()
+                ]);
+            } elseif ($type === 'custom') {
+                if ($request->filled('created_from')) {
+                    $query->whereDate('created_at', '>=', $request->input('created_from'));
+                }
+                if ($request->filled('created_to')) {
+                    $query->whereDate('created_at', '<=', $request->input('created_to'));
+                }
+            }
         }
 
-        if ($request->filled('expected_close_date')) {
-            $query->whereDate('close_date', '=', $request->input('expected_close_date'));
+        // Deals Expected Closing Date Filter (Presets + Custom Range)
+        if ($request->filled('expected_close_date_type')) {
+            $type = $request->input('expected_close_date_type');
+            if ($type === 'this_month') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_month') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_quarter') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->subQuarter()->endOfQuarter()->endOfDay()
+                ]);
+            } elseif ($type === 'custom') {
+                if ($request->filled('expected_close_from')) {
+                    $query->whereDate('close_date', '>=', $request->input('expected_close_from'));
+                }
+                if ($request->filled('expected_close_to')) {
+                    $query->whereDate('close_date', '<=', $request->input('expected_close_to'));
+                }
+            }
         }
 
         // User filter
-        if ($request->filled('filter_user')) {
-            $query->where('user_id', $request->input('filter_user'));
+        if ($request->has('filter_user')) {
+            $filterUsers = array_filter((array)$request->input('filter_user'));
+            if (!empty($filterUsers)) {
+                $query->whereIn('user_id', $filterUsers);
+            }
         }
 
         // Department filter — filter deals by owner's department
-        if ($request->filled('filter_department')) {
-            $query->whereHas('owner', function ($q) use ($request) {
-                $q->where('department', $request->input('filter_department'));
-            });
+        if ($request->has('filter_department')) {
+            $filterDepts = array_filter((array)$request->input('filter_department'));
+            if (!empty($filterDepts)) {
+                $query->whereHas('owner', function ($q) use ($filterDepts) {
+                    $q->whereIn('department', $filterDepts);
+                });
+            }
         }
 
         // RBAC Filtering

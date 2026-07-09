@@ -53,7 +53,7 @@
 
         <!-- Filter Bar -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <form action="{{ route('jobs.index') }}" method="GET" class="flex flex-wrap gap-4 items-end">
+            <form action="{{ route('jobs.index') }}" method="GET" class="filter-form flex flex-wrap gap-4 items-end">
                 <!-- Date Range -->
                 <div class="flex flex-col space-y-1">
                     <label for="start_date" class="text-xs font-bold text-gray-700">From Date</label>
@@ -69,29 +69,29 @@
                 <!-- Department Dropdown -->
                 <div class="flex flex-col space-y-1">
                     <label for="department" class="text-xs font-bold text-gray-700">Department</label>
-                    <select name="department" id="department"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm min-w-[150px]">
-                        <option value="">All Departments</option>
-                        @foreach($departments as $dept)
-                            <option value="{{ $dept }}" {{ request('department') == $dept ? 'selected' : '' }}>
-                                {{ $dept }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="min-w-[150px]">
+                        <select name="department[]" id="department" multiple>
+                            @foreach($departments as $dept)
+                                <option value="{{ $dept }}" {{ is_array(request('department')) && in_array($dept, request('department')) ? 'selected' : (request('department') == $dept ? 'selected' : '') }}>
+                                    {{ $dept }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Users Dropdown -->
                 <div class="flex flex-col space-y-1">
                     <label for="user_id" class="text-xs font-bold text-gray-700">User</label>
-                    <select name="user_id" id="user_id"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm min-w-[150px]">
-                        <option value="">All Users</option>
-                        @foreach($users as $user)
-                            <option value="{{ $user->id }}" {{ request('user_id') == $user->id ? 'selected' : '' }}>
-                                {{ $user->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <div class="min-w-[180px]">
+                        <select name="user_id[]" id="user_id" multiple>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}" {{ is_array(request('user_id')) && in_array($user->id, request('user_id')) ? 'selected' : (request('user_id') == $user->id ? 'selected' : '') }}>
+                                    {{ $user->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Buttons -->
@@ -184,4 +184,73 @@
                          For now, I'll just link to deals index? Or maybe just text.
                          The prompt implies a separate tab for Jobs, so listing them is the priority.
                     -->
+
+    @push('head')
+        <style>
+            /* Compact styles for Tom Select inside the filter form */
+            .filter-form .ts-wrapper {
+                width: auto !important;
+                display: inline-block !important;
+                vertical-align: middle !important;
+            }
+            .filter-form .ts-wrapper .ts-control {
+                padding: 0.25rem 0.5rem !important; /* py-1 px-2 */
+                min-height: 38px !important; /* Matches native date picker height */
+                font-size: 0.875rem !important; /* text-sm */
+                border-radius: 0.375rem !important; /* rounded-md */
+                line-height: 1.25rem !important;
+                align-items: center !important;
+                border: 1px solid #d1d5db !important;
+                background-color: #fff !important;
+            }
+            .filter-form .ts-wrapper .ts-control input {
+                font-size: 0.875rem !important;
+            }
+            .filter-form .ts-wrapper .ts-control .item {
+                font-size: 0.75rem !important;
+                padding: 1px 4px !important;
+                margin: 1px !important;
+                border-radius: 0.25rem !important;
+                background-color: #f3f4f6 !important;
+                border: 1px solid #e5e7eb !important;
+                display: inline-flex !important;
+                align-items: center !important;
+            }
+            .filter-form .ts-wrapper .ts-control .item .remove {
+                font-size: 0.65rem !important;
+                margin-left: 2px !important;
+            }
+            .filter-form .ts-dropdown {
+                border-radius: 0.5rem !important;
+                margin-top: 4px !important;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+                border: 1px solid #e5e7eb !important;
+            }
+            .filter-form .ts-dropdown .active {
+                background-color: #8035ca !important;
+                color: white !important;
+            }
+        </style>
+    @endpush
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                if (document.getElementById('department')) {
+                    new TomSelect('#department', {
+                        plugins: ['remove_button'],
+                        placeholder: 'All Departments',
+                        create: false
+                    });
+                }
+                if (document.getElementById('user_id')) {
+                    new TomSelect('#user_id', {
+                        plugins: ['remove_button'],
+                        placeholder: 'All Users',
+                        create: false
+                    });
+                }
+            });
+        </script>
+    @endpush
 @endsection

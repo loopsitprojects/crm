@@ -64,6 +64,38 @@
         .metric-contribution {
             display: none;
         }
+
+        /* Compact styles for Tom Select inside the filter form */
+        .filter-form .ts-wrapper {
+            width: auto !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+        }
+        .filter-form .ts-wrapper .ts-control {
+            padding: 0.25rem 0.5rem !important; /* py-1 px-2 */
+            min-height: 28px !important;
+            font-size: 0.75rem !important; /* text-xs */
+            border-radius: 0.375rem !important; /* rounded-md */
+            line-height: 1.25rem !important;
+            align-items: center !important;
+        }
+        .filter-form .ts-wrapper .ts-control input {
+            font-size: 0.75rem !important;
+        }
+        .filter-form .ts-wrapper .ts-control .item {
+            font-size: 0.70rem !important;
+            padding: 0px 4px !important;
+            margin: 1px !important;
+            border-radius: 0.25rem !important;
+            background-color: #f3f4f6 !important;
+            border: 1px solid #e5e7eb !important;
+            display: inline-flex !important;
+            align-items: center !important;
+        }
+        .filter-form .ts-wrapper .ts-control .item .remove {
+            font-size: 0.65rem !important;
+            margin-left: 2px !important;
+        }
     </style>
     <div class="min-h-full flex flex-col">
         <!-- Top Stats -->
@@ -152,7 +184,7 @@
                 </div>
 
                 <!-- Filter Form -->
-                <form action="{{ route('deals.index') }}" method="GET" class="flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                <form action="{{ route('deals.index') }}" method="GET" class="filter-form flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
                     <div class="flex items-center gap-2">
                         <label for="start_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Start Month:</label>
                         <input type="month" name="start_date" id="start_date" value="{{ request('start_date') ? (strlen(request('start_date')) > 7 ? substr(request('start_date'), 0, 7) : request('start_date')) : '' }}"
@@ -166,52 +198,78 @@
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <label for="created_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Deals Created Date:</label>
-                        <input type="date" name="created_date" id="created_date" value="{{ request('created_date') }}"
+                        <label for="created_date_type" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Deals Created Date:</label>
+                        <select name="created_date_type" id="created_date_type" onchange="toggleCustomDateFields(this.value)"
                             class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label for="expected_close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Deals Expected Closing Date:</label>
-                        <input type="date" name="expected_close_date" id="expected_close_date" value="{{ request('expected_close_date') }}"
-                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label for="filter_user" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">User:</label>
-                        <select name="filter_user" id="filter_user"
-                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border min-w-[140px]">
-                            @if(auth()->user()->role !== 'Manager')
-                                <option value="">All Users</option>
-                            @endif
-                            @foreach($filterableUsers as $filterUser)
-                                <option value="{{ $filterUser->id }}" {{ request('filter_user') == $filterUser->id ? 'selected' : '' }}>
-                                    {{ $filterUser->name }}
-                                </option>
-                            @endforeach
+                            <option value="">All Time</option>
+                            <option value="this_month" {{ request('created_date_type') == 'this_month' ? 'selected' : '' }}>This Month</option>
+                            <option value="previous_month" {{ request('created_date_type') == 'previous_month' ? 'selected' : '' }}>Previous Month</option>
+                            <option value="previous_quarter" {{ request('created_date_type') == 'previous_quarter' ? 'selected' : '' }}>Previous Quarter</option>
+                            <option value="custom" {{ request('created_date_type') == 'custom' ? 'selected' : '' }}>Custom Range</option>
                         </select>
                     </div>
 
+                    <!-- Custom Date Fields (shown only when 'custom' is selected) -->
+                    <div id="custom-date-container" class="{{ request('created_date_type') == 'custom' ? 'flex' : 'hidden' }} items-center gap-2">
+                        <input type="date" name="created_from" id="created_from" value="{{ request('created_from') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border" placeholder="From">
+                        <span class="text-[10px] text-gray-500 font-bold uppercase">to</span>
+                        <input type="date" name="created_to" id="created_to" value="{{ request('created_to') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border" placeholder="To">
+                    </div>
+
                     <div class="flex items-center gap-2">
-                        <label for="filter_department" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Department:</label>
-                        <select name="filter_department" id="filter_department"
-                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border min-w-[120px]">
-                            @if(in_array(auth()->user()->role, ['Super Admin', 'Management']))
-                                <option value="">All Departments</option>
-                            @endif
-                            @foreach($filterableDepartments as $dept)
-                                <option value="{{ $dept }}" {{ request('filter_department') == $dept ? 'selected' : '' }}>
-                                    {{ $dept }}
-                                </option>
-                            @endforeach
+                        <label for="expected_close_date_type" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Deals Expected Closing Date:</label>
+                        <select name="expected_close_date_type" id="expected_close_date_type" onchange="toggleCustomExpectedCloseFields(this.value)"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
+                            <option value="">All Time</option>
+                            <option value="this_month" {{ request('expected_close_date_type') == 'this_month' ? 'selected' : '' }}>This Month</option>
+                            <option value="previous_month" {{ request('expected_close_date_type') == 'previous_month' ? 'selected' : '' }}>Previous Month</option>
+                            <option value="previous_quarter" {{ request('expected_close_date_type') == 'previous_quarter' ? 'selected' : '' }}>Previous Quarter</option>
+                            <option value="custom" {{ request('expected_close_date_type') == 'custom' ? 'selected' : '' }}>Custom Range</option>
                         </select>
+                    </div>
+
+                    <!-- Custom Expected Close Date Fields (shown only when 'custom' is selected) -->
+                    <div id="custom-expected-close-container" class="{{ request('expected_close_date_type') == 'custom' ? 'flex' : 'hidden' }} items-center gap-2">
+                        <input type="date" name="expected_close_from" id="expected_close_from" value="{{ request('expected_close_from') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border" placeholder="From">
+                        <span class="text-[10px] text-gray-500 font-bold uppercase">to</span>
+                        <input type="date" name="expected_close_to" id="expected_close_to" value="{{ request('expected_close_to') }}"
+                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border" placeholder="To">
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="filter_user" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">User:</label>
+                        <div class="min-w-[150px]">
+                            <select name="filter_user[]" id="filter_user" multiple>
+                                @foreach($filterableUsers as $filterUser)
+                                    <option value="{{ $filterUser->id }}" {{ is_array(request('filter_user')) && in_array($filterUser->id, request('filter_user')) ? 'selected' : (request('filter_user') == $filterUser->id ? 'selected' : '') }}>
+                                        {{ $filterUser->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label for="filter_department" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Dept:</label>
+                        <div class="min-w-[130px]">
+                            <select name="filter_department[]" id="filter_department" multiple>
+                                @foreach($filterableDepartments as $dept)
+                                    <option value="{{ $dept }}" {{ is_array(request('filter_department')) && in_array($dept, request('filter_department')) ? 'selected' : (request('filter_department') == $dept ? 'selected' : '') }}>
+                                        {{ $dept }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <div class="flex items-center gap-1.5">
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
                         </button>
-                        @if(request('start_date') || request('close_date') || request('created_date') || request('expected_close_date') || request('filter_user') || request('filter_department'))
+                        @if(request('start_date') || request('close_date') || request('created_date_type') || request('expected_close_date_type') || request('filter_user') || request('filter_department') || request('created_from') || request('created_to') || request('expected_close_from') || request('expected_close_to'))
                             <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                                 Reset
                             </a>
@@ -824,6 +882,38 @@
     <!-- SortableJS -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
+        function toggleCustomDateFields(val) {
+            const container = document.getElementById('custom-date-container');
+            if (!container) return;
+            if (val === 'custom') {
+                container.classList.remove('hidden');
+                container.classList.add('flex');
+            } else {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+                const fromInput = document.getElementById('created_from');
+                const toInput = document.getElementById('created_to');
+                if (fromInput) fromInput.value = '';
+                if (toInput) toInput.value = '';
+            }
+        }
+
+        function toggleCustomExpectedCloseFields(val) {
+            const container = document.getElementById('custom-expected-close-container');
+            if (!container) return;
+            if (val === 'custom') {
+                container.classList.remove('hidden');
+                container.classList.add('flex');
+            } else {
+                container.classList.add('hidden');
+                container.classList.remove('flex');
+                const fromInput = document.getElementById('expected_close_from');
+                const toInput = document.getElementById('expected_close_to');
+                if (fromInput) fromInput.value = '';
+                if (toInput) toInput.value = '';
+            }
+        }
+
         function editDeal(deal, isReadOnly = false) {
             const form = document.getElementById('editDealForm');
             form.action = `/deals/${deal.id}`;
@@ -947,6 +1037,22 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            // Initialize TomSelect for User and Department filters
+            if (document.getElementById('filter_user')) {
+                new TomSelect('#filter_user', {
+                    plugins: ['remove_button'],
+                    placeholder: 'All Users',
+                    create: false
+                });
+            }
+            if (document.getElementById('filter_department')) {
+                new TomSelect('#filter_department', {
+                    plugins: ['remove_button'],
+                    placeholder: 'All Departments',
+                    create: false
+                });
+            }
+
             // ... existing sortable code ...
             const columns = document.querySelectorAll('.kanban-col');
 
