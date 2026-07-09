@@ -426,7 +426,7 @@
                                     class="cust-column">
                                     <option value="">Search Brand...</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->brand }}</option>
+                                        <option value="{{ $customer->id }}">{{ $customer->brand ?: $customer->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -644,7 +644,7 @@
                                     class="cust-column">
                                     <option value="">Search Brand...</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->brand }}</option>
+                                        <option value="{{ $customer->id }}">{{ $customer->brand ?: $customer->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

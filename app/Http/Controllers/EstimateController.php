@@ -493,7 +493,6 @@ class EstimateController extends Controller
             ]);
         }
 
-        $estimate->update(['status' => 'approved']);
         $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
         
         if ($estimate->deal) {

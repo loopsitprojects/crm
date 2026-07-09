@@ -493,6 +493,8 @@ class DealController extends Controller
         $oldSeniorManager = $deal->senior_manager;
         $deal->update($validated);
 
+        $this->approveDealEstimates($deal);
+
         // Handle department allocations
         $oldDepartments = [];
         if ($deal->department_split) {
@@ -628,6 +630,7 @@ class DealController extends Controller
 
             $oldStage = $deal->stage;
             $deal->update($validated);
+            $this->approveDealEstimates($deal);
             $this->notifyStakeholders($deal, new DealStageChangedNotification($deal, $oldStage, $validated['stage'], auth()->user()));
 
             // Sync revenue and contribution if moving to 'Closed Won'
@@ -811,6 +814,20 @@ class DealController extends Controller
     private function checkDealAccess(Deal $deal)
     {
         return $deal->canEdit();
+    }
+
+    private function approveDealEstimates(Deal $deal)
+    {
+        if ($deal->stage === 'Finalizing terms') {
+            foreach ($deal->estimates as $estimate) {
+                if ($estimate->status !== 'approved') {
+                    $oldStatus = $estimate->status;
+                    $estimate->update(['status' => 'approved']);
+                    $this->logAction("Updated status to approved for estimate: {$estimate->reference_number}", $estimate);
+                    $this->notifyStakeholders($deal, new \App\Notifications\EstimateStatusChangedNotification($estimate, $oldStatus, 'approved', auth()->user()));
+                }
+            }
+        }
     }
 
 }

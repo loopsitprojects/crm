@@ -183,11 +183,6 @@ class TempInvoiceController extends Controller
                 ]);
             }
 
-            // Update original estimate status to approved
-            if ($tempInvoice->estimate) {
-                $tempInvoice->estimate->update(['status' => 'approved']);
-            }
-
             // 4. Log Action
             $this->logAction("Processed temp invoice {$tempInvoice->temp_invoice_number} into invoice: {$finalInvoice->invoice_number}", $tempInvoice->estimate);
 
