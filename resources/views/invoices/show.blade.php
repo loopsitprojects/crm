@@ -242,9 +242,50 @@
                 </div>
             @endif
 
-            <div class="p-3 border-l border-r border-b border-black align-top invoice-totals-row">
-                <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+            @if($invoice->estimate && trim($invoice->estimate->special_terms) !== '')
+            <div class="flex border-l border-r border-b border-black align-top invoice-totals-row">
+                <!-- Left Side: Mode of Payment & General Terms -->
+                <div class="w-1/2 p-3">
+                    <div class="mb-1">
+                        <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+                    </div>
+                    <div class="text-[13px] text-black mt-2">
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Cheques to be drawn in favour of "Loops Digital Private Limited"</li>
+                            <li>All relevant Government taxes will be applicable</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Right Side: Special Terms with a vertical breaker -->
+                <div class="w-1/2 p-3 border-l border-black">
+                    <div class="mb-1">
+                        <span class="font-bold text-[13px]">Special Terms:</span>
+                    </div>
+                    <div class="text-[13px] text-black mt-2">
+                        <ul class="list-disc pl-5 space-y-1">
+                            @foreach(explode("\n", str_replace("\r", "", $invoice->estimate->special_terms)) as $term)
+                                @if(trim($term) !== '')
+                                    <li>{{ ltrim(trim($term), '-*• ') }}</li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
             </div>
+            @else
+            <div class="p-3 border-l border-r border-b border-black align-top invoice-totals-row">
+                <div class="mb-1">
+                    <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+                </div>
+                <div class="text-[13px] text-black mt-2">
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Cheques to be drawn in favour of "Loops Digital Private Limited"</li>
+                        <li>All relevant Government taxes will be applicable</li>
+                    </ul>
+                </div>
+            </div>
+            @endif
         </div>
         <!-- END MAIN GRID -->
 
