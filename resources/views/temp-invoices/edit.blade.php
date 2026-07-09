@@ -565,6 +565,13 @@
                                 <!-- Special Terms -->
                                 <div class="pt-4 border-t border-gray-50">
                                     <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Special Terms</label>
+                                    <select onchange="appendSpecialTerm(this.value); this.value='';"
+                                        class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-xs py-2 shadow-sm mb-2">
+                                        <option value="">-- Load Standard Term --</option>
+                                        @foreach($standardTerms as $term)
+                                            <option value="{{ $term->content }}">{{ Str::limit($term->content, 50) }}</option>
+                                        @endforeach
+                                    </select>
                                     <textarea name="special_terms" rows="3" placeholder="Any custom conditions..."
                                         class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">{{ old('special_terms', $estimate->special_terms) }}</textarea>
                                 </div>
@@ -878,6 +885,18 @@
                 const input = row.querySelector('input[name*="[quantity]"]');
                 if (input) calculateRow(input);
             });
+        }
+
+        function appendSpecialTerm(content) {
+            if (!content) return;
+            const textarea = document.querySelector('textarea[name="special_terms"]');
+            if (textarea) {
+                if (textarea.value.trim() === '') {
+                    textarea.value = content;
+                } else {
+                    textarea.value += '\n' + content;
+                }
+            }
         }
 
         function addTerm(content) {
