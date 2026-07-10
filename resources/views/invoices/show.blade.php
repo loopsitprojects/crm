@@ -1,107 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoice - {{ $invoice->invoice_number }}</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            pink: '{{ \App\Models\Setting::get("brand_pink", "#ff0878") }}',
-                            purple: '{{ \App\Models\Setting::get("brand_purple", "#8035ca") }}',
-                            blue: '{{ \App\Models\Setting::get("brand_blue", "#0057be") }}',
-                            teal: '{{ \App\Models\Setting::get("brand_teal", "#2fc9c3") }}',
-                        },
-                        primary: '{{ \App\Models\Setting::get("brand_pink", "#ff0878") }}',
-                        secondary: '#0057be',
-                        dark: '#1f2937',
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        /* Force base font size for all text elements inside the invoice container */
-        #invoice-container, 
-        #invoice-container div, 
-        #invoice-container span, 
-        #invoice-container p,
-        #paginated-invoice-view,
-        #paginated-invoice-view div,
-        #paginated-invoice-view span,
-        #paginated-invoice-view p,
-        #measure-container,
-        #measure-container div,
-        #measure-container span,
-        #measure-container p {
-            font-size: 13px;
-        }
-        /* Preserve large title size */
-        #invoice-container .invoice-header div,
-        #paginated-invoice-view .invoice-header div,
-        #measure-container .invoice-header div {
-            font-size: 17px;
-        }
-        /* Preserve footer text size */
-        #invoice-container .invoice-footer,
-        #paginated-invoice-view .invoice-footer,
-        #measure-container .invoice-footer {
-            font-size: 12px;
-        }
+@extends('layouts.app')
 
-        .quill-content h1 {
-            font-size: 1.125rem; /* text-lg */
-            font-weight: 700; /* font-bold */
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        .quill-content h2 {
-            font-size: 1rem; /* text-base */
-            font-weight: 600; /* font-semibold */
-            font-style: italic;
-            margin-bottom: 0.25rem;
-            margin-top: 0.5rem;
-        }
-        .quill-content ul {
-            list-style-type: disc;
-            padding-left: 1.5rem;
-            margin-top: 0.25rem;
-            margin-bottom: 0.25rem;
-        }
-        .quill-content p {
-            margin-bottom: 0.25rem;
-        }
-        /* Reset margins for first and last children to keep table cells neat */
-        .quill-content > *:first-child { margin-top: 0; }
-        .quill-content > *:last-child { margin-bottom: 0; }
-    </style>
-</head>
-<body class="bg-gray-100 min-h-screen py-8">
-    <div class="max-w-4xl mx-auto flex justify-between items-center mb-6 px-4 no-print">
-        <span class="text-lg font-bold text-gray-800">Invoice Details</span>
-        <div class="flex items-center space-x-2">
-            <a href="{{ route('invoices.index') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm transition-all flex items-center shadow-md">
+@section('no_sidebar')
+@endsection
+
+@push('head')
+<style>
+    /* Force base font size for all text elements inside the invoice container */
+    #invoice-container, 
+    #invoice-container div, 
+    #invoice-container span, 
+    #invoice-container p,
+    #paginated-invoice-view,
+    #paginated-invoice-view div,
+    #paginated-invoice-view span,
+    #paginated-invoice-view p,
+    #measure-container,
+    #measure-container div,
+    #measure-container span,
+    #measure-container p {
+        font-size: 13px;
+    }
+    /* Preserve large title size */
+    #invoice-container .invoice-header div,
+    #paginated-invoice-view .invoice-header div,
+    #measure-container .invoice-header div {
+        font-size: 17px;
+    }
+    /* Preserve footer text size */
+    #invoice-container .invoice-footer,
+    #paginated-invoice-view .invoice-footer,
+    #measure-container .invoice-footer {
+        font-size: 12px;
+    }
+
+    .quill-content h1 {
+        font-size: 1.125rem; /* text-lg */
+        font-weight: 700; /* font-bold */
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content h2 {
+        font-size: 1rem; /* text-base */
+        font-weight: 600; /* font-semibold */
+        font-style: italic;
+        margin-bottom: 0.25rem;
+        margin-top: 0.5rem;
+    }
+    .quill-content ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .quill-content p {
+        margin-bottom: 0.25rem;
+    }
+    /* Reset margins for first and last children to keep table cells neat */
+    .quill-content > *:first-child { margin-top: 0; }
+    .quill-content > *:last-child { margin-bottom: 0; }
+</style>
+@endpush
+
+@section('header')
+    <div class="flex justify-between items-center no-print">
+        <span>Invoice Details</span>
+        <div>
+            <a href="{{ route('invoices.index') }}" class="bg-brand-blue text-white px-4 py-2 rounded-md hover:bg-brand-purple text-sm mr-2 inline-flex items-center">
                 <i class="fas fa-arrow-left mr-1.5"></i> Back
             </a>
-            <button id="download-btn" onclick="downloadPDF()" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 text-sm transition-all flex items-center shadow-md">
-                <i class="fas fa-download mr-1.5"></i> Download PDF
+            <button id="download-btn" onclick="downloadPDF()" class="bg-slate-700 text-white px-4 py-2 rounded-md hover:bg-slate-800 text-sm mr-2 inline-flex items-center">
+                <i class="fas fa-download mr-1.5"></i> Download as PDF
             </button>
             <form action="{{ route('invoices.duplicate', $invoice) }}" method="POST" class="inline">
                 @csrf
-                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm transition-all flex items-center shadow-md">
+                <button type="submit" class="bg-brand-purple text-white px-4 py-2 rounded-md hover:bg-brand-pink text-sm inline-flex items-center">
                     <i class="fas fa-copy mr-1.5"></i> Duplicate to Estimate
                 </button>
             </form>
         </div>
     </div>
+@endsection
+
+@section('content')
 
     <!-- MAIN BORDERED CONTAINER -->
     <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8" id="invoice-container">
@@ -236,12 +217,12 @@
             </div>
             @if(!$invoice->is_proforma)
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
-                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end" style="border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000;">Advance Received amount:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end" style="border-right: 1px solid #000; border-bottom: 1px solid #000;">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
+                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Advance Received amount:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
             </div>
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
-                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end" style="border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px solid #000;">Balance Payable:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end" style="border-right: 1px solid #000; border-bottom: 1px solid #000;">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
+                <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Balance Payable:</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
             </div>
             @endif
 
@@ -267,9 +248,50 @@
                 </div>
             @endif
 
-            <div class="p-3 border-l border-r border-b border-black align-top invoice-totals-row">
-                <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+            @if($invoice->estimate && trim($invoice->estimate->special_terms) !== '')
+            <div class="flex border-l border-r border-b border-black align-top invoice-totals-row">
+                <!-- Left Side: Mode of Payment & General Terms -->
+                <div class="w-1/2 p-3">
+                    <div class="mb-1">
+                        <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+                    </div>
+                    <div class="text-[13px] text-black mt-2">
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Cheques to be drawn in favour of "Loops Digital Private Limited"</li>
+                            <li>All relevant Government taxes will be applicable</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Right Side: Special Terms with a vertical breaker -->
+                <div class="w-1/2 p-3 border-l border-black">
+                    <div class="mb-1">
+                        <span class="font-bold text-[13px]">Special Terms:</span>
+                    </div>
+                    <div class="text-[13px] text-black mt-2">
+                        <ul class="list-disc pl-5 space-y-1">
+                            @foreach(explode("\n", str_replace("\r", "", $invoice->estimate->special_terms)) as $term)
+                                @if(trim($term) !== '')
+                                    <li>{{ ltrim(trim($term), '-*• ') }}</li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
             </div>
+            @else
+            <div class="p-3 border-l border-r border-b border-black align-top invoice-totals-row">
+                <div class="mb-1">
+                    <span class="font-bold text-[13px]">Mode of Payment:</span> <span class="text-[13px]">Cheque / Bank Transfer</span>
+                </div>
+                <div class="text-[13px] text-black mt-2">
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Cheques to be drawn in favour of "Loops Digital Private Limited"</li>
+                        <li>All relevant Government taxes will be applicable</li>
+                    </ul>
+                </div>
+            </div>
+            @endif
         </div>
         <!-- END MAIN GRID -->
 
@@ -298,29 +320,6 @@
             }
         }
 
-        /* PDF Generation Specific Styles to strip screen spacing/margins/shadows */
-        body.generating-pdf {
-            background: white !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-        body.generating-pdf #paginated-invoice-view {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        body.generating-pdf .a4-page {
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-            height: 296.5mm !important;
-            page-break-after: always;
-            break-after: page;
-        }
-        body.generating-pdf .a4-page:last-child {
-            page-break-after: avoid !important;
-            break-after: avoid !important;
-        }
-
         @page {
             size: A4;
             margin: 0mm;
@@ -344,7 +343,7 @@
             }
             #paginated-invoice-view .a4-page {
                 box-shadow: none !important;
-                border: none !important;
+                border: 1px solid black !important;
                 border-radius: 0 !important;
                 margin: 0 !important;
                 page-break-after: always;
@@ -354,10 +353,6 @@
                 position: relative !important;
                 display: block !important;
                 box-sizing: border-box !important;
-            }
-            #paginated-invoice-view .a4-page:last-child {
-                page-break-after: avoid !important;
-                break-after: avoid !important;
             }
 
             body:not(.has-paginated-view) #invoice-container, 
@@ -379,10 +374,35 @@
             }
             .no-print { display: none !important; }
         }
+
+        /* PDF Generation Specific Styles to strip screen spacing/margins/shadows */
+        body.generating-pdf {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        body.generating-pdf #paginated-invoice-view {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.generating-pdf .a4-page {
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            height: 296.5mm !important;
+            page-break-after: always;
+            break-after: page;
+        }
+        body.generating-pdf .a4-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
     </style>
-    <!-- html2pdf.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script>
+@endsection
+
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
     function downloadPDF() {
         // Toggle PDF generation styles to remove screen margins and shadows
         document.body.classList.add('generating-pdf');
@@ -579,6 +599,6 @@
             return div;
         }
     });
-    </script>
-</body>
-</html>
+
+</script>
+@endpush

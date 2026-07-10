@@ -1,5 +1,8 @@
 @extends('layouts.app')
 
+@section('no_sidebar')
+@endsection
+
 @push('head')
 <style>
     .quill-content h1 {
@@ -32,7 +35,7 @@
 @endpush
 
 @section('header')
-    <div class="flex justify-between items-center no-print px-4 py-2 bg-gray-100 border-b border-gray-200">
+    <div class="flex justify-between items-center no-print w-full">
         <span class="font-semibold text-gray-700">Estimate Preview</span>
         <div class="space-x-2">
             <button onclick="window.print()"
@@ -156,32 +159,23 @@
                 <div class="flex justify-between items-start">
                     <!-- Left: Terms & Signature -->
                     <div class="w-1/2 pr-8">
-                        @if($estimate->special_terms || $estimate->additional_notes || $estimate->terms)
-                            <div class="mb-8">
-                                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Terms & Conditions</h4>
-                                <div class="text-xs text-gray-600 space-y-2">
-                                    @if($estimate->special_terms)
-                                        <p class="font-medium text-red-500">* {{ $estimate->special_terms }}</p>
-                                    @endif
+                        <div class="mb-8">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Terms & Conditions</h4>
+                            <div class="text-xs text-gray-600 space-y-2">
+                                <ul class="list-disc pl-5 space-y-1 mt-2 text-gray-500">
+                                    <li>Cheques to be drawn in favour of "Loops Digital Private Limited"</li>
+                                    <li>All relevant Government taxes will be applicable</li>
                                     @if($estimate->terms)
-                                        <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
-                                            @foreach(explode(', ', $estimate->terms) as $term)
-                                                <li>{{ $term }}</li>
-                                            @endforeach
-                                            @if($estimate->advance_percentage)
-                                                <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
-                                            @endif
-                                        </ul>
-                                    @else
-                                        <ul class="list-disc list-inside space-y-1 mt-2 text-gray-500">
-                                            @if($estimate->advance_percentage)
-                                                <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
-                                            @endif
-                                        </ul>
+                                        @foreach(explode(', ', $estimate->terms) as $term)
+                                            <li>{{ $term }}</li>
+                                        @endforeach
                                     @endif
-                                </div>
+                                    @if($estimate->advance_percentage)
+                                        <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
+                                    @endif
+                                </ul>
                             </div>
-                        @endif
+                        </div>
                     </div>
 
                     <!-- Right: Summary -->

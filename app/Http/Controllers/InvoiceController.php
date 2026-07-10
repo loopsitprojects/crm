@@ -6,11 +6,14 @@ use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\Estimate;
+use App\Models\TempInvoice;
 use App\Traits\LogsActivity;
+use App\Traits\NotifiesStakeholders;
+use App\Notifications\EstimateStatusChangedNotification;
 
 class InvoiceController extends Controller
 {
-    use LogsActivity;
+    use LogsActivity, NotifiesStakeholders;
 
     /**
      * Display a listing of the resource.
@@ -87,9 +90,9 @@ class InvoiceController extends Controller
 
     public function ready(Request $request)
     {
-        $query = Estimate::with(['customer', 'user', 'deal', 'thirdPartyCosts' => function($q) {
+        $query = \App\Models\TempInvoice::with(['customer', 'estimate.user', 'estimate.deal', 'estimate.thirdPartyCosts' => function($q) {
             $q->whereNotNull('file_path')->where('file_path', '!=', '');
-        }])->whereIn('status', ['accepted', 'ready_to_invoice']);
+        }]);
 
         // RBAC Access Control
         $user = auth()->user();
@@ -99,9 +102,9 @@ class InvoiceController extends Controller
             $managers = \App\Models\User::where('department', $dept)->where('role', 'Manager')->pluck('name', 'id');
             
             $query->where(function($q) use ($dept) {
-                $q->whereHas('user', function($uq) use ($dept) {
+                $q->whereHas('estimate.user', function($uq) use ($dept) {
                     $uq->where('department', $dept);
-                })->orWhereHas('deal', function ($dq) use ($dept) {
+                })->orWhereHas('estimate.deal', function ($dq) use ($dept) {
                     $dq->where(function ($dsq) use ($dept) {
                         $dsq->whereHas('owner', function ($oq) use ($dept) {
                             $oq->where('department', $dept);
@@ -114,17 +117,19 @@ class InvoiceController extends Controller
             });
 
             if ($request->filled('manager_id')) {
-                $query->where('user_id', $request->manager_id);
+                $query->whereHas('estimate', function ($q) use ($request) {
+                    $q->where('user_id', $request->manager_id);
+                });
             }
         } elseif ($user->role === 'Manager') {
-            $query->where(function ($q) use ($user) {
+            $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
                       $dq->where('user_id', $user->id);
                   });
             });
         } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
-            $query->where(function ($q) use ($user) {
+            $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
                       $dq->where('user_id', $user->id);
@@ -135,7 +140,7 @@ class InvoiceController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('reference_number', 'LIKE', "%{$search}%")
+                $q->where('temp_invoice_number', 'LIKE', "%{$search}%")
                     ->orWhereHas('customer', function ($cq) use ($search) {
                         $cq->where('name', 'LIKE', "%{$search}%");
                     });
@@ -440,4 +445,47 @@ class InvoiceController extends Controller
 
         return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
+
+    public function revertToPending(TempInvoice $tempInvoice)
+    {
+        $user = auth()->user();
+        $estimate = $tempInvoice->estimate;
+
+        if (!$estimate) {
+            return back()->with('error', 'Estimate not found for this temporary invoice.');
+        }
+
+        if (!$estimate->canEdit($user)) {
+            return back()->with('error', 'You do not have permission to revert this estimate.');
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $oldStatus = $estimate->status;
+
+            // 1. Update the estimate status back to 'draft' (Pending)
+            $estimate->update(['status' => 'draft']);
+
+            // 2. Log Action
+            $this->logAction("Reverted estimate {$estimate->reference_number} back to pending/draft status", $estimate);
+
+            // 3. Notify Stakeholders
+            if ($estimate->deal) {
+                $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'draft', $user));
+            }
+
+            // 4. Delete the TempInvoice and its items
+            $tempInvoice->items()->delete();
+            $tempInvoice->delete();
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->route('invoices.ready')->with('success', 'Estimate reverted to pending state successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to revert estimate to pending: ' . $e->getMessage());
+            return back()->with('error', 'Failed to revert estimate to pending: ' . $e->getMessage());
+        }
+    }
 }
+

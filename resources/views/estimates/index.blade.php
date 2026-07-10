@@ -126,7 +126,7 @@
                             <td x-show="isColumnVisible('amount')" class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 {{ $estimate->currency ?? 'LKR' }} {{ number_format($estimate->total_amount, 2) }}</td>
                             <td x-show="isColumnVisible('status')" class="px-6 py-4 white-space-nowrap">
-                                @if(!$estimate->canEdit($user) || ($isRestricted && $estimate->status != 'draft'))
+                                @if(!$estimate->canEdit($user) || ($isRestricted && !in_array($estimate->status, ['draft', 'approved'])))
                                     <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
                                                                                         @if($estimate->status == 'draft') bg-gray-100 text-gray-800
                                                                                         @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
@@ -147,9 +147,14 @@
                                                                                                     @elseif($estimate->status == 'invoiced') bg-blue-100 text-blue-800
                                                                                                     @endif">
                                             @if($isRestricted)
-                                                <!-- Restricted User Options (Draft -> Ready to Invoice only) -->
-                                                <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending</option>
-                                                <option value="ready_to_invoice">Ready to Invoice</option>
+                                                <!-- Restricted User Options (Draft -> Ready to Invoice, or Approved -> Ready to Invoice) -->
+                                                @if($estimate->status == 'approved')
+                                                    <option value="approved" selected>Approved</option>
+                                                    <option value="ready_to_invoice">Ready to Invoice</option>
+                                                @else
+                                                    <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending</option>
+                                                    <option value="ready_to_invoice">Ready to Invoice</option>
+                                                @endif
                                             @else
                                                 <!-- Admin Options -->
                                                 <option value="draft" {{ $estimate->status == 'draft' ? 'selected' : '' }}>Pending</option>
@@ -179,7 +184,7 @@
                                 @endif
 
                                 <!-- View -->
-                                <a href="{{ route('estimates.show', $estimate) }}"
+                                <a href="{{ route('estimates.show', $estimate) }}" target="_blank"
                                     class="text-brand-blue hover:text-brand-purple" title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
@@ -189,7 +194,7 @@
                                     if ($user->role === 'Super Admin') {
                                         $canEditOrDelete = true;
                                     } elseif ($user->role === 'Management') {
-                                        $canEditOrDelete = !in_array($estimate->status, ['invoiced']);
+                                        $canEditOrDelete = !in_array($estimate->status, ['invoiced', 'approved']);
                                     } else {
                                         $canEditOrDelete = $estimate->status === 'draft';
                                     }

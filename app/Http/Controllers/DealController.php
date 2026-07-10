@@ -13,6 +13,8 @@ use App\Notifications\DealStageChangedNotification;
 use App\Notifications\EstimateCreatedNotification;
 use App\Traits\LogsActivity;
 use App\Traits\NotifiesStakeholders;
+use App\Models\TempInvoice;
+use App\Models\TempInvoiceItem;
 
 class DealController extends Controller
 {
@@ -73,7 +75,7 @@ class DealController extends Controller
         }
 
         // Group all deals by stage for display
-        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.items'])->orderBy('updated_at', 'desc');
+        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.tempInvoice', 'estimates.items'])->orderBy('updated_at', 'desc');
 
         if ($request->filled('start_date')) {
             $startDateVal = $request->input('start_date');
@@ -95,24 +97,78 @@ class DealController extends Controller
             $query->whereDate('close_date', '<=', $closeDateVal);
         }
 
-        if ($request->filled('created_date')) {
-            $query->whereDate('created_at', '=', $request->input('created_date'));
+        // Deals Created Date Filter (Presets + Custom Range)
+        if ($request->filled('created_date_type')) {
+            $type = $request->input('created_date_type');
+            if ($type === 'this_month') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_month') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_quarter') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->subQuarter()->endOfQuarter()->endOfDay()
+                ]);
+            } elseif ($type === 'custom') {
+                if ($request->filled('created_from')) {
+                    $query->whereDate('created_at', '>=', $request->input('created_from'));
+                }
+                if ($request->filled('created_to')) {
+                    $query->whereDate('created_at', '<=', $request->input('created_to'));
+                }
+            }
         }
 
-        if ($request->filled('expected_close_date')) {
-            $query->whereDate('close_date', '=', $request->input('expected_close_date'));
+        // Deals Expected Closing Date Filter (Presets + Custom Range)
+        if ($request->filled('expected_close_date_type')) {
+            $type = $request->input('expected_close_date_type');
+            if ($type === 'this_month') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_month') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'previous_quarter') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->subQuarter()->endOfQuarter()->endOfDay()
+                ]);
+            } elseif ($type === 'custom') {
+                if ($request->filled('expected_close_from')) {
+                    $query->whereDate('close_date', '>=', $request->input('expected_close_from'));
+                }
+                if ($request->filled('expected_close_to')) {
+                    $query->whereDate('close_date', '<=', $request->input('expected_close_to'));
+                }
+            }
         }
 
         // User filter
-        if ($request->filled('filter_user')) {
-            $query->where('user_id', $request->input('filter_user'));
+        if ($request->has('filter_user')) {
+            $filterUsers = array_filter((array)$request->input('filter_user'));
+            if (!empty($filterUsers)) {
+                $query->whereIn('user_id', $filterUsers);
+            }
         }
 
         // Department filter — filter deals by owner's department
-        if ($request->filled('filter_department')) {
-            $query->whereHas('owner', function ($q) use ($request) {
-                $q->where('department', $request->input('filter_department'));
-            });
+        if ($request->has('filter_department')) {
+            $filterDepts = array_filter((array)$request->input('filter_department'));
+            if (!empty($filterDepts)) {
+                $query->whereHas('owner', function ($q) use ($filterDepts) {
+                    $q->whereIn('department', $filterDepts);
+                });
+            }
         }
 
         // RBAC Filtering
@@ -491,6 +547,8 @@ class DealController extends Controller
         $oldSeniorManager = $deal->senior_manager;
         $deal->update($validated);
 
+        $this->approveDealEstimates($deal);
+
         // Handle department allocations
         $oldDepartments = [];
         if ($deal->department_split) {
@@ -618,7 +676,7 @@ class DealController extends Controller
 
             // Restriction: can't move away from 'Closed Won' if an estimate is already ready to invoice or invoiced
             if ($deal->stage === 'Closed Won' && $validated['stage'] !== 'Closed Won') {
-                $hasLockedEstimate = $deal->estimates()->whereIn('status', ['ready_to_invoice', 'invoiced'])->exists();
+                $hasLockedEstimate = $deal->estimates()->whereIn('status', ['ready_to_invoice', 'invoiced', 'approved'])->exists();
                 if ($hasLockedEstimate) {
                     return response()->json(['message' => 'Closed Won deals cannot be moved back once an estimate is ready to invoice.'], 422);
                 }
@@ -626,6 +684,7 @@ class DealController extends Controller
 
             $oldStage = $deal->stage;
             $deal->update($validated);
+            $this->approveDealEstimates($deal);
             $this->notifyStakeholders($deal, new DealStageChangedNotification($deal, $oldStage, $validated['stage'], auth()->user()));
 
             // Sync revenue and contribution if moving to 'Closed Won'
@@ -729,9 +788,100 @@ class DealController extends Controller
 
         return $estimate;
     }
+    public function createInvoice(Request $request, Deal $deal)
+    {
+        if (!$this->checkDealAccess($deal)) {
+            return response()->json(['message' => 'Unauthorized action.'], 403);
+        }
+
+        $estimate = $deal->estimates()->first();
+        if (!$estimate) {
+            return response()->json(['message' => 'No estimate exists for this deal.'], 422);
+        }
+
+        if (!in_array($estimate->status, ['accepted', 'ready_to_invoice'])) {
+            return response()->json(['message' => 'Estimate must be accepted or ready to invoice.'], 422);
+        }
+
+        // Check if a temp invoice already exists
+        $existingTemp = TempInvoice::where('quotation_id', $estimate->id)->first();
+        if ($existingTemp) {
+            return response()->json([
+                'message' => 'Temp invoice already exists.',
+                'redirect' => route('temp-invoices.edit', $existingTemp->id)
+            ]);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Generate sequential temp invoice number
+            $latestTemp = TempInvoice::orderBy('id', 'desc')->first();
+            $sequence = 1;
+            if ($latestTemp && preg_match('/TEMP_(\d+)$/', $latestTemp->temp_invoice_number, $matches)) {
+                $sequence = intval($matches[1]) + 1;
+            }
+            $tempInvoiceNumber = 'TEMP_' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
+            // Create Temp Invoice
+            $tempInvoice = TempInvoice::create([
+                'quotation_id' => $estimate->id,
+                'customer_id' => $estimate->customer_id,
+                'temp_invoice_number' => $tempInvoiceNumber,
+                'date' => now()->format('Y-m-d'),
+                'due_date' => now()->addMonth()->format('Y-m-d'),
+                'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
+                'status' => 'unpaid',
+                'is_proforma' => 0
+            ]);
+
+            // Copy Estimate Items
+            foreach ($estimate->items as $item) {
+                $tempInvoice->items()->create([
+                    'description' => $item->description,
+                    'type' => $item->type,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                    'sscl_amount' => $item->sscl_amount,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->total_with_vat,
+                    'department' => $item->department,
+                    'revenue_category' => $item->revenue_category,
+                ]);
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            $this->logAction("Created temp invoice {$tempInvoice->temp_invoice_number} for estimate: {$estimate->reference_number}", $estimate);
+
+            return response()->json([
+                'message' => 'Temp invoice created successfully.',
+                'redirect' => route('invoices.ready')
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to create temp invoice: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to create temp invoice: ' . $e->getMessage()], 500);
+        }
+    }
+
     private function checkDealAccess(Deal $deal)
     {
         return $deal->canEdit();
+    }
+
+    private function approveDealEstimates(Deal $deal)
+    {
+        if ($deal->stage === 'Finalizing terms') {
+            foreach ($deal->estimates as $estimate) {
+                if ($estimate->status !== 'approved') {
+                    $oldStatus = $estimate->status;
+                    $estimate->update(['status' => 'approved']);
+                    $this->logAction("Updated status to approved for estimate: {$estimate->reference_number}", $estimate);
+                    $this->notifyStakeholders($deal, new \App\Notifications\EstimateStatusChangedNotification($estimate, $oldStatus, 'approved', auth()->user()));
+                }
+            }
+        }
     }
 
 }

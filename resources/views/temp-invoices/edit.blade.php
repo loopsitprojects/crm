@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@php $estimate = $tempInvoice->estimate; @endphp
 
 @push('head')
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
@@ -37,10 +38,10 @@
     <div class="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
         <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
             <i class="fas fa-edit text-brand-pink"></i> 
-            {{ (request('from') === 'invoice' || in_array($estimate->status, ['invoiced', 'approved'])) ? 'Edit Invoice' : 'Edit Estimate' }} 
-            <span class="text-gray-400 text-sm font-normal ml-2">#{{ $estimate->reference_number }}</span>
+            Process Invoice
+            <span class="text-gray-400 text-sm font-normal ml-2">#{{ $tempInvoice->temp_invoice_number }}</span>
         </h2>
-        <a href="{{ route('estimates.index') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+        <a href="{{ route('invoices.ready') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
             Cancel
         </a>
     </div>
@@ -48,7 +49,7 @@
 
 @section('content')
     <div class="max-w-7xl mx-auto my-8 px-4 sm:px-6 lg:px-8">
-        <form id="estimate-form" action="{{ route('estimates.update', $estimate->id) }}" method="POST" enctype="multipart/form-data" novalidate>
+        <form id="estimate-form" action="{{ route('temp-invoices.update', $tempInvoice->id) }}" method="POST" enctype="multipart/form-data" novalidate>
             @csrf
             @method('PUT')
 
@@ -74,11 +75,7 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm text-yellow-700 font-bold">
-                                @if(!$estimate->canEdit())
-                                    You have view-only access to this estimate because your department is in the project split.
-                                @else
-                                    This estimate is {{ str_replace('_', ' ', $estimate->status) }}, so it can no longer be modified.
-                                @endif
+                                You have view-only access because you do not have permission to process invoices.
                             </p>
                         </div>
                     </div>
@@ -200,7 +197,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50" id="items-body">
-                                    @foreach($estimate->items as $index => $item)
+                                    @foreach($tempInvoice->items as $index => $item)
                                         <tr class="group hover:bg-gray-50 transition-colors">
                                             <td class="p-2 align-middle text-center drag-handle" title="Drag to reorder">
                                                 <i class="fas fa-grip-vertical text-gray-300"></i>
@@ -335,7 +332,7 @@
                             <!-- Date -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Date <span class="text-red-500">*</span></label>
-                                <input type="date" name="date" value="{{ old('date', $estimate->date) }}" required data-required="true"
+                                <input type="date" name="date" value="{{ old('date', $tempInvoice->date) }}" required data-required="true"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
                             </div>
 
@@ -417,17 +414,17 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Proforma Invoice? <span class="text-red-500">*</span></label>
                                 <div class="flex items-center gap-6 mb-4">
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="proforma_invoice" value="yes" {{ ($estimate->proforma_invoice ?? 'yes') == 'yes' ? 'checked' : '' }} onchange="toggleProformaFields(this.value)"
+                                        <input type="radio" name="proforma_invoice" value="yes" {{ $tempInvoice->is_proforma ? 'checked' : '' }} onchange="toggleProformaFields(this.value)"
                                             class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
                                         <span class="text-sm font-medium text-gray-700">Yes</span>
                                     </label>
                                     <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="proforma_invoice" value="no" {{ ($estimate->proforma_invoice ?? 'yes') == 'no' ? 'checked' : '' }} onchange="toggleProformaFields(this.value)"
+                                        <input type="radio" name="proforma_invoice" value="no" {{ !$tempInvoice->is_proforma ? 'checked' : '' }} onchange="toggleProformaFields(this.value)"
                                             class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
                                         <span class="text-sm font-medium text-gray-700">No</span>
                                     </label>
                                 </div>
-                                <div id="proforma_details" class="{{ ($estimate->proforma_invoice ?? 'yes') == 'no' ? 'hidden' : '' }} space-y-3 pt-4 border-t border-gray-50">
+                                <div id="proforma_details" class="{{ !$tempInvoice->is_proforma ? 'hidden' : '' }} space-y-3 pt-4 border-t border-gray-50">
                                     <div>
                                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Proforma Percentage %</label>
                                         <input type="number" step="1" name="proforma_percentage" value="{{ old('proforma_percentage', (int)$estimate->proforma_percentage) }}" placeholder="Percentage %"
@@ -621,14 +618,14 @@
 
             <!-- Actions -->
             <div class="mt-8 pt-6 border-t border-gray-200 flex items-center justify-end gap-4">
-                <a href="{{ route('estimates.index') }}"
+                <a href="{{ route('invoices.ready') }}"
                     class="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 text-sm font-medium shadow-sm transition-all">
                     {{ (isset($readonly) && $readonly) ? 'Back' : 'Cancel' }}
                 </a>
                 @if(!(isset($readonly) && $readonly))
                 <button type="submit"
                     class="px-8 py-2.5 rounded-lg bg-brand-pink text-white hover:bg-brand-purple text-sm font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
-                    <i class="fas fa-save mr-2"></i> {{ (request('from') === 'invoice' || in_array($estimate->status, ['invoiced', 'approved'])) ? 'Update Invoice' : 'Update Estimate' }}
+                    <i class="fas fa-save mr-2"></i> Update Invoice
                 </button>
                 @endif
             </div>

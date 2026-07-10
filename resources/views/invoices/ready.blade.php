@@ -106,25 +106,25 @@
                     @forelse($estimates as $estimate)
                         <tr>
                             <td class="px-6 py-4 white-space-nowrap text-sm font-medium text-gray-900">
-                                {{ $estimate->reference_number }}
+                                {{ $estimate->temp_invoice_number }}
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->customer->name }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->heading ?: 'N/A' }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->estimate->heading ?? 'N/A' }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
-                                    <i class="fas fa-user-circle mr-1"></i> {{ $estimate->user->name ?? 'Unknown' }}
+                                    <i class="fas fa-user-circle mr-1"></i> {{ $estimate->estimate->user->name ?? 'Unknown' }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $estimate->date }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
-                                {{ $estimate->currency ?? 'LKR' }} {{ number_format($estimate->total_amount, 2) }}</td>
+                                {{ $estimate->estimate->currency ?? 'LKR' }} {{ number_format($estimate->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-right text-sm font-medium flex justify-end space-x-2 items-center">
-                                @if($estimate->thirdPartyCosts->count() > 0 || $estimate->po_file_path)
-                                    <button @click="openAttachments({{ json_encode($estimate->thirdPartyCosts) }}, '{{ $estimate->po_file_path }}', '{{ $estimate->reference_number }}')"
+                                @if(($estimate->estimate->thirdPartyCosts ?? collect())->count() > 0 || ($estimate->estimate->po_file_path ?? null))
+                                    <button @click="openAttachments({{ json_encode($estimate->estimate->thirdPartyCosts ?? []) }}, '{{ $estimate->estimate->po_file_path ?? '' }}', '{{ $estimate->temp_invoice_number }}')"
                                         class="text-brand-purple hover:text-brand-blue relative" title="View Attached Documents">
                                         <i class="fas fa-paperclip"></i>
                                         @php
-                                            $totalDocs = $estimate->thirdPartyCosts->whereNotNull('file_path')->count() + ($estimate->po_file_path ? 1 : 0);
+                                            $totalDocs = ($estimate->estimate->thirdPartyCosts ?? collect())->whereNotNull('file_path')->count() + ($estimate->estimate->po_file_path ? 1 : 0);
                                         @endphp
                                         @if($totalDocs > 1)
                                             <span class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1 rounded-full border border-white">
@@ -133,39 +133,32 @@
                                         @endif
                                     </button>
                                 @endif
-                                <a href="{{ route('estimates.show', $estimate) }}"
-                                    class="text-brand-blue hover:text-brand-purple mr-3" title="View Estimate">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-
-                                @php
-                                    $user = auth()->user();
-                                    $canEdit = false;
-                                    if ($user->role === 'Super Admin') {
-                                        $canEdit = true;
-                                    } elseif ($user->role === 'Management') {
-                                        $canEdit = !in_array($estimate->status, ['invoiced']);
-                                    }
-                                @endphp
-
-                                @if($canEdit)
-                                    <a href="{{ route('estimates.edit', $estimate) }}" class="text-gray-600 hover:text-brand-blue mr-3"
-                                        title="Edit">
-                                        <i class="fas fa-edit"></i>
+                                @if($estimate->estimate)
+                                    <a href="{{ route('estimates.show', $estimate->estimate->id) }}" target="_blank"
+                                        class="text-brand-blue hover:text-brand-purple mr-3" title="View Estimate">
+                                        <i class="fas fa-eye"></i>
                                     </a>
                                 @endif
 
-                                @if(auth()->user()->role === 'Super Admin')
-                                    <form action="{{ route('estimates.convert', $estimate) }}" method="POST" class="inline-block"
-                                        onsubmit="return confirm('Convert to Invoice?');">@csrf <button type="submit"
-                                            class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs shadow-sm"><i
-                                                class="fas fa-file-invoice-dollar mr-1"></i> Convert</button></form>
+                                @if($estimate->estimate && $estimate->estimate->canEdit())
+                                    <button onclick="confirmRevert('{{ route('temp-invoices.revert', $estimate->id) }}', '{{ $estimate->temp_invoice_number }}')"
+                                        class="px-3 py-1 bg-amber-500 text-white rounded hover:bg-amber-600 text-xs shadow-sm font-semibold inline-flex items-center mr-1"
+                                        title="Revert to Pending">
+                                        <i class="fas fa-undo mr-1"></i> Revert
+                                    </button>
+                                @endif
+
+                                @if(in_array(auth()->user()->role, ['Super Admin', 'Management']))
+                                    <a href="{{ route('temp-invoices.edit', $estimate->id) }}"
+                                        class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs shadow-sm font-semibold inline-flex items-center">
+                                        <i class="fas fa-cog mr-1"></i> Process Invoice
+                                    </a>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 text-sm">No accepted estimates found.
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500 text-sm">No temporary invoices found.
                             </td>
                         </tr>
                     @endforelse
@@ -268,3 +261,36 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    function confirmRevert(url, ref) {
+        Swal.fire({
+            title: 'Revert to Pending State?',
+            text: `Are you sure you want to revert ${ref} back to pending state? This will delete the temporary invoice and change the estimate status to Pending`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, revert it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Submit a form dynamically
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                
+                const csrfToken = document.createElement('input');
+                csrfToken.type = 'hidden';
+                csrfToken.name = '_token';
+                csrfToken.value = '{{ csrf_token() }}';
+                form.appendChild(csrfToken);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+</script>
+@endpush

@@ -47,17 +47,23 @@ class JobController extends Controller
         }
 
         // 2. Department (Check if department_split JSON contains the department)
-        if ($request->has('department') && $request->department) {
-            // Assuming department_split is stored as JSON list of objects [{ "department": "Creative", ... }]
-            // We use whereJsonContains or similar logic. 
-            // Since structure is [{"department": "Name", ...}], we search if any element has "department": "Name"
-            // MySQL 5.7+ supports JSON paths. 
-            $query->whereJsonContains('department_split', [['department' => $request->department]]);
+        if ($request->has('department')) {
+            $filterDepts = array_filter((array)$request->input('department'));
+            if (!empty($filterDepts)) {
+                $query->where(function ($q) use ($filterDepts) {
+                    foreach ($filterDepts as $dept) {
+                        $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                    }
+                });
+            }
         }
 
         // 3. User (Deal Owner)
-        if ($request->has('user_id') && $request->user_id) {
-            $query->where('user_id', $request->user_id);
+        if ($request->has('user_id')) {
+            $filterUsers = array_filter((array)$request->input('user_id'));
+            if (!empty($filterUsers)) {
+                $query->whereIn('user_id', $filterUsers);
+            }
         }
 
         $jobs = $query->orderBy('job_number', 'desc')->get();

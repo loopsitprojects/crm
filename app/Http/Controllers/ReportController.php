@@ -594,7 +594,21 @@ class ReportController extends Controller
                 'description' => [
                     'header' => 'Description',
                     'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
-                        return $item->description ?? $deal->title;
+                        if ($invoice && $estimate) {
+                            $additionalInfo = null;
+                            if ($estimate->additional_notes) {
+                                $additionalInfo = $estimate->additional_notes;
+                            } elseif ($estimate->heading) {
+                                $additionalInfo = $estimate->heading;
+                            }
+
+                            if ($additionalInfo) {
+                                return trim(html_entity_decode(strip_tags($additionalInfo), ENT_QUOTES, 'UTF-8'));
+                            }
+                        }
+
+                        $desc = $item->description ?? $deal->title;
+                        return trim(html_entity_decode(strip_tags($desc), ENT_QUOTES, 'UTF-8'));
                     }
                 ],
                 'amount' => [
