@@ -156,7 +156,7 @@ class EstimateController extends Controller
             'third_party_costs.*.file' => 'required_if:third_party_cost,yes|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
             'po_applicable' => 'nullable|string|in:yes,no',
             'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
-            'po_document' => 'required_if:po_applicable,yes|nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+            'po_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
         ], [
             'third_party_costs.required_if' => 'Please add at least one third party cost.',
             'third_party_costs.*.supplier.required_if' => 'Supplier name is required.',
@@ -371,12 +371,6 @@ class EstimateController extends Controller
 
         if (in_array($estimate->status, $reversionRestricted) && in_array($request->status, $earlierStages)) {
             return back()->with('error', 'Estimate status cannot be reverted once it is ' . ucfirst(str_replace('_', ' ', $estimate->status)) . '.');
-        }
-
-        if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
-            if ($estimate->po_applicable === 'yes' && !$estimate->po_file_path) {
-                return back()->with('error', 'A PO document must be uploaded before moving to Ready to Invoice.');
-            }
         }
 
         $oldStatus = $estimate->status;
@@ -621,17 +615,7 @@ class EstimateController extends Controller
             ],
             'po_applicable' => 'nullable|string|in:yes,no',
             'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
-            'po_document' => [
-                'nullable',
-                'file',
-                'mimes:pdf,jpg,jpeg,png,docx,doc',
-                'max:10240',
-                function ($attribute, $value, $fail) use ($request, $estimate) {
-                    if ($request->po_applicable === 'yes' && !$estimate->po_file_path && !$request->hasFile('po_document')) {
-                        $fail('The PO document is required when PO is applicable.');
-                    }
-                },
-            ],
+            'po_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
         ], [
             'third_party_costs.required_if' => 'Please add at least one third party cost.',
             'third_party_costs.*.supplier.required_if' => 'Supplier name is required.',

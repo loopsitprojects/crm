@@ -551,7 +551,7 @@
                                             class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3">
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">PO Document <span class="text-red-500">*</span></label>
+                                        <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">PO Document</label>
                                         <input type="file" name="po_document" id="po_document"
                                             class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-brand-blue file:bg-opacity-10 file:text-brand-blue">
                                         @if($estimate->po_file_path)
@@ -962,9 +962,6 @@
             if (value === 'yes') {
                 details.classList.remove('hidden');
                 poNumber.required = true;
-                if (!hasExistingFile) {
-                    poDocument.required = true;
-                }
             } else {
                 details.classList.add('hidden');
                 poNumber.required = false;
