@@ -138,10 +138,20 @@ class DealController extends Controller
                     \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
                     \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
                 ]);
+            } elseif ($type === 'next_month') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->addMonth()->startOfMonth()->startOfDay(),
+                    \Carbon\Carbon::now()->addMonth()->endOfMonth()->endOfDay()
+                ]);
             } elseif ($type === 'previous_quarter') {
                 $query->whereBetween('close_date', [
                     \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
                     \Carbon\Carbon::now()->subQuarter()->endOfQuarter()->endOfDay()
+                ]);
+            } elseif ($type === 'next_quarter') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->addQuarter()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->addQuarter()->endOfQuarter()->endOfDay()
                 ]);
             } elseif ($type === 'custom') {
                 if ($request->filled('expected_close_from')) {

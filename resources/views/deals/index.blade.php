@@ -96,76 +96,108 @@
             font-size: 0.65rem !important;
             margin-left: 2px !important;
         }
+
+        /* Transparent and autohiding scrollbar styling */
+        #sticky-scrollbar {
+            background: transparent !important;
+            border-top: none !important;
+            box-shadow: none !important;
+            transition: opacity 0.35s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        #sticky-scrollbar.scrolling {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #sticky-scrollbar::-webkit-scrollbar {
+            height: 8px;
+        }
+        #sticky-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #sticky-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(128, 53, 202, 0.4) !important; /* brand-purple thumb */
+            border-radius: 9999px;
+        }
+        #sticky-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(128, 53, 202, 0.7) !important;
+        }
     </style>
     <div class="min-h-full flex flex-col">
         <!-- Top Stats -->
+        @php
+            $currency = $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR';
+        @endphp
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-8 gap-4 mb-6">
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Project</h4>
                 <div class="mt-2">
-                    <p class="text-xl font-bold text-brand-purple mt-1 metric-revenue">
-                        {{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }} {{ number_format($totalProjectRevenue, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-purple mt-1 metric-revenue whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($totalProjectRevenue, 2) }}
                     </p>
-                    <p class="text-xl font-bold text-brand-purple mt-1 metric-contribution">
-                        {{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }} {{ number_format($totalProjectContribution, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-purple mt-1 metric-contribution whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($totalProjectContribution, 2) }}
                     </p>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Open Deals</h4>
-                <p class="text-xl font-bold text-green-600 mt-1">
+                <p class="text-lg 2xl:text-base font-bold text-green-600 mt-1 whitespace-nowrap">
                     {{ $dealsByStage->flatten()->whereNotIn('stage', ['Rejected', 'Closed Won'])->count() }}
                 </p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Weighted</h4>
                 <div class="mt-2">
-                    <p class="text-xl font-bold text-brand-blue mt-1 metric-revenue">
-                        LKR {{ number_format($weightedDealAmount, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-blue mt-1 metric-revenue whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($weightedDealAmount, 2) }}
                     </p>
-                    <p class="text-xl font-bold text-brand-blue mt-1 metric-contribution">
-                        LKR {{ number_format($weightedContributionAmount, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-blue mt-1 metric-contribution whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($weightedContributionAmount, 2) }}
                     </p>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Closed Won</h4>
                 <div class="mt-2">
-                    <p class="text-xl font-bold text-brand-pink mt-1 metric-revenue">
-                        LKR {{ number_format($approvedDealRevenue, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-pink mt-1 metric-revenue whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($approvedDealRevenue, 2) }}
                     </p>
-                    <p class="text-xl font-bold text-brand-pink mt-1 metric-contribution">
-                        LKR {{ number_format($approvedDealContribution, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-pink mt-1 metric-contribution whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($approvedDealContribution, 2) }}
                     </p>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">New (30d)</h4>
                 <div class="mt-2">
-                    <p class="text-xl font-bold text-brand-teal mt-1 metric-revenue">
-                        LKR {{ number_format($newDealRevenue, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-teal mt-1 metric-revenue whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($newDealRevenue, 2) }}
                     </p>
-                    <p class="text-xl font-bold text-brand-teal mt-1 metric-contribution">
-                        LKR {{ number_format($newDealContribution, 2) }}
+                    <p class="text-lg 2xl:text-base font-bold text-brand-teal mt-1 metric-contribution whitespace-nowrap">
+                        <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($newDealContribution, 2) }}
                     </p>
                 </div>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Avg Deal Age</h4>
-                <p class="text-xl font-bold text-gray-700 mt-1">{{ $averageDealAge }}
-                    <span class="text-sm font-normal">days</span>
+                <p class="text-lg 2xl:text-base font-bold text-gray-700 mt-1 whitespace-nowrap">{{ $averageDealAge }}
+                    <span class="text-xs font-normal opacity-75 ml-0.5">days</span>
                 </p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Invoiced</h4>
-                <p class="text-xl font-bold text-brand-blue mt-1">{{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }}
-                    {{ number_format($invoicedAmount, 2) }}
+                <p class="text-lg 2xl:text-base font-bold text-brand-blue mt-1 whitespace-nowrap">
+                    <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($invoicedAmount, 2) }}
                 </p>
             </div>
-            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment Collected</h4>
-                <p class="text-xl font-bold text-green-600 mt-1">{{ $allDeals->pluck('currency')->unique()->count() === 1 ? $allDeals->first()->currency : 'LKR' }}
-                    {{ number_format($paymentCollected, 2) }}
+                <p class="text-lg 2xl:text-base font-bold text-green-600 mt-1 whitespace-nowrap">
+                    <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($paymentCollected, 2) }}
                 </p>
             </div>
         </div>
@@ -225,7 +257,9 @@
                             <option value="">All Time</option>
                             <option value="this_month" {{ request('expected_close_date_type') == 'this_month' ? 'selected' : '' }}>This Month</option>
                             <option value="previous_month" {{ request('expected_close_date_type') == 'previous_month' ? 'selected' : '' }}>Previous Month</option>
+                            <option value="next_month" {{ request('expected_close_date_type') == 'next_month' ? 'selected' : '' }}>Next Month</option>
                             <option value="previous_quarter" {{ request('expected_close_date_type') == 'previous_quarter' ? 'selected' : '' }}>Previous Quarter</option>
+                            <option value="next_quarter" {{ request('expected_close_date_type') == 'next_quarter' ? 'selected' : '' }}>Next Quarter</option>
                             <option value="custom" {{ request('expected_close_date_type') == 'custom' ? 'selected' : '' }}>Custom Range</option>
                         </select>
                     </div>
@@ -287,7 +321,7 @@
 
 
             <!-- Kanban Board -->
-            <div class="overflow-x-auto overflow-y-visible">
+            <div class="overflow-x-auto overflow-y-visible" id="kanban-board-container">
                 <div class="flex space-x-4 pb-4" style="min-width: max-content;">
                     @foreach($stages as $stage)
                         <div class="w-80 flex-shrink-0 flex flex-col bg-gray-100 rounded-lg">
@@ -318,8 +352,7 @@
                                                     $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
                                                 @endphp
                                                 <div class="flex items-center gap-1.5 ml-2">
-                                                    {{-- Estimate/Invoice Link (Show only in late stages) --}}
-                                                @if(in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
+                                                    {{-- Estimate/Invoice Link --}}
                                                     @if($taxInvoice)
                                                          <a href="{{ route('invoices.show', $taxInvoice->id) }}" target="_blank"
                                                              class="text-brand-pink hover:text-brand-purple transition-colors" 
@@ -361,7 +394,6 @@
                                                             <i class="fas fa-file-invoice text-xs"></i>
                                                         </button>
                                                     @endif
-                                                @endif
 
                                                     {{-- Deal Edit/View Link (Hide in late stages) --}}
                                                     @if(!in_array($stage, ['Objection handling', 'Finalizing terms', 'Closed Won', 'Rejected']))
@@ -447,6 +479,11 @@
                         </div>
                     @endforeach
                 </div>
+            </div>
+
+            <!-- Sticky Horizontal Scrollbar -->
+            <div id="sticky-scrollbar" class="sticky bottom-0 left-0 right-0 w-full overflow-x-auto overflow-y-hidden z-30" style="display: none; height: 8px;">
+                <div id="sticky-scrollbar-spacer" style="height: 1px;"></div>
             </div>
 
     </div>
@@ -1733,5 +1770,89 @@
                 contributionMetrics.forEach(el => el.style.display = 'block');
             }
         }
+
+        // Sticky Horizontal Scrollbar implementation
+        document.addEventListener('DOMContentLoaded', function() {
+            const board = document.getElementById('kanban-board-container');
+            const stickyScroll = document.getElementById('sticky-scrollbar');
+            const stickySpacer = document.getElementById('sticky-scrollbar-spacer');
+            const scrollContainer = document.querySelector('main');
+            
+            if (!board || !stickyScroll || !stickySpacer) return;
+
+            function updateStickyScrollbar() {
+                const rect = board.getBoundingClientRect();
+                const windowHeight = window.innerHeight;
+                const scrollWidth = board.scrollWidth;
+                const clientWidth = board.clientWidth;
+
+                // Check if the board has horizontal overflow
+                const hasOverflow = scrollWidth > clientWidth;
+                
+                // Check if the bottom of the board is already visible in the viewport
+                const bottomVisible = rect.bottom <= (windowHeight - 24);
+
+                if (hasOverflow && !bottomVisible) {
+                    stickyScroll.style.display = 'block';
+                    stickySpacer.style.width = scrollWidth + 'px';
+                    stickyScroll.scrollLeft = board.scrollLeft;
+                } else {
+                    stickyScroll.style.display = 'none';
+                }
+            }
+
+            // Sync scroll positions and autohide logic
+            let isSyncingBoard = false;
+            let isSyncingSticky = false;
+            let scrollTimeout;
+
+            function showScrollbar() {
+                stickyScroll.classList.add('scrolling');
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    stickyScroll.classList.remove('scrolling');
+                }, 1500); // fade out after 1.5 seconds of inactivity
+            }
+
+            board.addEventListener('scroll', function() {
+                showScrollbar();
+                if (isSyncingSticky) {
+                    isSyncingSticky = false;
+                    return;
+                }
+                isSyncingBoard = true;
+                stickyScroll.scrollLeft = board.scrollLeft;
+            });
+
+            stickyScroll.addEventListener('scroll', function() {
+                showScrollbar();
+                if (isSyncingBoard) {
+                    isSyncingBoard = false;
+                    return;
+                }
+                isSyncingSticky = true;
+                board.scrollLeft = stickyScroll.scrollLeft;
+            });
+
+            // Update scroll state on load and various window events
+            updateStickyScrollbar();
+            window.addEventListener('resize', updateStickyScrollbar);
+            if (scrollContainer) {
+                scrollContainer.addEventListener('scroll', updateStickyScrollbar);
+                
+                // Show scrollbar when mouse is near the bottom of the viewport
+                scrollContainer.addEventListener('mousemove', function(e) {
+                    const rect = scrollContainer.getBoundingClientRect();
+                    // If mouse is within 40px of the bottom of the main content view
+                    if (e.clientY >= (rect.bottom - 40)) {
+                        showScrollbar();
+                    }
+                });
+            }
+
+            // Monitor cards list changes and board mutations to dynamically adjust widths
+            const observer = new MutationObserver(updateStickyScrollbar);
+            observer.observe(board, { childList: true, subtree: true });
+        });
     </script>
 @endsection
