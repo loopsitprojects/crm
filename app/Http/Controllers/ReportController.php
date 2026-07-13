@@ -355,37 +355,10 @@ class ReportController extends Controller
 
         $detailedData->each(function($deal) use ($request, $user, $isRestricted) {
             $this->calculateDealSplits($deal, $request, $user, $isRestricted);
-
-            $estimate = $deal->estimates->first();
-            $invoice = $estimate ? $estimate->invoices->where('is_proforma', false)->first() : null;
-            
-            if ($invoice && $invoice->items->isNotEmpty()) {
-                $deal->first_invoice_item = $invoice->items->first();
-                $deal->first_invoice_item->invoice = $invoice;
-            } else {
-                $dummyItem = new \stdClass();
-                $dummyItem->description = $deal->title;
-                $dummyItem->amount = $deal->revenue ?? 0;
-                $dummyItem->sscl_amount = 0;
-                $dummyItem->vat_amount = 0;
-                $dummyItem->total_with_vat = $deal->revenue ?? 0;
-                $dummyItem->revenue_category = 'N/A';
-                $dummyItem->department = 'N/A';
-
-                $dummyInvoice = new \stdClass();
-                $dummyInvoice->date = $deal->created_at->format('Y-m-d');
-                $dummyInvoice->invoice_number = 'N/A';
-                $dummyInvoice->status = 'pending';
-                $dummyInvoice->total_amount = $deal->revenue ?? 0;
-                $dummyInvoice->customer = $deal->customer;
-
-                $dummyItem->invoice = $dummyInvoice;
-                $deal->first_invoice_item = $dummyItem;
-            }
+            $deal->first_invoice_item = $this->prepareDetailedReportItem($deal);
         });
 
         $incomeBreakdown = [];
-
         // Stats for Quick Link cards - Must match the table's filter logic exactly!
         $pendingCount = $applyFilters(Deal::query());
         if ($stageFilter) $pendingCount->where('stage', $stageFilter);
@@ -650,7 +623,7 @@ class ReportController extends Controller
                 'department' => [
                     'header' => 'Department',
                     'value' => function($deal, $estimate, $invoice, $item, $advanceStatus, $balanceDue) {
-                        return $deal->owner->department ?? 'N/A';
+                        return $item->department ?? ($deal->owner->department ?? 'N/A');
                     }
                 ],
                 'inputter' => [
@@ -708,10 +681,10 @@ class ReportController extends Controller
                 fputcsv($file, $headers);
                 foreach ($data as $deal) {
                     $estimate = $deal->estimates->first();
-                    $invoice = $estimate ? $estimate->invoices->where('is_proforma', false)->first() : null;
-                    $item = $invoice ? $invoice->items->first() : null;
+                    $item = $this->prepareDetailedReportItem($deal);
+                    $invoice = ($item->invoice && ($item->invoice->invoice_number ?? 'N/A') !== 'N/A') ? $item->invoice : null;
 
-                    $total = $invoice->total_amount ?? ($deal->revenue ?? 0);
+                    $total = $item->invoice->total_amount ?? ($deal->revenue ?? 0);
                     $balanceDue = ($invoice && ($invoice->status ?? '') === 'paid') ? 0 : $total;
                     $advanceStatus = ($estimate && ($estimate->advance_received_amount ?? 0) > 0) ? 'RECEIVED' : 'PENDING';
 
@@ -986,5 +959,65 @@ class ReportController extends Controller
             $deal->revenue = $deptRevenue;
             $deal->contribution = $deptContribution;
         }
+    }
+
+    private function prepareDetailedReportItem($deal)
+    {
+        $estimate = $deal->estimates->first();
+        $invoice = $estimate ? $estimate->invoices->where('is_proforma', false)->first() : null;
+        
+        if ($invoice && $invoice->items->isNotEmpty()) {
+            $firstItem = $invoice->items->first();
+            
+            $item = new \stdClass();
+            $item->description = $firstItem->description ?? $deal->title;
+            $item->amount = $invoice->items->sum('amount');
+            $item->sscl_amount = $invoice->items->sum('sscl_amount');
+            $item->vat_amount = $invoice->items->sum('vat_amount');
+            $item->total_with_vat = $invoice->items->sum('total_with_vat');
+            $item->revenue_category = $firstItem->revenue_category ?? 'N/A';
+            $item->department = $firstItem->department ?? ($deal->owner->department ?? 'N/A');
+            $item->invoice = $invoice;
+        } elseif ($estimate && $estimate->items->isNotEmpty()) {
+            $firstItem = $estimate->items->first();
+            
+            $item = new \stdClass();
+            $item->description = $firstItem->description ?? $deal->title;
+            $item->amount = $estimate->items->sum('amount');
+            $item->sscl_amount = $estimate->items->sum('sscl_amount');
+            $item->vat_amount = $estimate->items->sum('vat_amount');
+            $item->total_with_vat = $estimate->items->sum('total_with_vat');
+            $item->revenue_category = $firstItem->revenue_category ?? 'N/A';
+            $item->department = $firstItem->department ?? ($deal->owner->department ?? 'N/A');
+            
+            $dummyInvoice = new \stdClass();
+            $dummyInvoice->date = 'N/A';
+            $dummyInvoice->invoice_number = 'N/A';
+            $dummyInvoice->status = 'pending';
+            $dummyInvoice->total_amount = $item->total_with_vat;
+            $dummyInvoice->customer = $deal->customer;
+            
+            $item->invoice = $dummyInvoice;
+        } else {
+            $item = new \stdClass();
+            $item->description = $deal->title;
+            $item->amount = $deal->revenue ?? 0;
+            $item->sscl_amount = 0;
+            $item->vat_amount = 0;
+            $item->total_with_vat = $deal->revenue ?? 0;
+            $item->revenue_category = 'N/A';
+            $item->department = $deal->owner->department ?? 'N/A';
+
+            $dummyInvoice = new \stdClass();
+            $dummyInvoice->date = $deal->created_at ? $deal->created_at->format('Y-m-d') : now()->format('Y-m-d');
+            $dummyInvoice->invoice_number = 'N/A';
+            $dummyInvoice->status = 'pending';
+            $dummyInvoice->total_amount = $deal->revenue ?? 0;
+            $dummyInvoice->customer = $deal->customer;
+
+            $item->invoice = $dummyInvoice;
+        }
+
+        return $item;
     }
 }

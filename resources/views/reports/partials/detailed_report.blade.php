@@ -93,7 +93,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-col="inv_no">{{ $invoice->invoice_number ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" data-col="est_no">{{ $estimate->reference_number ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono" data-col="job_no">{{ $deal->job_number ?? 'N/A' }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="month_combined">{{ ($invoice && isset($invoice->date)) ? date('M Y', strtotime($invoice->date)) : 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="month_combined">{{ ($invoice && isset($invoice->date) && $invoice->date !== 'N/A') ? date('M Y', strtotime($invoice->date)) : ($deal->close_date ? date('M Y', strtotime($deal->close_date)) : 'N/A') }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium" data-col="client">{{ $deal->customer->name ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600" data-col="tin">{{ $deal->customer->customer_tax_number ?? 'N/A' }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700" data-col="currency">{{ $deal->currency ?? 'LKR' }}</td>
