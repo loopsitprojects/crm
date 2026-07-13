@@ -110,6 +110,11 @@ class DealController extends Controller
                     \Carbon\Carbon::now()->subMonth()->startOfMonth()->startOfDay(),
                     \Carbon\Carbon::now()->subMonth()->endOfMonth()->endOfDay()
                 ]);
+            } elseif ($type === 'this_quarter') {
+                $query->whereBetween('created_at', [
+                    \Carbon\Carbon::now()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfQuarter()->endOfDay()
+                ]);
             } elseif ($type === 'previous_quarter') {
                 $query->whereBetween('created_at', [
                     \Carbon\Carbon::now()->subQuarter()->startOfQuarter()->startOfDay(),
@@ -142,6 +147,11 @@ class DealController extends Controller
                 $query->whereBetween('close_date', [
                     \Carbon\Carbon::now()->addMonth()->startOfMonth()->startOfDay(),
                     \Carbon\Carbon::now()->addMonth()->endOfMonth()->endOfDay()
+                ]);
+            } elseif ($type === 'this_quarter') {
+                $query->whereBetween('close_date', [
+                    \Carbon\Carbon::now()->startOfQuarter()->startOfDay(),
+                    \Carbon\Carbon::now()->endOfQuarter()->endOfDay()
                 ]);
             } elseif ($type === 'previous_quarter') {
                 $query->whereBetween('close_date', [

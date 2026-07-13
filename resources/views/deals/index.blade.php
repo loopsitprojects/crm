@@ -236,6 +236,7 @@
                             <option value="">All Time</option>
                             <option value="this_month" {{ request('created_date_type') == 'this_month' ? 'selected' : '' }}>This Month</option>
                             <option value="previous_month" {{ request('created_date_type') == 'previous_month' ? 'selected' : '' }}>Previous Month</option>
+                            <option value="this_quarter" {{ request('created_date_type') == 'this_quarter' ? 'selected' : '' }}>This Quarter</option>
                             <option value="previous_quarter" {{ request('created_date_type') == 'previous_quarter' ? 'selected' : '' }}>Previous Quarter</option>
                             <option value="custom" {{ request('created_date_type') == 'custom' ? 'selected' : '' }}>Custom Range</option>
                         </select>
@@ -258,6 +259,7 @@
                             <option value="this_month" {{ request('expected_close_date_type') == 'this_month' ? 'selected' : '' }}>This Month</option>
                             <option value="previous_month" {{ request('expected_close_date_type') == 'previous_month' ? 'selected' : '' }}>Previous Month</option>
                             <option value="next_month" {{ request('expected_close_date_type') == 'next_month' ? 'selected' : '' }}>Next Month</option>
+                            <option value="this_quarter" {{ request('expected_close_date_type') == 'this_quarter' ? 'selected' : '' }}>This Quarter</option>
                             <option value="previous_quarter" {{ request('expected_close_date_type') == 'previous_quarter' ? 'selected' : '' }}>Previous Quarter</option>
                             <option value="next_quarter" {{ request('expected_close_date_type') == 'next_quarter' ? 'selected' : '' }}>Next Quarter</option>
                             <option value="custom" {{ request('expected_close_date_type') == 'custom' ? 'selected' : '' }}>Custom Range</option>
