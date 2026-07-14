@@ -153,7 +153,7 @@ class EstimateController extends Controller
             'third_party_costs.*.supplier' => 'required_if:third_party_cost,yes|string|max:255',
             'third_party_costs.*.cost' => 'required_if:third_party_cost,yes|numeric|min:0',
             'third_party_costs.*.department' => 'required_if:third_party_cost,yes|string|max:255',
-            'third_party_costs.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+            'third_party_costs.*.file' => 'required_if:third_party_cost,yes|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
             'po_applicable' => 'nullable|string|in:yes,no',
             'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
             'po_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
@@ -162,6 +162,7 @@ class EstimateController extends Controller
             'third_party_costs.*.supplier.required_if' => 'Supplier name is required.',
             'third_party_costs.*.cost.required_if' => 'Cost is required.',
             'third_party_costs.*.department.required_if' => 'Department is required for each third party cost.',
+            'third_party_costs.*.file.required_if' => 'Document file is required for each third party cost.',
         ]);
 
         if ($request->deal_id) {
@@ -590,7 +591,28 @@ class EstimateController extends Controller
             'third_party_costs.*.supplier' => 'required_if:third_party_cost,yes|string|max:255',
             'third_party_costs.*.cost' => 'required_if:third_party_cost,yes|numeric|min:0',
             'third_party_costs.*.department' => 'required_if:third_party_cost,yes|string|max:255',
-            'third_party_costs.*.file' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+            'third_party_costs.*.file' => [
+                'nullable',
+                'file',
+                'mimes:pdf,jpg,jpeg,png,docx,doc',
+                'max:10240',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($request->third_party_cost === 'yes') {
+                        $index = explode('.', $attribute)[1];
+                        $costData = $request->third_party_costs[$index];
+                        $costId = $costData['id'] ?? null;
+                        
+                        $hasExisting = false;
+                        if ($costId) {
+                            $hasExisting = \App\Models\ThirdPartyCost::where('id', $costId)->whereNotNull('file_path')->exists();
+                        }
+                        
+                        if (!$hasExisting && !$request->hasFile("third_party_costs.$index.file")) {
+                            $fail('The document file is required for each third party cost.');
+                        }
+                    }
+                }
+            ],
             'po_applicable' => 'nullable|string|in:yes,no',
             'po_number' => 'required_if:po_applicable,yes|nullable|string|max:255',
             'po_document' => 'nullable|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',

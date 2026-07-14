@@ -217,11 +217,11 @@
                             <table class="w-full min-w-[700px]" id="third-party-table">
                                 <thead class="bg-gray-50 border-b border-gray-100">
                                     <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Supplier <span class="text-red-500">*</span></th>
-                                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">Cost <span class="text-red-500">*</span></th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Department <span class="text-red-500">*</span></th>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">File</th>
-                                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-12"></th>
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase">Supplier <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">Cost <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-40">Department <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">File <span class="text-red-500">*</span></th>
+                                        <th class="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase w-12"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-50" id="third-party-body">
@@ -808,7 +808,8 @@
                     // Make all fields mandatory except those that might be optional
                     if (input.name.includes('[supplier]') || 
                         input.name.includes('[cost]') || 
-                        input.name.includes('[department]')) {
+                        input.name.includes('[department]') || 
+                        input.name.includes('[file]')) {
                         input.required = true;
                     }
                 });
@@ -844,14 +845,14 @@
             const isRequired = document.querySelector('input[name="third_party_cost"]:checked')?.value === 'yes' ? 'required' : '';
 
             row.innerHTML = `
-                <td class="p-4 align-top">
-                    <input type="text" name="third_party_costs[${newIndex}][supplier]" ${isRequired} placeholder="Supplier Name" class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 font-mono">
+                <td class="p-2 align-top">
+                    <input type="text" name="third_party_costs[${newIndex}][supplier]" ${isRequired} placeholder="Supplier Name" class="w-full rounded-md border border-gray-300 text-sm py-1.5 px-3 font-mono">
                 </td>
-                <td class="p-4 align-top">
-                    <input type="number" step="0.01" name="third_party_costs[${newIndex}][cost]" ${isRequired} placeholder="0.00" class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 text-right font-mono">
+                <td class="p-2 align-top">
+                    <input type="number" step="0.01" name="third_party_costs[${newIndex}][cost]" ${isRequired} placeholder="0.00" class="w-full rounded-md border border-gray-300 text-sm py-1.5 px-3 text-right font-mono">
                 </td>
-                <td class="p-4 align-top">
-                    <select name="third_party_costs[${newIndex}][department]" ${isRequired} class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 font-mono">
+                <td class="p-2 align-top">
+                    <select name="third_party_costs[${newIndex}][department]" ${isRequired} class="w-full rounded-md border border-gray-300 text-sm py-1.5 px-3 font-mono">
                         <option value="">Select</option>
                         <option value="creative">Creative</option>
                         <option value="digital">Digital</option>
@@ -861,10 +862,10 @@
                         <option value="Corporate">Corporate</option>
                     </select>
                 </td>
-                <td class="p-4 align-top">
-                    <input type="file" name="third_party_costs[${newIndex}][file]" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-brand-blue file:bg-opacity-10 file:text-brand-blue">
+                <td class="p-2 align-top">
+                    <input type="file" name="third_party_costs[${newIndex}][file]" ${isRequired} class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border file:border-gray-300 file:text-xs file:bg-brand-blue file:bg-opacity-10 file:text-brand-blue">
                 </td>
-                <td class="p-4 align-middle text-center">
+                <td class="p-2 align-middle text-center">
                     <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
                         <i class="fas fa-trash-alt"></i>
                     </button>
