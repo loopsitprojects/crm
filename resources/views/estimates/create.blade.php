@@ -191,6 +191,51 @@
                         </div>
                     </div>
 
+                    <!-- Section: Third Party Costs -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-semibold text-gray-800 uppercase tracking-wider text-xs">Third Party Costs</h3>
+                                <span class="text-red-500">*</span>
+                            </div>
+                            <div class="flex items-center gap-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="third_party_cost" value="yes" onchange="toggleThirdPartySection(this.value)"
+                                        class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
+                                    <span class="text-xs font-semibold text-gray-600">Yes</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="third_party_cost" value="no" checked onchange="toggleThirdPartySection(this.value)"
+                                        class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
+                                    <span class="text-xs font-semibold text-gray-600">No</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Integrated Third Party Costs Table -->
+                        <div id="third_party_costs_section" class="hidden p-0 overflow-x-auto">
+                            <table class="w-full min-w-[700px]" id="third-party-table">
+                                <thead class="bg-gray-50 border-b border-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">Supplier <span class="text-red-500">*</span></th>
+                                        <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase w-32">Cost <span class="text-red-500">*</span></th>
+                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase w-48">Department <span class="text-red-500">*</span></th>
+                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase">File</th>
+                                        <th class="px-4 py-3 text-center text-xs font-bold text-gray-500 uppercase w-12"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-50" id="third-party-body">
+                                </tbody>
+                            </table>
+                            <div class="p-4 bg-gray-50 border-t border-gray-100">
+                                <button type="button" onclick="addThirdPartyCost()"
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-brand-blue bg-brand-blue bg-opacity-10 hover:bg-opacity-20 transition-colors">
+                                    <i class="fas fa-plus mr-2"></i> Add Cost
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Section: Summary (Totals) - REQUESTED IN MAIN AREA -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
@@ -365,47 +410,6 @@
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Advance Received Amount</label>
                                 <input type="number" step="0.01" name="advance_received_amount" placeholder="0.00"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 shadow-sm">
-                            </div>
-
-                            <!-- Third Party Costs? -->
-                            <div class="pt-4 border-t border-gray-50">
-                                <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Third Party Costs? <span class="text-red-500">*</span></label>
-                                <div class="flex items-center gap-6 mb-4">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="third_party_cost" value="yes" onchange="toggleThirdPartySection(this.value)"
-                                            class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
-                                        <span class="text-sm font-medium text-gray-700">Yes</span>
-                                    </label>
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" name="third_party_cost" value="no" checked onchange="toggleThirdPartySection(this.value)"
-                                            class="w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue">
-                                        <span class="text-sm font-medium text-gray-700">No</span>
-                                    </label>
-                                </div>
-
-                                <!-- Integrated Third Party Costs Table -->
-                                <div id="third_party_costs_section" class="hidden mt-2 mb-4 border border-gray-100 rounded-lg overflow-hidden">
-                                    <div class="p-0 overflow-x-auto">
-                                        <table class="w-full min-w-[400px] font-mono" id="third-party-table">
-                                            <thead class="bg-gray-50 border-b border-gray-100">
-                                                <tr>
-                                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Supplier</th>
-                                                    <th class="px-2 py-2 text-right text-[10px] font-bold text-gray-500 uppercase">Cost</th>
-                                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">Dept</th>
-                                                    <th class="px-2 py-2 text-left text-[10px] font-bold text-gray-500 uppercase">File</th>
-                                                    <th class="px-2 py-2 text-center text-[10px] font-bold text-gray-500 uppercase w-8"></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-50" id="third-party-body">
-                                            </tbody>
-                                        </table>
-                                        <div class="p-2 bg-gray-50 border-t border-gray-100">
-                                            <button type="button" onclick="addThirdPartyCost()"
-                                                class="w-full inline-flex justify-center items-center px-2 py-1.5 border border-transparent text-[10px] font-medium rounded-md text-brand-blue bg-brand-blue bg-opacity-10 hover:bg-opacity-20 transition-colors">
-                                                <i class="fas fa-plus mr-1"></i> Add Cost
-                                            </button>
-                                        </div>
-                                </div>
                             </div>
 
                             <!-- PO Applicable? -->
@@ -801,11 +805,10 @@
             if (value === 'yes') {
                 section.classList.remove('hidden');
                 inputs.forEach(input => {
-                    // Make all fields mandatory except those that might be optional (none in this table)
+                    // Make all fields mandatory except those that might be optional
                     if (input.name.includes('[supplier]') || 
                         input.name.includes('[cost]') || 
-                        input.name.includes('[department]') || 
-                        input.name.includes('[file]')) {
+                        input.name.includes('[department]')) {
                         input.required = true;
                     }
                 });
@@ -841,14 +844,14 @@
             const isRequired = document.querySelector('input[name="third_party_cost"]:checked')?.value === 'yes' ? 'required' : '';
 
             row.innerHTML = `
-                <td class="p-2 align-top">
-                    <input type="text" name="third_party_costs[${newIndex}][supplier]" ${isRequired} placeholder="Supplier Name" class="w-full rounded-md border-gray-200 text-[10px] py-1 px-1 font-mono">
+                <td class="p-4 align-top">
+                    <input type="text" name="third_party_costs[${newIndex}][supplier]" ${isRequired} placeholder="Supplier Name" class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 font-mono">
                 </td>
-                <td class="p-2 align-top">
-                    <input type="number" step="0.01" name="third_party_costs[${newIndex}][cost]" ${isRequired} placeholder="0.00" class="w-full rounded-md border-gray-200 text-[10px] py-1 px-1 text-right font-mono">
+                <td class="p-4 align-top">
+                    <input type="number" step="0.01" name="third_party_costs[${newIndex}][cost]" ${isRequired} placeholder="0.00" class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 text-right font-mono">
                 </td>
-                <td class="p-2 align-top">
-                    <select name="third_party_costs[${newIndex}][department]" ${isRequired} class="w-full rounded-md border-gray-200 text-[10px] py-1 px-1 font-mono">
+                <td class="p-4 align-top">
+                    <select name="third_party_costs[${newIndex}][department]" ${isRequired} class="w-full rounded-md border-gray-200 text-sm py-1.5 px-3 font-mono">
                         <option value="">Select</option>
                         <option value="creative">Creative</option>
                         <option value="digital">Digital</option>
@@ -858,12 +861,12 @@
                         <option value="Corporate">Corporate</option>
                     </select>
                 </td>
-                <td class="p-2 align-top">
-                    <input type="file" name="third_party_costs[${newIndex}][file]" ${isRequired} class="w-full text-[8px] text-gray-500 file:mr-1 file:py-0.5 file:px-1 file:rounded file:border-0 file:text-[8px] file:bg-brand-blue file:bg-opacity-10 file:text-brand-blue">
+                <td class="p-4 align-top">
+                    <input type="file" name="third_party_costs[${newIndex}][file]" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-brand-blue file:bg-opacity-10 file:text-brand-blue">
                 </td>
-                <td class="p-2 align-top text-center">
-                    <button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500 transition-colors">
-                        <i class="fas fa-trash-alt text-xs"></i>
+                <td class="p-4 align-middle text-center">
+                    <button type="button" onclick="this.closest('tr').remove()" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </td>
             `;
