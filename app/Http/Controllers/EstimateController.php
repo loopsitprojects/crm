@@ -28,7 +28,7 @@ class EstimateController extends Controller
     {
         $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
             $q->whereNotNull('file_path')->where('file_path', '!=', '');
-        }])->whereIn('status', ['draft', 'ready_to_invoice', 'approved']);
+        }])->whereIn('status', ['draft', 'ready_to_invoice', 'approved', 'invoiced']);
 
         // RBAC Access Control
         $user = auth()->user();
@@ -469,7 +469,32 @@ class EstimateController extends Controller
             'due_date' => \Carbon\Carbon::parse($estimate->date)->addMonth(),
             'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
             'status' => 'unpaid',
+            'brand_name' => $estimate->brand_name ?? null,
+            'attention_to' => $estimate->attention_to ?? null,
+            'address_line_1' => $estimate->address_line_1 ?? null,
+            'address_line_2' => $estimate->address_line_2 ?? null,
+            'address_line_3' => $estimate->address_line_3 ?? null,
+            'designation' => $estimate->designation ?? null,
+            'currency' => $estimate->currency ?? 'LKR',
+            'heading' => $estimate->heading ?? null,
+            'terms' => $estimate->terms ?? null,
+            'special_terms' => $estimate->special_terms ?? null,
+            'advance_payment' => $estimate->advance_payment ?? null,
+            'advance_percentage' => $estimate->advance_percentage ?? 0,
+            'advance_received_amount' => $estimate->advance_received_amount ?? 0,
+            'invoice_type' => $estimate->invoice_type ?? 'tax_invoice',
+            'senior_manager' => $estimate->senior_manager ?? null,
+            'sscl_applicable' => $estimate->sscl_applicable ?? false,
+            'vat_applicable' => $estimate->vat_applicable ?? false,
+            'proforma_percentage' => $estimate->proforma_percentage ?? 50,
+            'proforma_tax' => $estimate->proforma_tax ?? 'with_tax',
+            'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
+            'date_of_delivery' => $estimate->date_of_delivery ?? null,
+            'place_of_supply' => $estimate->place_of_supply ?? null,
+            'additional_information' => $estimate->additional_notes ?? null,
         ]);
+
+        $estimate->update(['status' => 'invoiced']);
 
         // Copy Items
         foreach ($estimate->items as $item) {
@@ -837,6 +862,29 @@ class EstimateController extends Controller
                     'total_amount' => $estimate->total_amount,
                     'date' => now(), // Or $estimate->date
                     // 'due_date' => now()->addDays(30),
+                    'brand_name' => $estimate->brand_name ?? null,
+                    'attention_to' => $estimate->attention_to ?? null,
+                    'address_line_1' => $estimate->address_line_1 ?? null,
+                    'address_line_2' => $estimate->address_line_2 ?? null,
+                    'address_line_3' => $estimate->address_line_3 ?? null,
+                    'designation' => $estimate->designation ?? null,
+                    'currency' => $estimate->currency ?? 'LKR',
+                    'heading' => $estimate->heading ?? null,
+                    'terms' => $estimate->terms ?? null,
+                    'special_terms' => $estimate->special_terms ?? null,
+                    'advance_payment' => $estimate->advance_payment ?? null,
+                    'advance_percentage' => $estimate->advance_percentage ?? 0,
+                    'advance_received_amount' => $estimate->advance_received_amount ?? 0,
+                    'invoice_type' => $estimate->invoice_type ?? 'tax_invoice',
+                    'senior_manager' => $estimate->senior_manager ?? null,
+                    'sscl_applicable' => $estimate->sscl_applicable ?? false,
+                    'vat_applicable' => $estimate->vat_applicable ?? false,
+                    'proforma_percentage' => $estimate->proforma_percentage ?? 50,
+                    'proforma_tax' => $estimate->proforma_tax ?? 'with_tax',
+                    'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
+                    'date_of_delivery' => $estimate->date_of_delivery ?? null,
+                    'place_of_supply' => $estimate->place_of_supply ?? null,
+                    'additional_information' => $estimate->additional_notes ?? null,
                 ]);
             } else {
                 // Generate Proforma Invoice Number (PROINV_YY_XXXX)
@@ -861,6 +909,29 @@ class EstimateController extends Controller
                     'total_amount' => $estimate->total_amount,
                     'status' => 'unpaid',
                     'is_proforma' => true,
+                    'brand_name' => $estimate->brand_name ?? null,
+                    'attention_to' => $estimate->attention_to ?? null,
+                    'address_line_1' => $estimate->address_line_1 ?? null,
+                    'address_line_2' => $estimate->address_line_2 ?? null,
+                    'address_line_3' => $estimate->address_line_3 ?? null,
+                    'designation' => $estimate->designation ?? null,
+                    'currency' => $estimate->currency ?? 'LKR',
+                    'heading' => $estimate->heading ?? null,
+                    'terms' => $estimate->terms ?? null,
+                    'special_terms' => $estimate->special_terms ?? null,
+                    'advance_payment' => $estimate->advance_payment ?? null,
+                    'advance_percentage' => $estimate->advance_percentage ?? 0,
+                    'advance_received_amount' => $estimate->advance_received_amount ?? 0,
+                    'invoice_type' => $estimate->invoice_type ?? 'tax_invoice',
+                    'senior_manager' => $estimate->senior_manager ?? null,
+                    'sscl_applicable' => $estimate->sscl_applicable ?? false,
+                    'vat_applicable' => $estimate->vat_applicable ?? false,
+                    'proforma_percentage' => $estimate->proforma_percentage ?? 50,
+                    'proforma_tax' => $estimate->proforma_tax ?? 'with_tax',
+                    'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
+                    'date_of_delivery' => $estimate->date_of_delivery ?? null,
+                    'place_of_supply' => $estimate->place_of_supply ?? null,
+                    'additional_information' => $estimate->additional_notes ?? null,
                 ]);
             }
             

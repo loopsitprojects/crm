@@ -94,7 +94,7 @@
             </div>
             <div class="w-1/3 flex justify-center">
                 <div class="border border-black px-12 py-2 bg-white font-bold text-[17px] uppercase tracking-wide whitespace-nowrap">
-                    {{ $invoice->is_proforma ? 'PROFORMA INVOICE' : (($invoice->estimate && $invoice->estimate->invoice_type === 'invoice') ? 'INVOICE' : 'TAX INVOICE') }}
+                    {{ $invoice->is_proforma ? 'PROFORMA INVOICE' : (($invoice->invoice_type ?: ($invoice->estimate->invoice_type ?? 'tax_invoice')) === 'invoice' ? 'INVOICE' : 'TAX INVOICE') }}
                 </div>
             </div>
             <div class="w-1/3"></div>
@@ -105,10 +105,10 @@
             <!-- Top Section: 2 Columns -->
             <div class="flex invoice-date-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ $invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->format('d-m-Y') : \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
+                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date ?: ($invoice->estimate->date ?? now()))->format('d-m-Y') }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
-                    <span class="font-bold text-[13px]">{{ $invoice->is_proforma ? 'Proforma Invoice No.:' : (($invoice->estimate && $invoice->estimate->invoice_type === 'invoice') ? 'Invoice No.:' : 'Tax Invoice No.:') }}</span> <span class="text-[13px]">{{ $invoice->invoice_number }}</span>
+                    <span class="font-bold text-[13px]">{{ $invoice->is_proforma ? 'Proforma Invoice No.:' : (($invoice->invoice_type ?: ($invoice->estimate->invoice_type ?? 'tax_invoice')) === 'invoice' ? 'Invoice No.:' : 'Tax Invoice No.:') }}</span> <span class="text-[13px]">{{ $invoice->invoice_number }}</span>
                 </div>
             </div>
 
@@ -135,10 +135,10 @@
             <!-- Delivery & Supply Section -->
             <div class="flex invoice-delivery-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">{{ $invoice->estimate && $invoice->estimate->date_of_delivery ? \Carbon\Carbon::parse($invoice->estimate->date_of_delivery)->format('d-m-Y') : 'N/A' }}</span>
+                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">{{ $invoice->date_of_delivery ? \Carbon\Carbon::parse($invoice->date_of_delivery)->format('d-m-Y') : ($invoice->estimate && $invoice->estimate->date_of_delivery ? \Carbon\Carbon::parse($invoice->estimate->date_of_delivery)->format('d-m-Y') : 'N/A') }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Place of Supply:</span> <span class="text-[13px]">{{ $invoice->estimate && $invoice->estimate->place_of_supply ? $invoice->estimate->place_of_supply : 'N/A' }}</span>
+                    <span class="font-bold text-[13px]">Place of Supply:</span> <span class="text-[13px]">{{ $invoice->place_of_supply ?: ($invoice->estimate->place_of_supply ?? 'N/A') }}</span>
                 </div>
             </div>
 
@@ -146,8 +146,12 @@
             <div class="p-3 border-l border-r border-b border-black min-h-[60px] invoice-info-section">
                 <div class="font-bold mb-1 text-[13px]">Additional Information if any:</div>
                 <div class="text-[13px]">
-                    @if($invoice->estimate && $invoice->estimate->additional_notes)
+                    @if($invoice->additional_information)
+                        {{ $invoice->additional_information }}
+                    @elseif($invoice->estimate && $invoice->estimate->additional_notes)
                         {{ $invoice->estimate->additional_notes }}
+                    @elseif($invoice->heading)
+                        {{ $invoice->heading }}
                     @elseif($invoice->estimate && $invoice->estimate->heading)
                         {{ $invoice->estimate->heading }}
                     @else
@@ -162,7 +166,7 @@
                 <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
                 <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
                 <div class="p-2 w-[18%] border-r border-b border-black">Unit Price</div>
-                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->estimate->deal->currency ?? 'LKR' }})</div>
+                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }})</div>
             </div>
 
             <!-- Item Rows - Dynamic -->
@@ -198,7 +202,7 @@
                 <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($totalExcludingVat, 2) }}</div>
             </div>
             @php
-                $vatApplicable = $invoice->estimate ? $invoice->estimate->vat_applicable : false;
+                $vatApplicable = $invoice->vat_applicable ?? ($invoice->estimate ? $invoice->estimate->vat_applicable : false);
                 $vatRate = \App\Models\Setting::get('vat_rate', 15);
                 $totalVat = $vatApplicable ? ($totalExcludingVat * ($vatRate / 100)) : 0;
                 $grandTotalIncludingVat = $totalExcludingVat + $totalVat;
@@ -213,23 +217,23 @@
                 <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">
                     {{ $vatApplicable ? 'TOTAL AMOUNT INCLUDING VAT:' : 'TOTAL AMOUNT:' }}
                 </div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat, 2) }}</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }} {{ number_format($grandTotalIncludingVat, 2) }}</div>
             </div>
             @if(!$invoice->is_proforma)
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Advance Received amount:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->estimate->advance_received_amount ?? 0, 2) }}</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }} {{ number_format($invoice->advance_received_amount ?? ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
             </div>
             <div class="flex text-[13px] font-bold min-h-[35px] invoice-totals-row">
                 <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 uppercase flex items-center justify-end">Balance Payable:</div>
-                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($grandTotalIncludingVat - ($invoice->estimate->advance_received_amount ?? 0), 2) }}</div>
+                <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }} {{ number_format($grandTotalIncludingVat - ($invoice->advance_received_amount ?? ($invoice->estimate->advance_received_amount ?? 0)), 2) }}</div>
             </div>
             @endif
 
             @if($invoice->is_proforma)
                 @php
-                    $percentage = $invoice->estimate->proforma_percentage ?? 50;
-                    $isWithTax = ($invoice->estimate->proforma_tax ?? 'with_tax') === 'with_tax';
+                    $percentage = $invoice->proforma_percentage ?? ($invoice->estimate->proforma_percentage ?? 50);
+                    $isWithTax = ($invoice->proforma_tax ?? ($invoice->estimate->proforma_tax ?? 'with_tax')) === 'with_tax';
                     $baseForAdvance = $isWithTax ? $invoice->total_amount : $totalExcludingVat;
                     $advanceAmount = ($baseForAdvance * $percentage) / 100;
                 @endphp
@@ -237,18 +241,18 @@
                     <div class="p-2 w-[80%] border-l border-r border-b border-black text-right pr-3 flex items-center justify-end">
                         {{ (int)$percentage }}% Advance Payable
                     </div>
-                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($advanceAmount, 2) }}</div>
+                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }} {{ number_format($advanceAmount, 2) }}</div>
                 </div>
             @else
                 <div class="p-3 border-l border-r border-b border-black align-top min-h-[60px] invoice-totals-row">
                     <div class="font-bold mb-1 text-[13px]">Total Amount in words:</div>
                     <div class="text-[13px]">
-                        {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} {{ ($invoice->estimate->deal->currency ?? 'LKR') === 'LKR' ? 'Rupees' : ($invoice->estimate->deal->currency ?? 'LKR') }} Only
+                        {{ \App\Helpers\NumberToWordsHelper::translate($grandTotalIncludingVat) }} {{ ($invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR'))) === 'LKR' ? 'Rupees' : ($invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR'))) }} Only
                     </div>
                 </div>
             @endif
 
-            @if($invoice->estimate && trim($invoice->estimate->special_terms) !== '')
+            @if(trim($invoice->special_terms ?: ($invoice->estimate->special_terms ?? '')) !== '')
             <div class="flex border-l border-r border-b border-black align-top invoice-totals-row">
                 <!-- Left Side: Mode of Payment & General Terms -->
                 <div class="w-1/2 p-3">
@@ -270,7 +274,7 @@
                     </div>
                     <div class="text-[13px] text-black mt-2">
                         <ul class="list-disc pl-5 space-y-1">
-                            @foreach(explode("\n", str_replace("\r", "", $invoice->estimate->special_terms)) as $term)
+                            @foreach(explode("\n", str_replace("\r", "", $invoice->special_terms ?: ($invoice->estimate->special_terms ?? ''))) as $term)
                                 @if(trim($term) !== '')
                                     <li>{{ ltrim(trim($term), '-*• ') }}</li>
                                 @endif

@@ -100,11 +100,11 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->customer->name }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate->heading ?? 'N/A' }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? $invoice->estimate->date : $invoice->date }}</td>
-                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->addMonth()->toDateString() : $invoice->due_date }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->heading ?: ($invoice->estimate->heading ?? 'N/A') }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->date ?: ($invoice->estimate->date ?? '') }}</td>
+                            <td class="px-6 py-4 white-space-nowrap text-sm text-gray-500">{{ $invoice->due_date ?: ($invoice->estimate ? \Carbon\Carbon::parse($invoice->estimate->date)->addMonth()->toDateString() : '') }}</td>
                             <td class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
-                                {{ $invoice->estimate->deal->currency ?? 'LKR' }} {{ number_format($invoice->total_amount, 2) }}</td>
+                                {{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }} {{ number_format($invoice->total_amount, 2) }}</td>
                             <td class="px-6 py-4 white-space-nowrap">
                                 <form action="{{ route('invoices.updateStatus', $invoice) }}" method="POST">
                                     @csrf

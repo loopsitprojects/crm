@@ -156,6 +156,8 @@ class TempInvoiceController extends Controller
             
             $newInvoiceNumber = $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
+            $estimate = $tempInvoice->estimate;
+
             $finalInvoice = Invoice::create([
                 'quotation_id' => $tempInvoice->quotation_id,
                 'customer_id' => $tempInvoice->customer_id,
@@ -165,7 +167,34 @@ class TempInvoiceController extends Controller
                 'total_amount' => $tempInvoice->total_amount,
                 'status' => 'unpaid',
                 'is_proforma' => $tempInvoice->is_proforma,
+                'brand_name' => $estimate->brand_name ?? null,
+                'attention_to' => $estimate->attention_to ?? null,
+                'address_line_1' => $estimate->address_line_1 ?? null,
+                'address_line_2' => $estimate->address_line_2 ?? null,
+                'address_line_3' => $estimate->address_line_3 ?? null,
+                'designation' => $estimate->designation ?? null,
+                'currency' => $estimate->currency ?? 'LKR',
+                'heading' => $estimate->heading ?? null,
+                'terms' => $estimate->terms ?? null,
+                'special_terms' => $estimate->special_terms ?? null,
+                'advance_payment' => $estimate->advance_payment ?? null,
+                'advance_percentage' => $estimate->advance_percentage ?? 0,
+                'advance_received_amount' => $estimate->advance_received_amount ?? 0,
+                'invoice_type' => $estimate->invoice_type ?? 'tax_invoice',
+                'senior_manager' => $estimate->senior_manager ?? null,
+                'sscl_applicable' => $estimate->sscl_applicable ?? false,
+                'vat_applicable' => $estimate->vat_applicable ?? false,
+                'proforma_percentage' => $estimate->proforma_percentage ?? 50,
+                'proforma_tax' => $estimate->proforma_tax ?? 'with_tax',
+                'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
+                'date_of_delivery' => $estimate->date_of_delivery ?? null,
+                'place_of_supply' => $estimate->place_of_supply ?? null,
+                'additional_information' => $estimate->additional_notes ?? null,
             ]);
+
+            if ($estimate) {
+                $estimate->update(['status' => 'invoiced']);
+            }
 
             // Copy items to invoice_items
             foreach ($tempInvoice->items as $tItem) {

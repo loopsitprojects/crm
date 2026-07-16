@@ -126,7 +126,7 @@
                             <td x-show="isColumnVisible('amount')" class="px-6 py-4 white-space-nowrap text-sm text-gray-900 font-bold">
                                 {{ $estimate->currency ?? 'LKR' }} {{ number_format($estimate->total_amount, 2) }}</td>
                             <td x-show="isColumnVisible('status')" class="px-6 py-4 white-space-nowrap">
-                                @if(!$estimate->canEdit($user) || ($isRestricted && !in_array($estimate->status, ['draft', 'approved'])))
+                                @if(!$estimate->canEdit($user) || ($isRestricted && !in_array($estimate->status, ['draft', 'approved'])) || $estimate->status == 'invoiced')
                                     <span class="text-xs font-semibold rounded-full px-2 py-1 inline-block
                                                                                         @if($estimate->status == 'draft') bg-gray-100 text-gray-800
                                                                                         @elseif($estimate->status == 'approved') bg-yellow-100 text-yellow-800
