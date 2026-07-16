@@ -369,7 +369,7 @@ class EstimateController extends Controller
         $reversionRestricted = ['ready_to_invoice', 'invoiced', 'accepted'];
         $earlierStages = ['draft', 'approved'];
 
-        if (in_array($estimate->status, $reversionRestricted) && in_array($request->status, $earlierStages)) {
+        if ($user->role !== 'Super Admin' && in_array($estimate->status, $reversionRestricted) && in_array($request->status, $earlierStages)) {
             return back()->with('error', 'Estimate status cannot be reverted once it is ' . ucfirst(str_replace('_', ' ', $estimate->status)) . '.');
         }
 
