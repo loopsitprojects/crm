@@ -28,7 +28,7 @@ class EstimateController extends Controller
     {
         $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
             $q->whereNotNull('file_path')->where('file_path', '!=', '');
-        }])->whereIn('status', ['draft', 'ready_to_invoice', 'approved', 'invoiced']);
+        }])->whereIn('status', ['draft', 'ready_to_invoice', 'approved']);
 
         // RBAC Access Control
         $user = auth()->user();
