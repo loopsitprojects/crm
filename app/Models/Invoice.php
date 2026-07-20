@@ -35,6 +35,9 @@ class Invoice extends Model
         'proforma_percentage',
         'proforma_tax',
         'proforma_with_tax',
+        'date_of_delivery',
+        'place_of_supply',
+        'additional_information',
     ];
 
 

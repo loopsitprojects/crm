@@ -420,7 +420,7 @@ class InvoiceController extends Controller
             'address_line_3' => 'nullable|string',
             'designation' => 'nullable|string',
             'heading' => 'nullable|string',
-            'terms' => 'nullable|string',
+            'terms' => 'nullable',
             'special_terms' => 'nullable|string',
             'advance_payment' => 'nullable|string',
             'advance_percentage' => 'nullable|numeric',
@@ -440,7 +440,7 @@ class InvoiceController extends Controller
                 'address_line_3' => $request->address_line_3,
                 'currency' => $request->currency,
                 'heading' => $request->heading,
-                'terms' => $request->terms,
+                'terms' => is_array($request->terms) ? implode(', ', $request->terms) : $request->terms,
                 'special_terms' => $request->special_terms,
                 'advance_payment' => $request->advance_payment,
                 'advance_percentage' => $request->advance_percentage,
@@ -453,6 +453,8 @@ class InvoiceController extends Controller
                 'proforma_percentage' => $request->proforma_percentage,
                 'proforma_tax' => $request->proforma_tax,
                 'is_proforma' => ($request->proforma_invoice === 'yes') ? 1 : 0,
+                'date_of_delivery' => $request->date_of_delivery,
+                'place_of_supply' => $request->place_of_supply,
             ]);
 
             // Sync items

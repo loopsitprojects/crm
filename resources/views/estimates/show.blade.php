@@ -167,7 +167,9 @@
                                     <li>All relevant Government taxes will be applicable</li>
                                     @if($estimate->terms)
                                         @foreach(explode(', ', $estimate->terms) as $term)
-                                            <li>{{ $term }}</li>
+                                            @if(trim($term) !== '' && trim($term) !== 'Standard business terms apply.')
+                                                <li>{{ $term }}</li>
+                                            @endif
                                         @endforeach
                                     @endif
                                     @if($estimate->advance_percentage)

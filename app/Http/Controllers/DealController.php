@@ -792,7 +792,7 @@ class DealController extends Controller
             'currency' => 'LKR',
             'heading' => $deal->title,
             'senior_manager' => $deal->senior_manager ?? ($deal->owner->name ?? null),
-            'terms' => Setting::get('standard_terms', 'Standard business terms apply.')
+            'terms' => Setting::get('standard_terms', null)
         ]);
 
         // Add Deal Item

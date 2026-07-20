@@ -14,7 +14,9 @@ class TempInvoice extends Model
         'due_date',
         'total_amount',
         'status',
-        'is_proforma'
+        'is_proforma',
+        'date_of_delivery',
+        'place_of_supply',
     ];
 
     public function customer()

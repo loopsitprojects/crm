@@ -1016,7 +1016,9 @@
         document.addEventListener('DOMContentLoaded', function () {
             @if($estimate->terms)
                 @foreach(explode(', ', $estimate->terms) as $term)
-                    addTerm("{!! addslashes($term) !!}");
+                    @if(trim($term) !== '' && trim($term) !== 'Standard business terms apply.')
+                        addTerm("{!! addslashes($term) !!}");
+                    @endif
                 @endforeach
             @endif
             calculateAllRows();

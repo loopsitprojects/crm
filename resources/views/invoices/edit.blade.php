@@ -458,14 +458,14 @@
                             <!-- Date of Delivery -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Date of Delivery</label>
-                                <input type="date" name="date_of_delivery" value="{{ old('date_of_delivery', $estimate->date_of_delivery) }}"
+                                <input type="date" name="date_of_delivery" value="{{ old('date_of_delivery', $invoice->date_of_delivery ?? ($estimate->date_of_delivery ?? '')) }}"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
                             </div>
 
                             <!-- Place of Supply -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Place of Supply</label>
-                                <input type="text" name="place_of_supply" value="{{ old('place_of_supply', $estimate->place_of_supply) }}" placeholder="E.g. Colombo, Sri Lanka"
+                                <input type="text" name="place_of_supply" value="{{ old('place_of_supply', $invoice->place_of_supply ?? ($estimate->place_of_supply ?? '')) }}" placeholder="E.g. Colombo, Sri Lanka"
                                     class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2">
                             </div>
                         </div>
@@ -1011,9 +1011,14 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            @if($estimate->terms)
-                @foreach(explode(', ', $estimate->terms) as $term)
-                    addTerm("{!! addslashes($term) !!}");
+            @php
+                $termsVal = $invoice->terms ?: ($estimate->terms ?? '');
+            @endphp
+            @if($termsVal)
+                @foreach(explode(', ', $termsVal) as $term)
+                    @if(trim($term) !== '' && trim($term) !== 'Standard business terms apply.')
+                        addTerm("{!! addslashes($term) !!}");
+                    @endif
                 @endforeach
             @endif
             calculateAllRows();

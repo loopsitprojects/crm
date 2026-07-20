@@ -90,6 +90,8 @@ class TempInvoiceController extends Controller
                 'date' => $request->date,
                 'due_date' => Carbon::parse($request->date)->addMonth()->format('Y-m-d'),
                 'is_proforma' => ($request->proforma_invoice === 'yes') ? 1 : 0,
+                'date_of_delivery' => $request->date_of_delivery,
+                'place_of_supply' => $request->place_of_supply,
             ]);
 
             // 2. Delete and recreate TempInvoiceItems
@@ -187,8 +189,8 @@ class TempInvoiceController extends Controller
                 'proforma_percentage' => $estimate->proforma_percentage ?? 50,
                 'proforma_tax' => $estimate->proforma_tax ?? 'with_tax',
                 'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
-                'date_of_delivery' => $estimate->date_of_delivery ?? null,
-                'place_of_supply' => $estimate->place_of_supply ?? null,
+                'date_of_delivery' => $tempInvoice->date_of_delivery ?? ($estimate->date_of_delivery ?? null),
+                'place_of_supply' => $tempInvoice->place_of_supply ?? ($estimate->place_of_supply ?? null),
                 'additional_information' => $estimate->additional_notes ?? null,
             ]);
 
