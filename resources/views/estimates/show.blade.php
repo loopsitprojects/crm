@@ -184,33 +184,21 @@
                     <div class="w-2/5">
                         <div class="bg-gray-50 rounded-lg p-6">
                             @php
-                                $positiveItems = $estimate->items->where('unit_price', '>=', 0);
-                                $discountItems = $estimate->items->where('unit_price', '<', 0);
+                                $totalBase = $estimate->items->sum('amount');
+                                $totalSSCL = $estimate->items->sum('sscl_amount');
+                                $totalVAT = $estimate->items->sum('vat_amount');
                                 
-                                $positiveBase = $positiveItems->sum('amount');
-                                $positiveSSCL = $positiveItems->sum('sscl_amount');
-                                $positiveVAT = $positiveItems->sum('vat_amount');
-                                
-                                $subtotalBase = $positiveBase + $positiveSSCL;
-                                
-                                // Discount includes its own tax impact (negative amounts)
-                                $discountBase = abs($discountItems->sum('amount'));
-                                $discountSSCL = abs($discountItems->sum('sscl_amount'));
-                                $discountVAT = abs($discountItems->sum('vat_amount'));
-                                $totalDiscount = ($discountBase + $discountSSCL) + $discountVAT;
-                                
-                                $totalVAT = $positiveVAT - $discountVAT;
-                                
-                                $calculatedTotal = ($subtotalBase + $positiveVAT) - $totalDiscount;
+                                $subtotalBase = $totalBase + $totalSSCL;
+                                $calculatedTotal = $subtotalBase + $totalVAT;
                             @endphp
                             <div class="flex justify-between mb-3 text-sm text-gray-600">
                                 <span>Subtotal</span>
                                 <span class="font-medium">{{ number_format($subtotalBase, 2) }}</span>
                             </div>
 
-                            @if($positiveVAT > 0)
+                            @if($totalVAT != 0)
                                 <div class="flex justify-between mb-3 text-sm text-gray-600">
-                                    <span>VAT ({{ number_format(\App\Models\Setting::get('vat_rate', 15), 2) }}%)</span>
+                                    <span>VAT ({{ number_format(\App\Models\Setting::get('vat_rate', 18), 2) }}%)</span>
                                     <span class="font-medium">{{ number_format($totalVAT, 2) }}</span>
                                 </div>
                             @endif
