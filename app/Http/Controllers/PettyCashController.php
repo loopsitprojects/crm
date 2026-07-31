@@ -102,8 +102,13 @@ class PettyCashController extends Controller
         ]);
 
         $totalAmount = 0;
+        $isIou = false;
         foreach ($request->items as $item) {
             $totalAmount += (float)$item['amount'];
+            $category = ExpenseCategory::find($item['expense_category_id']);
+            if ($category && stripos($category->name, 'IOU') !== false) {
+                $isIou = true;
+            }
         }
 
         $pettyCash = PettyCashRequest::create([
@@ -113,6 +118,7 @@ class PettyCashController extends Controller
             'department' => $user->department ?: 'General',
             'job_number' => $request->job_number,
             'total_amount' => $totalAmount,
+            'is_iou' => $isIou,
             'status' => 'pending_hod',
         ]);
 
@@ -217,8 +223,14 @@ class PettyCashController extends Controller
             return redirect()->back()->with('error', 'Unauthorized action. Only Super Admin or Management can perform this action.');
         }
 
-        $signaturePath = $pettyCash->signature_path;
+        $isIOU = $pettyCash->isIOU();
 
+        // Validate mandatory signature for IOU
+        if ($isIOU && (!$request->filled('signature') || !str_starts_with($request->signature, 'data:image/png;base64,'))) {
+            return redirect()->back()->with('error', 'A signature from the requested person is MANDATORY for IOU approvals and settlements.');
+        }
+
+        $savedSignaturePath = null;
         if ($request->filled('signature') && str_starts_with($request->signature, 'data:image/png;base64,')) {
             $imageParts = explode(';base64,', $request->signature);
             if (isset($imageParts[1])) {
@@ -229,13 +241,30 @@ class PettyCashController extends Controller
                     mkdir($destinationPath, 0777, true);
                 }
                 file_put_contents($destinationPath . '/' . $filename, $imageBase64);
-                $signaturePath = 'uploads/petty_cash_signatures/' . $filename;
+                $savedSignaturePath = 'uploads/petty_cash_signatures/' . $filename;
             }
         }
 
+        if ($pettyCash->status === 'pending_settlement') {
+            // Approval of IOU settlement
+            $pettyCash->update([
+                'status' => 'settled',
+                'settlement_signature_path' => $savedSignaturePath ?: $pettyCash->settlement_signature_path,
+                'settled_at' => now(),
+            ]);
+
+            if ($pettyCash->user) {
+                $pettyCash->user->notify(new PettyCashNotification($pettyCash, 'admin_approved', $user));
+            }
+            return redirect()->back()->with('success', 'IOU Settlement has been APPROVED and marked as SETTLED.');
+        }
+
+        // Initial Super Admin approval (or money handed over for IOU)
+        $newStatus = $isIOU ? 'iou_issued' : 'approved';
+
         $pettyCash->update([
-            'status' => 'approved',
-            'signature_path' => $signaturePath,
+            'status' => $newStatus,
+            'signature_path' => $savedSignaturePath ?: $pettyCash->signature_path,
         ]);
 
         // Notify Staff & HOD
@@ -246,7 +275,8 @@ class PettyCashController extends Controller
             $pettyCash->hod->notify(new PettyCashNotification($pettyCash, 'admin_approved', $user));
         }
 
-        return redirect()->back()->with('success', 'Petty Cash request APPROVED successfully.');
+        $msg = $isIOU ? 'IOU Request APPROVED & Money Handed Over (Status: Unsettled IOU).' : 'Petty Cash request APPROVED successfully.';
+        return redirect()->back()->with('success', $msg);
     }
 
     public function adminReject(Request $request, PettyCashRequest $pettyCash)
@@ -277,6 +307,71 @@ class PettyCashController extends Controller
         return redirect()->back()->with('success', 'Petty Cash request rejected by Super Admin. Staff and HOD have been notified.');
     }
 
+    public function settleIOU(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if ($user->id !== $pettyCash->user_id && !$user->hasRole('super_admin')) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'proofs' => 'nullable|array',
+            'proofs.*' => 'file|mimes:jpeg,png,jpg,pdf,doc,docx|max:10240',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|exists:petty_cash_items,id',
+            'items.*.amount' => 'required|numeric|min:0.01',
+        ]);
+
+        // Update items/amounts if submitted
+        if ($request->has('items')) {
+            $totalAmount = 0;
+            foreach ($request->items as $itemData) {
+                $item = PettyCashItem::find($itemData['id']);
+                if ($item) {
+                    $item->update([
+                        'amount' => $itemData['amount'],
+                        'description' => $itemData['description'] ?? $item->description,
+                    ]);
+                    $totalAmount += (float)$itemData['amount'];
+                }
+            }
+            if ($totalAmount > 0) {
+                $pettyCash->update(['total_amount' => $totalAmount]);
+            }
+        }
+
+        // Upload settlement proofs
+        if ($request->hasFile('proofs')) {
+            foreach ($request->file('proofs') as $file) {
+                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $destinationPath = public_path('uploads/petty_cash_proofs');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+                PettyCashProof::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                ]);
+            }
+        }
+
+        $pettyCash->update([
+            'status' => 'pending_settlement',
+        ]);
+
+        // Notify Super Admins
+        $superAdmins = User::where('role', 'Super Admin')->get();
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
+
+        return redirect()->back()->with('success', 'IOU Settlement details and proofs submitted successfully. Pending Super Admin final approval.');
+    }
+
     public function reappeal(Request $request, PettyCashRequest $pettyCash)
     {
         $user = auth()->user();
@@ -298,8 +393,13 @@ class PettyCashController extends Controller
         ]);
 
         $totalAmount = 0;
+        $isIou = false;
         foreach ($request->items as $item) {
             $totalAmount += (float)$item['amount'];
+            $category = ExpenseCategory::find($item['expense_category_id']);
+            if ($category && stripos($category->name, 'IOU') !== false) {
+                $isIou = true;
+            }
         }
 
         // Determine new status:
@@ -314,6 +414,7 @@ class PettyCashController extends Controller
             'hod_id' => $request->hod_id,
             'job_number' => $request->job_number,
             'total_amount' => $totalAmount,
+            'is_iou' => $isIou,
             'status' => $newStatus,
             'reappeal_count' => $pettyCash->reappeal_count + 1,
         ]);

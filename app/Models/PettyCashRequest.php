@@ -16,12 +16,30 @@ class PettyCashRequest extends Model
         'department',
         'job_number',
         'total_amount',
+        'is_iou',
         'status',
         'hod_rejection_note',
         'admin_rejection_note',
         'signature_path',
+        'settlement_signature_path',
+        'settled_at',
         'reappeal_count',
     ];
+
+    protected $casts = [
+        'is_iou' => 'boolean',
+        'settled_at' => 'datetime',
+    ];
+
+    public function isIOU()
+    {
+        if ($this->is_iou) {
+            return true;
+        }
+        return $this->items()->whereHas('category', function($q) {
+            $q->where('name', 'LIKE', '%IOU%');
+        })->exists();
+    }
 
     public function user()
     {

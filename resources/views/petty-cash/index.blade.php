@@ -120,6 +120,18 @@
                                     <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 inline-flex items-center whitespace-nowrap">
                                         <i class="fas fa-check-circle mr-1"></i> Approved
                                     </span>
+                                @elseif($pc->status === 'iou_issued')
+                                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300 inline-flex items-center whitespace-nowrap" title="Money Handed Over - IOU Unsettled">
+                                        <i class="fas fa-hand-holding-usd mr-1"></i> Approved (IOU Unsettled)
+                                    </span>
+                                @elseif($pc->status === 'pending_settlement')
+                                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300 inline-flex items-center whitespace-nowrap">
+                                        <i class="fas fa-file-invoice-dollar mr-1"></i> Settlement Pending
+                                    </span>
+                                @elseif($pc->status === 'settled')
+                                    <span class="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center whitespace-nowrap">
+                                        <i class="fas fa-check-double mr-1"></i> IOU Settled
+                                    </span>
                                 @elseif($pc->status === 'rejected_by_hod')
                                     <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 inline-flex items-center whitespace-nowrap" title="{{ $pc->hod_rejection_note }}">
                                         <i class="fas fa-times-circle mr-1"></i> Rejected by HOD
@@ -137,6 +149,14 @@
                                         <i class="fas fa-eye mr-1"></i> Details
                                     </button>
 
+                                    <!-- Settle IOU Button for Requester or Admin -->
+                                    @if($pc->status === 'iou_issued' && (auth()->id() === $pc->user_id || auth()->user()->hasRole('super_admin')))
+                                        <button onclick="openSettleIouModal({{ $pc->id }})"
+                                            class="px-2.5 py-1.5 bg-brand-purple text-white text-xs font-semibold rounded-lg hover:bg-brand-pink transition-colors inline-flex items-center whitespace-nowrap shadow-sm">
+                                            <i class="fas fa-file-signature mr-1"></i> Settle IOU
+                                        </button>
+                                    @endif
+
                                     <!-- HOD Actions -->
                                     @if($pc->status === 'pending_hod' && (auth()->user()->id === $pc->hod_id || auth()->user()->role === 'HOD' || auth()->user()->hasRole('super_admin')))
                                         <form action="{{ route('petty-cash.hodApprove', $pc) }}" method="POST" class="inline-block">
@@ -153,13 +173,13 @@
 
                                     <!-- Super Admin Actions (Allowed Anytime) -->
                                     @if(auth()->user()->hasRole('super_admin') || auth()->user()->role === 'Management')
-                                        @if($pc->status !== 'approved')
-                                            <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}')"
+                                        @if(!in_array($pc->status, ['approved', 'settled']))
+                                            <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', {{ $pc->isIOU() ? 'true' : 'false' }}, '{{ $pc->status }}')"
                                                 class="px-2.5 py-1.5 bg-brand-pink text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors inline-flex items-center whitespace-nowrap">
-                                                <i class="fas fa-check-double mr-1"></i> Approve
+                                                <i class="fas fa-check-double mr-1"></i> {{ $pc->status === 'pending_settlement' ? 'Approve Settlement' : 'Approve' }}
                                             </button>
                                         @endif
-                                        @if($pc->status !== 'rejected_by_super_admin')
+                                        @if($pc->status !== 'rejected_by_super_admin' && $pc->status !== 'settled')
                                             <button onclick="openAdminRejectModal({{ $pc->id }})"
                                                 class="px-2.5 py-1.5 bg-rose-700 text-white text-xs font-semibold rounded-lg hover:bg-rose-800 transition-colors inline-flex items-center whitespace-nowrap">
                                                 <i class="fas fa-ban mr-1"></i> Reject
@@ -360,15 +380,22 @@
             @csrf
             <input type="hidden" name="signature" id="signatureInput">
 
+            <div id="iouMandatoryBanner" class="bg-amber-50 border-l-4 border-amber-500 rounded-xl p-3 text-xs text-amber-900 hidden">
+                <p class="font-bold flex items-center"><i class="fas fa-exclamation-triangle text-amber-600 mr-1.5"></i> Mandatory Signature Required for IOU</p>
+                <p class="text-amber-800 text-[11px] mt-0.5">Since this request contains an IOU expense category, a drawn signature from the requested person is REQUIRED to proceed with approval or settlement.</p>
+            </div>
+
             <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 text-xs text-blue-900 space-y-1">
                 <p><strong>Requester:</strong> <span id="approveRequesterName">-</span></p>
-                <p class="text-blue-700">Are you sure you want to approve this petty cash request?</p>
+                <p class="text-blue-700" id="approveConfirmationText">Are you sure you want to approve this petty cash request?</p>
             </div>
 
             <div>
                 <div class="flex justify-between items-center mb-1.5">
                     <label class="block text-xs font-bold text-gray-700">
-                        <i class="fas fa-signature text-brand-purple mr-1"></i> Requested Person Signature <span class="text-gray-400 font-normal">(Optional)</span>
+                        <i class="fas fa-signature text-brand-purple mr-1"></i> Requested Person Signature 
+                        <span id="signatureRequiredText" class="text-red-600 font-bold hidden">(MANDATORY FOR IOU)</span>
+                        <span id="signatureOptionalText" class="text-gray-400 font-normal">(Optional)</span>
                     </label>
                     <button type="button" onclick="clearSignatureCanvas()" class="text-[11px] text-red-500 hover:text-red-700 font-semibold flex items-center">
                         <i class="fas fa-eraser mr-1"></i> Clear Signature
@@ -377,7 +404,7 @@
                 <div class="border-2 border-dashed border-gray-300 rounded-xl p-1 bg-gray-50 touch-none">
                     <canvas id="signatureCanvas" width="450" height="150" class="w-full h-36 bg-white rounded-lg cursor-crosshair border border-gray-200"></canvas>
                 </div>
-                <p class="text-[11px] text-gray-400 mt-1">Sign on the canvas above using mouse or touch. Signature is optional.</p>
+                <p class="text-[11px] text-gray-400 mt-1" id="signatureHintText">Sign on the canvas above using mouse or touch.</p>
             </div>
 
             <div class="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
@@ -388,6 +415,61 @@
                 <button type="submit"
                     class="px-5 py-2 bg-gradient-to-r from-brand-pink to-brand-purple text-white text-xs font-bold rounded-lg hover:opacity-90 shadow-md flex items-center">
                     <i class="fas fa-check mr-1.5"></i> Confirm Approval
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Settle IOU Modal -->
+<div id="settleIouModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-5 sm:p-6 border w-full max-w-2xl shadow-2xl rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center" id="settleIouModalRef">
+                <i class="fas fa-file-signature text-brand-purple mr-2"></i> Settle IOU Request
+            </h3>
+            <button onclick="document.getElementById('settleIouModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form id="settleIouForm" action="" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5">
+            @csrf
+            <div class="p-3 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-start gap-2">
+                <i class="fas fa-info-circle text-brand-purple text-base mt-0.5 flex-shrink-0"></i>
+                <div>
+                    <strong>IOU Settlement Process:</strong> Upload your expenditure proofs (receipts, bills, or invoices) and confirm the final spent line item amounts. Once submitted, Super Admin will review and approve the settlement.
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-800 mb-2">Final Expenditure Line Items & Amounts</label>
+                <div id="settleItemsContainer" class="space-y-3">
+                    <!-- Dynamic JS content -->
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-1.5">
+                    <label class="block text-xs font-bold text-gray-800">Proofs of Expenditure * (Receipts / Bills)</label>
+                    <button type="button" onclick="addProofFileInput('settleProofsContainer')" class="text-[11px] text-brand-purple hover:underline font-semibold flex items-center">
+                        <i class="fas fa-plus mr-1"></i> Add Another File
+                    </button>
+                </div>
+                <div id="settleProofsContainer" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="proofs[]" required accept="image/*,.pdf,.doc,.docx" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-brand-purple hover:file:bg-purple-100 border border-gray-200 rounded-lg p-1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5 pt-4 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('settleIouModal').classList.add('hidden')"
+                    class="px-4 py-2 bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="px-5 py-2 bg-gradient-to-r from-brand-purple to-brand-pink text-white text-xs font-bold rounded-lg hover:opacity-90 shadow-md flex items-center">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Submit Settlement Request
                 </button>
             </div>
         </form>
@@ -601,10 +683,31 @@
         if (input) input.value = '';
     }
 
-    function openAdminApproveModal(id, ref, requester) {
+    let currentApproveIsIou = false;
+
+    function openAdminApproveModal(id, ref, requester, isIou = false, status = '') {
+        currentApproveIsIou = isIou;
         document.getElementById('adminApproveForm').action = `/petty-cash/${id}/admin-approve`;
-        document.getElementById('adminApproveModalRef').innerHTML = `<i class="fas fa-check-double text-brand-pink mr-2"></i> Approve Request: ${ref}`;
+        const actionTitle = status === 'pending_settlement' ? 'Approve Settlement' : 'Approve Request';
+        document.getElementById('adminApproveModalRef').innerHTML = `<i class="fas fa-check-double text-brand-pink mr-2"></i> ${actionTitle}: ${ref}`;
         document.getElementById('approveRequesterName').textContent = requester;
+        document.getElementById('approveConfirmationText').textContent = status === 'pending_settlement' 
+            ? 'Are you sure you want to approve the final settlement for this IOU request?' 
+            : 'Are you sure you want to approve this petty cash request?';
+
+        const banner = document.getElementById('iouMandatoryBanner');
+        const reqText = document.getElementById('signatureRequiredText');
+        const optText = document.getElementById('signatureOptionalText');
+        if (isIou) {
+            if (banner) banner.classList.remove('hidden');
+            if (reqText) reqText.classList.remove('hidden');
+            if (optText) optText.classList.add('hidden');
+        } else {
+            if (banner) banner.classList.add('hidden');
+            if (reqText) reqText.classList.add('hidden');
+            if (optText) optText.classList.remove('hidden');
+        }
+
         document.getElementById('adminApproveModal').classList.remove('hidden');
 
         setTimeout(() => {
@@ -623,7 +726,46 @@
             document.getElementById('signatureInput').value = canvas.toDataURL('image/png');
         } else {
             document.getElementById('signatureInput').value = '';
+            if (currentApproveIsIou) {
+                e.preventDefault();
+                alert('A signature from the requested person is MANDATORY to approve or settle an IOU request.');
+                return false;
+            }
         }
+    }
+
+    function openSettleIouModal(id) {
+        fetch(`/petty-cash/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const pc = data.pettyCash;
+                    document.getElementById('settleIouForm').action = `/petty-cash/${id}/settle`;
+                    document.getElementById('settleIouModalRef').innerHTML = `<i class="fas fa-file-signature text-brand-purple mr-2"></i> Settle IOU Request: ${pc.reference_number}`;
+                    
+                    const container = document.getElementById('settleItemsContainer');
+                    container.innerHTML = '';
+
+                    pc.items.forEach((item) => {
+                        const div = document.createElement('div');
+                        div.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200';
+                        div.innerHTML = `
+                            <input type="hidden" name="items[${item.id}][id]" value="${item.id}">
+                            <div class="md:col-span-6 font-semibold text-xs text-gray-800">
+                                ${item.category ? item.category.name : 'Category'}
+                                <span class="text-gray-500 font-normal block text-[11px]">${item.description || 'No note'}</span>
+                            </div>
+                            <div class="md:col-span-6 flex items-center gap-2">
+                                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">Spent LKR:</span>
+                                <input type="number" step="0.01" min="0.01" name="items[${item.id}][amount]" value="${item.amount}" required class="w-full rounded-md border-gray-300 text-xs focus:ring-brand-purple">
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+
+                    document.getElementById('settleIouModal').classList.remove('hidden');
+                }
+            });
     }
 
     function openHodRejectModal(id) {
@@ -661,10 +803,21 @@
                     let signatureHtml = pc.signature_path ? `
                         <div class="mt-4 pt-3 border-t border-gray-200">
                             <h4 class="text-xs sm:text-sm font-bold text-gray-800 mb-2 flex items-center">
-                                <i class="fas fa-signature text-brand-purple mr-1.5"></i> Requested Person Signature (Approved)
+                                <i class="fas fa-signature text-brand-purple mr-1.5"></i> Initial Approved Signature (Money Handed Over)
                             </h4>
                             <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 inline-block">
                                 <img src="/${pc.signature_path}" alt="Approved Signature" class="max-h-24 max-w-full object-contain rounded">
+                            </div>
+                        </div>
+                    ` : '';
+
+                    let settlementSignatureHtml = pc.settlement_signature_path ? `
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <h4 class="text-xs sm:text-sm font-bold text-emerald-800 mb-2 flex items-center">
+                                <i class="fas fa-signature text-emerald-600 mr-1.5"></i> Settlement Approved Signature (IOU Settled)
+                            </h4>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 inline-block">
+                                <img src="/${pc.settlement_signature_path}" alt="Settlement Signature" class="max-h-24 max-w-full object-contain rounded">
                             </div>
                         </div>
                     ` : '';
@@ -715,6 +868,7 @@
                         </div>
 
                         ${signatureHtml}
+                        ${settlementSignatureHtml}
                     `;
 
                     document.getElementById('detailsModal').classList.remove('hidden');
