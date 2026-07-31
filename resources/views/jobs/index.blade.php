@@ -15,11 +15,11 @@
             }
         }
     }">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-700">Jobs</h3>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-700">Jobs</h3>
             <div class="relative" @click.away="showPicker = false">
                 <button @click="showPicker = !showPicker" 
-                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                    class="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
                     <i class="fas fa-columns mr-2"></i>Columns
                 </button>
                 <div x-show="showPicker" 
@@ -52,24 +52,24 @@
         </div>
 
         <!-- Filter Bar -->
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <form action="{{ route('jobs.index') }}" method="GET" class="filter-form flex flex-wrap gap-4 items-end">
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-b border-gray-200">
+            <form action="{{ route('jobs.index') }}" method="GET" class="filter-form grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 items-end">
                 <!-- Date Range -->
                 <div class="flex flex-col space-y-1">
                     <label for="start_date" class="text-xs font-bold text-gray-700">From Date</label>
                     <input type="date" name="start_date" id="start_date" value="{{ request('start_date') }}"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm">
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-base sm:text-sm">
                 </div>
                 <div class="flex flex-col space-y-1">
                     <label for="end_date" class="text-xs font-bold text-gray-700">To Date</label>
                     <input type="date" name="end_date" id="end_date" value="{{ request('end_date') }}"
-                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm">
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-base sm:text-sm">
                 </div>
 
                 <!-- Department Dropdown -->
                 <div class="flex flex-col space-y-1">
                     <label for="department" class="text-xs font-bold text-gray-700">Department</label>
-                    <div class="min-w-[150px]">
+                    <div class="w-full">
                         <select name="department[]" id="department" multiple>
                             @foreach($departments as $dept)
                                 <option value="{{ $dept }}" {{ is_array(request('department')) && in_array($dept, request('department')) ? 'selected' : (request('department') == $dept ? 'selected' : '') }}>
@@ -83,7 +83,7 @@
                 <!-- Users Dropdown -->
                 <div class="flex flex-col space-y-1">
                     <label for="user_id" class="text-xs font-bold text-gray-700">User</label>
-                    <div class="min-w-[180px]">
+                    <div class="w-full">
                         <select name="user_id[]" id="user_id" multiple>
                             @foreach($users as $user)
                                 <option value="{{ $user->id }}" {{ is_array(request('user_id')) && in_array($user->id, request('user_id')) ? 'selected' : (request('user_id') == $user->id ? 'selected' : '') }}>
@@ -95,7 +95,7 @@
                 </div>
 
                 <!-- Buttons -->
-                <div class="flex gap-2 pb-0.5">
+                <div class="flex gap-2 pb-0.5 sm:col-span-2 md:col-span-4 justify-end">
                     <button type="submit"
                         class="px-4 py-2 bg-brand-purple text-white text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
                         Filter
@@ -108,7 +108,7 @@
             </form>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-slate-800 border-b border-slate-700">
                     <tr>

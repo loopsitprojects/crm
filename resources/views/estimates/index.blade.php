@@ -25,27 +25,27 @@
             this.showAttachments = true;
         }
     }" x-init="if (!columns.includes('heading')) { columns.splice(columns.indexOf('brand') + 1, 0, 'heading'); }">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-700">Manage Estimates</h3>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-700">Manage Estimates</h3>
             {{-- Columns and Create Estimate buttons hidden --}}
         </div>
 
 
         <!-- Search and Filters -->
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-b border-gray-200">
             <form action="{{ route('estimates.index') }}" method="GET"
-                class="grid grid-cols-1 {{ auth()->user()->role === 'HOD' ? 'md:grid-cols-5' : 'md:grid-cols-4' }} gap-4 items-end">
+                class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->role === 'HOD' ? 'lg:grid-cols-5' : 'lg:grid-cols-4' }} gap-3 sm:gap-4 items-end">
                 <div>
                     <label for="search" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
                     <input type="text" name="search" id="search" value="{{ request('search') }}"
                         placeholder="Reference or Customer"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
                 @if(auth()->user()->role === 'HOD')
                 <div>
                     <label for="manager_id" class="block text-xs font-medium text-gray-500 uppercase mb-1">Manager</label>
                     <select name="manager_id" id="manager_id" 
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                         <option value="">All Managers</option>
                         @foreach($managers as $id => $name)
                             <option value="{{ $id }}" {{ request('manager_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -56,14 +56,14 @@
                 <div>
                     <label for="from_date" class="block text-xs font-medium text-gray-500 uppercase mb-1">From Date</label>
                     <input type="date" name="from_date" id="from_date" value="{{ request('from_date') }}"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
                 <div>
                     <label for="to_date" class="block text-xs font-medium text-gray-500 uppercase mb-1">To Date</label>
                     <input type="date" name="to_date" id="to_date" value="{{ request('to_date') }}"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 sm:col-span-2 lg:col-span-1">
                     <button type="submit"
                         class="flex-1 px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors h-10">
                         <i class="fas fa-filter mr-2"></i>Filter
@@ -77,7 +77,7 @@
         </div>
 
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>

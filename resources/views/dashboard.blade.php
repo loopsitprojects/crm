@@ -224,6 +224,33 @@
     .animate-in {
         animation: fadeIn 0.5s ease onwards;
     }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 12px 6px;
+        }
+        .glass-card {
+            padding: 14px;
+            border-radius: 12px;
+        }
+        .filters-bar {
+            padding: 12px;
+            gap: 12px;
+        }
+        .filter-group {
+            min-width: 100%;
+        }
+        .dashboard-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+    }
 </style>
 @endpush
 
@@ -428,7 +455,7 @@
 
         @if(auth()->user()->role === 'Manager')
         <!-- Manager Dashboard Charts -->
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div class="glass-card">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="chart-title mb-0"><i class="fas fa-funnel-dollar text-orange-500"></i> Deals Progress Pipeline</h3>
@@ -454,7 +481,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div class="glass-card flex flex-col">
                 <h3 class="chart-title"><i class="fas fa-trophy text-yellow-500"></i> Key Ongoing Deals</h3>
                 <div class="flex-1 overflow-y-auto">
@@ -499,7 +526,7 @@
         </div>
         @else
         <!-- Top Charts Row -->
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6">
             <div class="glass-card">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="chart-title mb-0"><i class="fas fa-users"></i> Account Manager Contribution</h3>
@@ -526,7 +553,7 @@
         </div>
 
         <!-- Bottom Charts Row -->
-        <div class="grid grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
             <div class="glass-card">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="chart-title mb-0"><i class="fas fa-building"></i> Department Split</h3>

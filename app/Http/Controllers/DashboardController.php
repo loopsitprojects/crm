@@ -40,6 +40,43 @@ class DashboardController extends Controller
         $userRole = $user->role;
         $userDept = $user->department;
 
+        if ($userRole === 'Staff') {
+            $pettyCashes = \App\Models\PettyCashRequest::with(['hod', 'items.category', 'proofs'])
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $expenseCategories = \App\Models\ExpenseCategory::where('status', 'active')->orderBy('name')->get();
+            
+            $hods = \App\Models\User::where('role', 'HOD');
+            if ($userDept) {
+                $hods->where('department', $userDept);
+            }
+            $hods = $hods->get();
+            if ($hods->isEmpty()) {
+                $hods = \App\Models\User::where('role', 'HOD')->get();
+            }
+
+            $jobQuery = \App\Models\Deal::whereNotNull('job_number');
+            if ($userDept) {
+                $jobQuery->where(function ($q) use ($userDept) {
+                    $q->whereJsonContains('department_split', [['department' => $userDept]])
+                      ->orWhereHas('owner', function ($oq) use ($userDept) {
+                          $oq->where('department', $userDept);
+                      });
+                });
+            }
+            $jobs = $jobQuery->orderBy('job_number', 'desc')->pluck('job_number', 'job_number');
+
+            return view('dashboard.staff', [
+                'user' => $user,
+                'hodName' => $user->hod_name,
+                'pettyCashes' => $pettyCashes,
+                'expenseCategories' => $expenseCategories,
+                'hods' => $hods,
+                'jobs' => $jobs,
+            ]);
+        }
+
         $managers = \App\Models\User::where('role', 'Manager');
         if ($userRole === 'Manager') {
             $managers->where('id', $user->id);

@@ -23,11 +23,11 @@
             this.showAttachments = true;
         }
     }" x-init="if (!columns.includes('heading')) { columns.splice(columns.indexOf('customer') + 1, 0, 'heading'); }">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-700">All Invoices</h3>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-700">All Invoices</h3>
             <div class="relative" @click.away="showPicker = false">
                 <button @click="showPicker = !showPicker" 
-                    class="px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
+                    class="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-50 transition-colors flex items-center shadow-sm">
                     <i class="fas fa-columns mr-2"></i>Columns
                 </button>
                 <div x-show="showPicker" 
@@ -62,7 +62,7 @@
         </div>
 
         <!-- TABS -->
-        <div class="bg-gray-50 px-6 py-2 border-b border-gray-200 flex space-x-4">
+        <div class="bg-gray-50 px-4 sm:px-6 py-2.5 border-b border-gray-200 flex overflow-x-auto whitespace-nowrap space-x-2 sm:space-x-4 text-xs sm:text-sm">
             <a href="{{ route('invoices.ready') }}"
                 class="px-3 py-1 rounded-md {{ request()->routeIs('invoices.ready') ? 'bg-green-100 text-green-700 font-semibold' : 'text-gray-600 hover:bg-gray-200' }}">Ready
                 to Invoice</a>
@@ -82,19 +82,19 @@
         </div>
 
         <!-- Search and Filters -->
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <form action="{{ url()->current() }}" method="GET" class="grid grid-cols-1 {{ auth()->user()->role === 'HOD' ? 'md:grid-cols-5' : 'md:grid-cols-4' }} gap-4 items-end">
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-b border-gray-200">
+            <form action="{{ url()->current() }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->role === 'HOD' ? 'lg:grid-cols-5' : 'lg:grid-cols-4' }} gap-3 sm:gap-4 items-end">
                 <div>
                     <label for="search" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
                     <input type="text" name="search" id="search" value="{{ request('search') }}"
                         placeholder="Invoice # or Customer"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
                 @if(auth()->user()->role === 'HOD')
                 <div>
                     <label for="manager_id" class="block text-xs font-medium text-gray-500 uppercase mb-1">Manager</label>
                     <select name="manager_id" id="manager_id" 
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                         <option value="">All Managers</option>
                         @foreach($managers as $id => $name)
                             <option value="{{ $id }}" {{ request('manager_id') == $id ? 'selected' : '' }}>{{ $name }}</option>
@@ -105,14 +105,14 @@
                 <div>
                     <label for="from_date" class="block text-xs font-medium text-gray-500 uppercase mb-1">From Date</label>
                     <input type="date" name="from_date" id="from_date" value="{{ request('from_date') }}"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
                 <div>
                     <label for="to_date" class="block text-xs font-medium text-gray-500 uppercase mb-1">To Date</label>
                     <input type="date" name="to_date" id="to_date" value="{{ request('to_date') }}"
-                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 px-3 border">
+                        class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 px-3 border">
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex space-x-2 sm:col-span-2 lg:col-span-1">
                     <button type="submit"
                         class="flex-1 px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors h-10">
                         <i class="fas fa-filter mr-2"></i>Filter
@@ -125,7 +125,7 @@
             </form>
         </div>
 
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>

@@ -22,15 +22,15 @@
             }
         }
     }">
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-gray-700">All Customers</h3>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-base sm:text-lg font-semibold text-gray-700">All Customers</h3>
             {{-- Columns button hidden --}}
         </div>
 
         <!-- Search -->
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-b border-gray-200">
             <form action="{{ route('customers.index') }}" method="GET"
-                class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 items-end">
                 <div class="relative">
                     <label for="search" class="block text-xs font-medium text-gray-500 uppercase mb-1">Search</label>
                     <div class="relative">
@@ -39,7 +39,7 @@
                         </span>
                         <input type="text" name="search" id="search" value="{{ request('search') }}"
                             placeholder="Customer Name or Brand"
-                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue sm:text-sm h-10 pl-10 pr-3 border">
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-brand-blue focus:border-brand-blue text-base sm:text-sm h-10 pl-10 pr-3 border">
                     </div>
                 </div>
                 <div class="flex space-x-2">
@@ -55,14 +55,14 @@
             </form>
         </div>
 
-        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h4 class="text-md font-medium text-gray-600">Active Customers</h4>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50">
+            <h4 class="text-sm sm:text-md font-medium text-gray-600">Active Customers</h4>
             <a href="{{ route('customers.create') }}"
-                class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors">
+                class="w-full sm:w-auto text-center px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-colors">
                 <i class="fas fa-plus mr-2"></i>Add Customer
             </a>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto -mx-4 sm:mx-0">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>

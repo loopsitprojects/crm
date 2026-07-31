@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'prevent.staff' => \App\Http\Middleware\PreventStaffAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

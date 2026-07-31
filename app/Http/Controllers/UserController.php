@@ -30,7 +30,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
+            'role' => 'required|string|in:Super Admin,Management,HOD,Manager,Staff',
             'supervisor_id' => 'nullable|exists:users,id',
             'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD,PM,Corporate',
         ]);
@@ -62,7 +62,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'required|string|in:Super Admin,Management,HOD,Manager',
+            'role' => 'required|string|in:Super Admin,Management,HOD,Manager,Staff',
             'supervisor_id' => 'nullable|exists:users,id',
             'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD,PM,Corporate',
         ]);

@@ -17,6 +17,7 @@ class User extends Authenticatable
         'Management',
         'HOD',
         'Manager',
+        'Staff',
     ];
 
     const DEPARTMENT_HIERARCHY = [
@@ -78,6 +79,34 @@ class User extends Authenticatable
     public function subordinates()
     {
         return $this->hasMany(User::class, 'supervisor_id');
+    }
+
+    /**
+     * Resolve the HOD Name for this user.
+     * 
+     * @return string
+     */
+    public function getHodNameAttribute()
+    {
+        // 1. Direct supervisor check if supervisor is an HOD
+        if ($this->supervisor && $this->supervisor->hasRole('HOD')) {
+            return $this->supervisor->name;
+        }
+
+        // 2. Department HOD lookup
+        if ($this->department) {
+            $hod = User::where('department', $this->department)->where('role', 'HOD')->first();
+            if ($hod) {
+                return $hod->name;
+            }
+        }
+
+        // 3. Fallback to supervisor name if available, else 'Not Assigned'
+        if ($this->supervisor) {
+            return $this->supervisor->name;
+        }
+
+        return 'Not Assigned';
     }
 
     /**

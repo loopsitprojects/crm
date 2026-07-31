@@ -125,6 +125,12 @@
         #sticky-scrollbar::-webkit-scrollbar-thumb:hover {
             background: rgba(128, 53, 202, 0.7) !important;
         }
+
+        @media (max-width: 768px) {
+            #sticky-scrollbar {
+                display: none !important;
+            }
+        }
     </style>
     <div class="min-h-full flex flex-col">
         <!-- Top Stats -->
@@ -324,7 +330,7 @@
 
             <!-- Kanban Board -->
             <div class="overflow-x-auto overflow-y-visible" id="kanban-board-container">
-                <div class="flex space-x-4 pb-4" style="min-width: max-content;">
+                <div class="flex items-start space-x-4 pb-4" style="min-width: max-content;">
                     @foreach($stages as $stage)
                         <div class="w-80 flex-shrink-0 flex flex-col bg-gray-100 rounded-lg">
                             <div class="p-3 bg-gray-200 rounded-t-lg border-b border-gray-300 flex justify-between items-center">
@@ -1782,24 +1788,38 @@
             
             if (!board || !stickyScroll || !stickySpacer) return;
 
+            let isTicking = false;
+
             function updateStickyScrollbar() {
-                const rect = board.getBoundingClientRect();
-                const windowHeight = window.innerHeight;
-                const scrollWidth = board.scrollWidth;
-                const clientWidth = board.clientWidth;
-
-                // Check if the board has horizontal overflow
-                const hasOverflow = scrollWidth > clientWidth;
-                
-                // Check if the bottom of the board is already visible in the viewport
-                const bottomVisible = rect.bottom <= (windowHeight - 24);
-
-                if (hasOverflow && !bottomVisible) {
-                    stickyScroll.style.display = 'block';
-                    stickySpacer.style.width = scrollWidth + 'px';
-                    stickyScroll.scrollLeft = board.scrollLeft;
-                } else {
+                // Disable sticky scrollbar on mobile/touch viewports to prevent scroll jitter
+                if (window.innerWidth <= 768 || 'ontouchstart' in window) {
                     stickyScroll.style.display = 'none';
+                    return;
+                }
+
+                if (!isTicking) {
+                    requestAnimationFrame(function() {
+                        const rect = board.getBoundingClientRect();
+                        const windowHeight = window.innerHeight;
+                        const scrollWidth = board.scrollWidth;
+                        const clientWidth = board.clientWidth;
+
+                        // Check if the board has horizontal overflow
+                        const hasOverflow = scrollWidth > clientWidth;
+                        
+                        // Check if the bottom of the board is already visible in the viewport
+                        const bottomVisible = rect.bottom <= (windowHeight - 24);
+
+                        if (hasOverflow && !bottomVisible) {
+                            stickyScroll.style.display = 'block';
+                            stickySpacer.style.width = scrollWidth + 'px';
+                            stickyScroll.scrollLeft = board.scrollLeft;
+                        } else {
+                            stickyScroll.style.display = 'none';
+                        }
+                        isTicking = false;
+                    });
+                    isTicking = true;
                 }
             }
 
@@ -1817,6 +1837,7 @@
             }
 
             board.addEventListener('scroll', function() {
+                if (window.innerWidth <= 768) return;
                 showScrollbar();
                 if (isSyncingSticky) {
                     isSyncingSticky = false;
@@ -1827,6 +1848,7 @@
             });
 
             stickyScroll.addEventListener('scroll', function() {
+                if (window.innerWidth <= 768) return;
                 showScrollbar();
                 if (isSyncingBoard) {
                     isSyncingBoard = false;
@@ -1840,10 +1862,11 @@
             updateStickyScrollbar();
             window.addEventListener('resize', updateStickyScrollbar);
             if (scrollContainer) {
-                scrollContainer.addEventListener('scroll', updateStickyScrollbar);
+                scrollContainer.addEventListener('scroll', updateStickyScrollbar, { passive: true });
                 
                 // Show scrollbar when mouse is near the bottom of the viewport
                 scrollContainer.addEventListener('mousemove', function(e) {
+                    if (window.innerWidth <= 768) return;
                     const rect = scrollContainer.getBoundingClientRect();
                     // If mouse is within 40px of the bottom of the main content view
                     if (e.clientY >= (rect.bottom - 40)) {

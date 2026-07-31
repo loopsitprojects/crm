@@ -8,6 +8,7 @@ use App\Models\SystemCurrency;
 use App\Models\StandardTerm;
 use App\Models\Target;
 use App\Models\User;
+use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -19,12 +20,13 @@ class SettingController extends Controller
         $managers = SeniorManager::all();
         $terms = StandardTerm::all();
         $currencies = SystemCurrency::all();
+        $expenseCategories = ExpenseCategory::all();
         
         $departmentTargets = Target::where('type', 'department')->get()->keyBy('department');
         $userTargets = Target::where('type', 'user')->get()->keyBy('user_id');
         $users = User::all();
 
-        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'departmentTargets', 'userTargets', 'users'));
+        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'expenseCategories', 'departmentTargets', 'userTargets', 'users'));
     }
 
     public function updateDepartmentTargets(Request $request)
@@ -222,5 +224,57 @@ class SettingController extends Controller
         Setting::set('maintenance_mode', $request->maintenance_mode, 'system');
 
         return redirect()->route('settings.index')->with('success', 'Maintenance mode status updated successfully.');
+    }
+
+    public function storeExpenseCategory(Request $request)
+    {
+        if (!auth()->user()->hasRole('super_admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:expense_categories,name',
+            'description' => 'nullable|string',
+            'status' => 'nullable|string|in:active,inactive',
+        ]);
+
+        ExpenseCategory::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'status' => $request->status ?? 'active',
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Expense category created successfully.');
+    }
+
+    public function updateExpenseCategory(Request $request, ExpenseCategory $expenseCategory)
+    {
+        if (!auth()->user()->hasRole('super_admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:expense_categories,name,' . $expenseCategory->id,
+            'description' => 'nullable|string',
+            'status' => 'required|string|in:active,inactive',
+        ]);
+
+        $expenseCategory->update($request->only('name', 'description', 'status'));
+
+        return redirect()->route('settings.index')->with('success', 'Expense category updated successfully.');
+    }
+
+    public function destroyExpenseCategory(ExpenseCategory $expenseCategory)
+    {
+        if (!auth()->user()->hasRole('super_admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $expenseCategory->delete();
+            return redirect()->route('settings.index')->with('success', 'Expense category removed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('settings.index')->with('error', 'Cannot delete expense category.');
+        }
     }
 }

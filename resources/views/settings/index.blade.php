@@ -10,46 +10,53 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             <!-- Sidebar Navigation for Settings -->
             <div class="col-span-1 space-y-2">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">Management</h3>
-                <button onclick="showSection('general')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-general">
-                    <i class="fas fa-building mr-2 text-brand-blue"></i> Company & Branding
-                </button>
-                <button onclick="showSection('tax')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-tax">
-                    <i class="fas fa-percentage mr-2 text-green-600"></i> Tax Rates (VAT/SSCL)
-                </button>
-                <button onclick="showSection('terms')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-terms">
-                    <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
-                </button>
-                <button onclick="showSection('targets')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-targets">
-                    <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
-                </button>
-                @if(auth()->user()->hasRole('super_admin'))
-                    <button onclick="showSection('currencies')"
-                        class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                        id="btn-currencies">
-                        <i class="fas fa-coins mr-2 text-yellow-500"></i> Currencies
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider px-1 sm:px-3 mb-2">Management</h3>
+                <div class="flex flex-row overflow-x-auto whitespace-nowrap pb-2 md:pb-0 gap-2 md:flex-col md:space-y-2 md:gap-0 -mx-2 px-2 md:mx-0 md:px-0">
+                    <button onclick="showSection('general')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-general">
+                        <i class="fas fa-building mr-2 text-brand-blue"></i> Company & Branding
                     </button>
-                    <button onclick="showSection('maintenance')"
-                        class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                        id="btn-maintenance">
-                        <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
+                    <button onclick="showSection('tax')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-tax">
+                        <i class="fas fa-percentage mr-2 text-green-600"></i> Tax Rates (VAT/SSCL)
                     </button>
-                @endif
+                    <button onclick="showSection('terms')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-terms">
+                        <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
+                    </button>
+                    <button onclick="showSection('targets')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-targets">
+                        <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
+                    </button>
+                    @if(auth()->user()->hasRole('super_admin'))
+                        <button onclick="showSection('currencies')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-currencies">
+                            <i class="fas fa-coins mr-2 text-yellow-500"></i> Currencies
+                        </button>
+                        <button onclick="showSection('expense-categories')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-expense-categories">
+                            <i class="fas fa-tags mr-2 text-indigo-500"></i> Expense Categories
+                        </button>
+                        <button onclick="showSection('maintenance')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-maintenance">
+                            <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
+                        </button>
+                    @endif
+                </div>
             </div>
 
             <!-- Settings Content Area -->
-            <div class="col-span-2">
+            <div class="col-span-1 md:col-span-2">
                 <!-- General Settings Section -->
                 <section id="section-general" class="settings-section space-y-6">
                     <form action="{{ route('settings.updateGeneral') }}" method="POST">
@@ -495,6 +502,150 @@
                             </div>
                         </form>
                     </section>
+
+                    <!-- Expense Categories Section -->
+                    <section id="section-expense-categories" class="settings-section hidden space-y-6">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">Expense Categories</h3>
+                                    <p class="text-xs text-gray-500">Manage category classifications for company expenses.</p>
+                                </div>
+                                <button onclick="document.getElementById('addExpenseCategoryModal').classList.remove('hidden')"
+                                    class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all flex items-center">
+                                    <i class="fas fa-plus mr-2"></i> Add Expense Category
+                                </button>
+                            </div>
+                            <div class="p-6">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <th class="py-3 px-4">Name</th>
+                                                <th class="py-3 px-4">Description</th>
+                                                <th class="py-3 px-4">Status</th>
+                                                <th class="py-3 px-4 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 text-sm">
+                                            @forelse($expenseCategories as $category)
+                                                <tr class="hover:bg-gray-50/50 transition-all">
+                                                    <td class="py-3 px-4 font-semibold text-gray-800">{{ $category->name }}</td>
+                                                    <td class="py-3 px-4 text-gray-600">{{ $category->description ?: '-' }}</td>
+                                                    <td class="py-3 px-4">
+                                                        <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ $category->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                                            {{ ucfirst($category->status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-3 px-4 text-right space-x-2">
+                                                        <button onclick="editExpenseCategory('{{ route('settings.updateExpenseCategory', $category) }}', '{{ addslashes($category->name) }}', '{{ addslashes($category->description ?? '') }}', '{{ $category->status }}')"
+                                                            class="text-brand-blue hover:text-brand-purple transition-colors">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                        <form action="{{ route('settings.destroyExpenseCategory', $category) }}" method="POST" class="inline-block"
+                                                            onsubmit="return confirm('Are you sure you want to delete this expense category?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-500 hover:text-red-700 transition-colors">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="py-6 text-center text-gray-400">
+                                                        No expense categories found. Click "Add Expense Category" to create one.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add Expense Category Modal -->
+                        <div id="addExpenseCategoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Add Expense Category</h3>
+                                    <button onclick="document.getElementById('addExpenseCategoryModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form action="{{ route('settings.storeExpenseCategory') }}" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                                        <input type="text" name="name" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <textarea name="description" rows="3" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('addExpenseCategoryModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Save Category
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Edit Expense Category Modal -->
+                        <div id="editExpenseCategoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Edit Expense Category</h3>
+                                    <button onclick="document.getElementById('editExpenseCategoryModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form id="editExpenseCategoryForm" action="" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    @method('PUT')
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                                        <input type="text" name="name" id="edit_exp_cat_name" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <textarea name="description" id="edit_exp_cat_description" rows="3" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" id="edit_exp_cat_status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('editExpenseCategoryModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Update Category
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
                 @endif
             </div>
         </div>
@@ -531,6 +682,15 @@
             document.getElementById('edit_currency_name').value = name;
             document.getElementById('edit_currency_symbol').value = symbol;
             document.getElementById('editCurrencyModal').classList.remove('hidden');
+        }
+
+        function editExpenseCategory(url, name, description, status) {
+            const form = document.getElementById('editExpenseCategoryForm');
+            form.action = url;
+            document.getElementById('edit_exp_cat_name').value = name;
+            document.getElementById('edit_exp_cat_description').value = description;
+            document.getElementById('edit_exp_cat_status').value = status;
+            document.getElementById('editExpenseCategoryModal').classList.remove('hidden');
         }
 
         // Initialize
