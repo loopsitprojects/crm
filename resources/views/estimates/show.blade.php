@@ -172,6 +172,13 @@
                                             @endif
                                         @endforeach
                                     @endif
+                                    @if($estimate->special_terms)
+                                        @foreach(explode("\n", str_replace("\r", "", $estimate->special_terms)) as $term)
+                                            @if(trim($term) !== '')
+                                                <li>{{ preg_replace('/^\s*[\-\*•◆❖✦■\x{FFFD}\x{2022}\x{25C6}\x{25A0}]*\s*/u', '', $term) }}</li>
+                                            @endif
+                                        @endforeach
+                                    @endif
                                     @if($estimate->advance_percentage)
                                         <li>Advance Of {{ $estimate->advance_percentage }}% is required.</li>
                                     @endif

@@ -276,7 +276,7 @@
                         <ul class="list-disc pl-5 space-y-1">
                             @foreach(explode("\n", str_replace("\r", "", $invoice->special_terms ?: ($invoice->estimate->special_terms ?? ''))) as $term)
                                 @if(trim($term) !== '')
-                                    <li>{{ ltrim(trim($term), '-*• ') }}</li>
+                                    <li>{{ preg_replace('/^\s*[\-\*•◆❖✦■\x{FFFD}\x{2022}\x{25C6}\x{25A0}]*\s*/u', '', $term) }}</li>
                                 @endif
                             @endforeach
                         </ul>
