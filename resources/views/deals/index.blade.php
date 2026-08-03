@@ -341,18 +341,18 @@
                             </div>
                             <div class="p-2 kanban-col" data-stage="{{ $stage }}">
                                 @foreach($dealsByStage->get($stage, collect()) as $deal)
-                                    <div class="bg-white p-3 rounded shadow-sm mb-3 cursor-move hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
+                                    @php 
+                                        $canEdit = $deal->canEdit(); 
+                                        $dealEstimates = $deal->estimates;
+                                        $hasEstimate = $dealEstimates->isNotEmpty(); 
+                                        $estimate = $dealEstimates->first();
+                                        $tempInvoice = $estimate ? $estimate->tempInvoice : null;
+                                        $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
+                                    @endphp
+                                    <div class="bg-white p-3 rounded shadow-sm mb-3 @if($canEdit) cursor-move kanban-item @else cursor-default @endif hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
                                         data-id="{{ $deal->id }}">
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="font-bold text-gray-800 text-sm line-clamp-1 flex-1">{{ $deal->title }}</h4>
-                                                @php 
-                                                    $canEdit = $deal->canEdit(); 
-                                                    $dealEstimates = $deal->estimates;
-                                                    $hasEstimate = $dealEstimates->isNotEmpty(); 
-                                                    $estimate = $dealEstimates->first();
-                                                    $tempInvoice = $estimate ? $estimate->tempInvoice : null;
-                                                    $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
-                                                @endphp
                                                 <div class="flex items-center gap-1.5 ml-2">
                                                     {{-- Estimate/Invoice Link --}}
                                                     @if($taxInvoice)
@@ -1098,6 +1098,7 @@
             columns.forEach(col => {
                 new Sortable(col, {
                     group: 'deals',
+                    draggable: '.kanban-item',
                     animation: 150,
                     ghostClass: 'bg-indigo-100',
                     onEnd: function (evt) {

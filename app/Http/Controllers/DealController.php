@@ -53,24 +53,20 @@ class DealController extends Controller
         $currentSupervisor = $user->supervisor ? $user->supervisor->name : null;
 
         // Build filterable users list based on role
-        if (in_array($userRole, ['Super Admin', 'Management'])) {
-            // Super Admin & Management can see all users
+        if (in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
+            // Super Admin, Management & HOD can see all users
             $filterableUsers = \App\Models\User::orderBy('name')->get();
-        } elseif ($userRole === 'HOD') {
-            // HOD can see themselves + their subordinates (managers under them)
-            $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id')->toArray();
-            $filterableUsers = \App\Models\User::whereIn('id', array_merge([$user->id], $subordinateIds))->orderBy('name')->get();
         } else {
             // Manager can only see themselves
             $filterableUsers = collect([$user]);
         }
 
         // Build filterable departments based on role
-        if (in_array($userRole, ['Super Admin', 'Management'])) {
-            // Super Admin & Management can see all departments
+        if (in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
+            // Super Admin, Management & HOD can see all departments
             $filterableDepartments = \App\Models\User::distinct()->pluck('department')->filter()->sort()->values();
         } else {
-            // HOD & Manager can only see their own department
+            // Manager can only see their own department
             $filterableDepartments = $userDept ? collect([$userDept]) : collect();
         }
 
@@ -192,7 +188,7 @@ class DealController extends Controller
         }
 
         // RBAC Filtering
-        if (!in_array($userRole, ['Super Admin', 'Management'])) {
+        if (!in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
             $query->where(function ($q) use ($user, $userDept) {
                 // Own deals
                 $q->where('user_id', $user->id)
@@ -204,15 +200,6 @@ class DealController extends Controller
                 // Department split check (all users in department)
                 if ($userDept) {
                     $q->orWhereJsonContains('department_split', [['department' => $userDept]]);
-                }
-                
-                // HOD specific: subordinates
-                if ($user->role === 'HOD') {
-                    // Deals owned by subordinates
-                    $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
-                    if ($subordinateIds->isNotEmpty()) {
-                        $q->orWhereIn('user_id', $subordinateIds);
-                    }
                 }
             });
         }
@@ -239,7 +226,7 @@ class DealController extends Controller
         });
 
         // 3. Apply restricted visibility and split logic
-        $activeDeptForMetrics = $request->input('department') ?: (in_array($userRole, ['HOD', 'Manager']) ? $userDept : null);
+        $activeDeptForMetrics = $request->input('department') ?: ($userRole === 'Manager' ? $userDept : null);
 
         $allDeals->each(function($deal) use ($user, $activeDeptForMetrics) {
             $deptRevenue = 0;
@@ -294,15 +281,14 @@ class DealController extends Controller
                 }
             }
 
-            // Apply visibility: Owners and their HODs/Supervisors always see 100%. 
+            // Apply visibility: Owners and their Supervisors see 100%. 
             // Others (including Admin viewing a filtered dept) see the share.
             $isOwnerCircle = ($deal->user_id === $user->id) || 
-                             ($deal->owner && $deal->owner->supervisor_id === $user->id) ||
-                             ($user->role === 'HOD' && $deal->owner && $deal->owner->department === $user->department);
+                             ($deal->owner && $deal->owner->supervisor_id === $user->id);
 
             if (!$isOwnerCircle) {
                 // For those outside the owner's immediate team, show the department's share if a filter is active
-                if ($activeDeptForMetrics || !in_array($user->role, ['Super Admin', 'Management'])) {
+                if ($activeDeptForMetrics || !in_array($user->role, ['Super Admin', 'Management', 'HOD'])) {
                     $deal->dept_share_revenue = $deptRevenue;
                     $deal->dept_share_contribution = $deptContribution;
                     $deal->dept_share_invoiced = $deptInvoiced;
