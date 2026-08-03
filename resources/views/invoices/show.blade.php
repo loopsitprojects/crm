@@ -135,7 +135,7 @@
             <!-- Delivery & Supply Section -->
             <div class="flex invoice-delivery-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">{{ $invoice->date_of_delivery ? \Carbon\Carbon::parse($invoice->date_of_delivery)->format('d-m-Y') : ($invoice->estimate && $invoice->estimate->date_of_delivery ? \Carbon\Carbon::parse($invoice->estimate->date_of_delivery)->format('d-m-Y') : 'N/A') }}</span>
+                    <span class="font-bold text-[13px]">Date of Delivery:</span> <span class="text-[13px]">{{ $invoice->date_of_delivery ? \Carbon\Carbon::parse($invoice->date_of_delivery)->format('m-d-Y') : ($invoice->estimate && $invoice->estimate->date_of_delivery ? \Carbon\Carbon::parse($invoice->estimate->date_of_delivery)->format('d-m-Y') : 'N/A') }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
                     <span class="font-bold text-[13px]">Place of Supply:</span> <span class="text-[13px]">{{ $invoice->place_of_supply ?: ($invoice->estimate->place_of_supply ?? 'N/A') }}</span>
