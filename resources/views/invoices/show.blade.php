@@ -105,7 +105,7 @@
             <!-- Top Section: 2 Columns -->
             <div class="flex invoice-date-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black">
-                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date ?: ($invoice->estimate->date ?? now()))->format('d-m-Y') }}</span>
+                    <span class="font-bold text-[13px]">Date of Invoice:</span> <span class="text-[13px]">{{ \Carbon\Carbon::parse($invoice->date ?: ($invoice->estimate->date ?? now()))->format('m-d-Y') }}</span>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black">
                     <span class="font-bold text-[13px]">{{ $invoice->is_proforma ? 'Proforma Invoice No.:' : (($invoice->invoice_type ?: ($invoice->estimate->invoice_type ?? 'tax_invoice')) === 'invoice' ? 'Invoice No.:' : 'Tax Invoice No.:') }}</span> <span class="text-[13px]">{{ $invoice->invoice_number }}</span>
