@@ -128,7 +128,12 @@
                         <div><span class="font-bold text-[13px]">Purchaser's Name:</span> <span class="text-[13px]">{{ $invoice->customer->name }}</span></div>
                         <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">{{ $invoice->customer->billing_address ?: $invoice->customer->address }}</span></div>
                     </div>
-                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> <span class="text-[13px]">{{ $invoice->customer->telephone ?: $invoice->customer->phone }}</span></div>
+                    @php
+                        $purchaserPhone = trim($invoice->customer->telephone ?: ($invoice->customer->phone ?? ''));
+                    @endphp
+                    @if(!empty($purchaserPhone) && $purchaserPhone !== '--')
+                        <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> <span class="text-[13px]">{{ $purchaserPhone }}</span></div>
+                    @endif
                 </div>
             </div>
 

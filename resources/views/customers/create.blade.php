@@ -81,11 +81,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label for="telephone" class="block text-sm font-semibold text-gray-700 mb-2">
-                                Telephone No <span class="text-red-500">*</span>
+                                Telephone No
                             </label>
-                            <input type="text" name="telephone" id="telephone" value="{{ old('telephone') }}" required
+                            <input type="text" name="telephone" id="telephone" value="{{ old('telephone') }}"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all"
-                                placeholder="Telephone" pattern="[0-9\s\+\-\(\)]+" title="Please enter a valid phone number (digits, spaces, and +, -, (, ) are allowed)">
+                                placeholder="Telephone" pattern="[0-9\s\+\-\(\)]*" title="Please enter a valid phone number (digits, spaces, and +, -, (, ) are allowed)">
                             @error('telephone') <p class="mt-2 text-sm text-red-600"><i
                             class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</p> @enderror
                         </div>
