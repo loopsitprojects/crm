@@ -116,23 +116,23 @@
             <div class="flex invoice-supplier-section">
                 <div class="w-1/2 p-3 border-l border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
-                        <div><span class="font-bold text-[13px]">Supplier's TIN:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_vat') }}</span></div>
-                        <div><span class="font-bold text-[13px]">Supplier's Name:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_name') }}</span></div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Supplier's TIN:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_vat') }}</span></div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Supplier's Name:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_name') }}</span></div>
                         <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_address_1') }} {{ \App\Models\Setting::get('company_address_2') }}</span></div>
                     </div>
-                    <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_phone') }}</span></div>
+                    <div class="mt-3 flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Telephone No:</span> <span class="text-[13px]">{{ \App\Models\Setting::get('company_phone') }}</span></div>
                 </div>
                 <div class="w-1/2 p-3 border-r border-b border-black min-h-[140px] flex flex-col justify-between">
                     <div class="space-y-1">
-                        <div><span class="font-bold text-[13px]">Purchaser's TIN:</span> <span class="text-[13px]">{{ $invoice->customer->customer_vat_registration_number ?? 'N/A' }}</span></div>
-                        <div><span class="font-bold text-[13px]">Purchaser's Name:</span> <span class="text-[13px]">{{ $invoice->customer->name }}</span></div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Purchaser's TIN:</span> <span class="text-[13px]">{{ $invoice->customer->customer_vat_registration_number ?? 'N/A' }}</span></div>
+                        <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Purchaser's Name:</span> <span class="text-[13px]">{{ $invoice->customer->name }}</span></div>
                         <div class="flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Address:</span> <span class="text-[13px]">{{ $invoice->customer->billing_address ?: $invoice->customer->address }}</span></div>
                     </div>
                     @php
                         $purchaserPhone = trim($invoice->customer->telephone ?: ($invoice->customer->phone ?? ''));
                     @endphp
                     @if(!empty($purchaserPhone) && $purchaserPhone !== '--')
-                        <div class="mt-3"><span class="font-bold text-[13px]">Telephone No:</span> <span class="text-[13px]">{{ $purchaserPhone }}</span></div>
+                        <div class="mt-3 flex"><span class="font-bold text-[13px] whitespace-nowrap mr-1">Telephone No:</span> <span class="text-[13px]">{{ $purchaserPhone }}</span></div>
                     @endif
                 </div>
             </div>
