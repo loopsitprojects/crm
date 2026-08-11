@@ -19,6 +19,7 @@
     #measure-container span,
     #measure-container p {
         font-size: 13px;
+        font-family: Arial, Helvetica, sans-serif !important;
     }
     /* Preserve large title size */
     #invoice-container .invoice-header div,
@@ -53,8 +54,20 @@
         margin-top: 0.25rem;
         margin-bottom: 0.25rem;
     }
+    .quill-content {
+        word-break: normal;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+        letter-spacing: 0.02em;
+        word-spacing: 0.1em;
+    }
     .quill-content p {
         margin-bottom: 0.25rem;
+        word-break: normal;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+        letter-spacing: 0.02em;
+        word-spacing: 0.1em;
     }
     /* Reset margins for first and last children to keep table cells neat */
     .quill-content > *:first-child { margin-top: 0; }
@@ -186,8 +199,8 @@
 
                 <div class="flex text-[13px] min-h-[45px] invoice-item-row">
                     <div class="p-2 w-[8%] border-l border-r border-b border-black text-center flex items-center justify-center">{{ $i + 1 }}</div>
-                    <div class="p-2 w-[42%] border-r border-b border-black text-left flex items-start pl-4 py-2">
-                        <div class="quill-content w-full">
+                    <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4 py-2 overflow-hidden" style="word-break: break-word; overflow-wrap: break-word;">
+                        <div class="quill-content w-full" style="word-break: break-word; overflow-wrap: break-word;">
                             {!! $item->description !!}
                         </div>
                     </div>
@@ -431,7 +444,7 @@
                 scale: 2, 
                 useCORS: true,
                 logging: false,
-                letterRendering: true
+                letterRendering: false
             },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
