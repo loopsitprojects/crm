@@ -270,7 +270,7 @@
                 </div>
             @endif
 
-            @if(trim($invoice->special_terms ?: ($invoice->estimate->special_terms ?? '')) !== '')
+            @if(trim($invoice->special_terms ?? '') !== '')
             <div class="flex border-l border-r border-b border-black align-top invoice-totals-row">
                 <!-- Left Side: Mode of Payment & General Terms -->
                 <div class="w-1/2 p-3">
@@ -292,7 +292,7 @@
                     </div>
                     <div class="text-[13px] text-black mt-2">
                         <ul class="list-disc pl-5 space-y-1">
-                            @foreach(explode("\n", str_replace("\r", "", $invoice->special_terms ?: ($invoice->estimate->special_terms ?? ''))) as $term)
+                            @foreach(explode("\n", str_replace("\r", "", $invoice->special_terms ?? '')) as $term)
                                 @if(trim($term) !== '')
                                     <li>{{ preg_replace('/^\s*[\-\*•◆❖✦■\x{FFFD}\x{2022}\x{25C6}\x{25A0}]*\s*/u', '', $term) }}</li>
                                 @endif
