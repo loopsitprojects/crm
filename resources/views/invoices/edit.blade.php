@@ -217,22 +217,22 @@
                                             <td class="p-2 align-top">
                                                 <select name="items[{{ $index }}][department]" required data-required="true" class="w-full rounded-md border-gray-200 text-xs py-1 px-1">
                                                     <option value="">Select</option>
-                                                    <option value="creative" {{ $item->department == 'creative' ? 'selected' : '' }}>Creative</option>
-                                                    <option value="digital" {{ $item->department == 'digital' ? 'selected' : '' }}>Digital</option>
-                                                    <option value="play" {{ $item->department == 'play' ? 'selected' : '' }}>Play</option>
-                                                    <option value="tech" {{ $item->department == 'tech' ? 'selected' : '' }}>Tech</option>
-                                                    <option value="PM" {{ $item->department == 'PM' ? 'selected' : '' }}>PM</option>
-                                                    <option value="Corporate" {{ $item->department == 'Corporate' ? 'selected' : '' }}>Corporate</option>
+                                                    <option value="creative" {{ strtolower($item->department ?? '') == 'creative' ? 'selected' : '' }}>Creative</option>
+                                                    <option value="digital" {{ strtolower($item->department ?? '') == 'digital' ? 'selected' : '' }}>Digital</option>
+                                                    <option value="play" {{ strtolower($item->department ?? '') == 'play' ? 'selected' : '' }}>Play</option>
+                                                    <option value="tech" {{ strtolower($item->department ?? '') == 'tech' ? 'selected' : '' }}>Tech</option>
+                                                    <option value="PM" {{ strtolower($item->department ?? '') == 'pm' ? 'selected' : '' }}>PM</option>
+                                                    <option value="Corporate" {{ strtolower($item->department ?? '') == 'corporate' ? 'selected' : '' }}>Corporate</option>
                                                 </select>
                                             </td>
                                             <td class="p-2 align-top">
                                                 <select name="items[{{ $index }}][revenue_category]" required data-required="true" class="w-full rounded-md border-gray-200 text-xs py-1 px-1">
                                                     <option value="">Select</option>
-                                                    <option value="Retainer" {{ $item->revenue_category == 'Retainer' ? 'selected' : '' }}>Retainer</option>
-                                                    <option value="Ads" {{ $item->revenue_category == 'Ads' ? 'selected' : '' }}>Ads</option>
-                                                    <option value="Campaigns/Projects" {{ $item->revenue_category == 'Campaigns/Projects' ? 'selected' : '' }}>Campaigns/Projects</option>
-                                                    <option value="CAG" {{ $item->revenue_category == 'CAG' ? 'selected' : '' }}>CAG</option>
-                                                    <option value="Corporate" {{ $item->revenue_category == 'Corporate' ? 'selected' : '' }}>Corporate</option>
+                                                    <option value="Retainer" {{ strtolower($item->revenue_category ?? '') == 'retainer' ? 'selected' : '' }}>Retainer</option>
+                                                    <option value="Ads" {{ strtolower($item->revenue_category ?? '') == 'ads' ? 'selected' : '' }}>Ads</option>
+                                                    <option value="Campaigns/Projects" {{ strtolower($item->revenue_category ?? '') == 'campaigns/projects' ? 'selected' : '' }}>Campaigns/Projects</option>
+                                                    <option value="CAG" {{ strtolower($item->revenue_category ?? '') == 'cag' ? 'selected' : '' }}>CAG</option>
+                                                    <option value="Corporate" {{ strtolower($item->revenue_category ?? '') == 'corporate' ? 'selected' : '' }}>Corporate</option>
                                                 </select>
                                             </td>
                                             <td class="p-2 align-top">
@@ -317,12 +317,12 @@
                                             <td class="p-2 align-top">
                                                 <select name="third_party_costs[{{ $cIndex }}][department]" required class="w-full rounded-md border border-gray-300 text-sm py-1.5 px-3 font-mono">
                                                     <option value="">Select</option>
-                                                    <option value="creative" {{ $cost->department == 'creative' ? 'selected' : '' }}>Creative</option>
-                                                    <option value="digital" {{ $cost->department == 'digital' ? 'selected' : '' }}>Digital</option>
-                                                    <option value="play" {{ $cost->department == 'play' ? 'selected' : '' }}>Play</option>
-                                                    <option value="tech" {{ $cost->department == 'tech' ? 'selected' : '' }}>Tech</option>
-                                                    <option value="PM" {{ $cost->department == 'PM' ? 'selected' : '' }}>PM</option>
-                                                    <option value="Corporate" {{ $cost->department == 'Corporate' ? 'selected' : '' }}>Corporate</option>
+                                                    <option value="creative" {{ strtolower($cost->department ?? '') == 'creative' ? 'selected' : '' }}>Creative</option>
+                                                    <option value="digital" {{ strtolower($cost->department ?? '') == 'digital' ? 'selected' : '' }}>Digital</option>
+                                                    <option value="play" {{ strtolower($cost->department ?? '') == 'play' ? 'selected' : '' }}>Play</option>
+                                                    <option value="tech" {{ strtolower($cost->department ?? '') == 'tech' ? 'selected' : '' }}>Tech</option>
+                                                    <option value="PM" {{ strtolower($cost->department ?? '') == 'pm' ? 'selected' : '' }}>PM</option>
+                                                    <option value="Corporate" {{ strtolower($cost->department ?? '') == 'corporate' ? 'selected' : '' }}>Corporate</option>
                                                 </select>
                                             </td>
                                             <td class="p-2 align-top">

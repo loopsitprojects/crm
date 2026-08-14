@@ -945,6 +945,8 @@ class EstimateController extends Controller
                     'sscl_amount' => $item->sscl_amount,
                     'vat_amount' => $item->vat_amount,
                     'total_with_vat' => $item->total_with_vat,
+                    'department' => $item->department,
+                    'revenue_category' => $item->revenue_category,
                 ]);
             }
         } else {
