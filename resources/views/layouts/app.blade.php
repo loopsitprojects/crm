@@ -132,7 +132,7 @@
                     <span>Reports</span>
                 </a>
 
-                @if(auth()->user()->role === 'Super Admin')
+                @if(auth()->user()->hasRole('Super Admin'))
                     <a href="{{ route('users.index') }}"
                         class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->is('users*') ? 'bg-gray-700 text-brand-pink' : '' }}">
                         <i class="fas fa-users-cog mr-3 w-5"></i> Users

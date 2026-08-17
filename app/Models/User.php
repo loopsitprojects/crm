@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     const ROLES = [
         'Super Admin',
+        'IT Admin',
         'Management',
         'HOD',
         'Manager',
@@ -100,7 +101,16 @@ class User extends Authenticatable
         $normalizedInput = str_replace('_', ' ', strtolower($role));
         $normalizedStored = strtolower($this->role);
 
-        return $normalizedInput === $normalizedStored;
+        if ($normalizedInput === $normalizedStored) {
+            return true;
+        }
+
+        // IT Admin inherits all Super Admin privileges
+        if ($normalizedInput === 'super admin' && $normalizedStored === 'it admin') {
+            return true;
+        }
+
+        return false;
     }
 
     public function deals()

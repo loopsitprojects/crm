@@ -58,7 +58,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -128,7 +128,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -196,7 +196,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -228,7 +228,7 @@ class InvoiceController extends Controller
 
     public function proforma(Request $request)
     {
-        if (auth()->user()->role !== 'Super Admin') {
+        if (!auth()->user()->hasRole('Super Admin')) {
             return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
         }
 
@@ -295,7 +295,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!in_array($user->role, ['Super Admin', 'Management'])) {
+        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -355,7 +355,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::with(['items'])->findOrFail($id);
         
         $user = auth()->user();
-        $readonly = !in_array($user->role, ['Super Admin', 'Management']);
+        $readonly = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
@@ -389,7 +389,7 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management'])) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -522,7 +522,7 @@ class InvoiceController extends Controller
      */
     public function updateStatus(Request $request, Invoice $invoice)
     {
-        if (auth()->user()->role !== 'Super Admin') {
+        if (!auth()->user()->hasRole('Super Admin')) {
             abort(403, 'Only Super Admin can change invoice status.');
         }
 

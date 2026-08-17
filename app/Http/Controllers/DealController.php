@@ -53,7 +53,7 @@ class DealController extends Controller
         $currentSupervisor = $user->supervisor ? $user->supervisor->name : null;
 
         // Build filterable users list based on role
-        if (in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
+        if ($user->hasRole('Super Admin') || in_array($userRole, ['Management', 'HOD'])) {
             // Super Admin, Management & HOD can see all users
             $filterableUsers = \App\Models\User::orderBy('name')->get();
         } else {
@@ -62,7 +62,7 @@ class DealController extends Controller
         }
 
         // Build filterable departments based on role
-        if (in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
+        if ($user->hasRole('Super Admin') || in_array($userRole, ['Management', 'HOD'])) {
             // Super Admin, Management & HOD can see all departments
             $filterableDepartments = \App\Models\User::distinct()->pluck('department')->filter()->sort()->values();
         } else {
@@ -188,7 +188,7 @@ class DealController extends Controller
         }
 
         // RBAC Filtering
-        if (!in_array($userRole, ['Super Admin', 'Management', 'HOD'])) {
+        if (!$user->hasRole('Super Admin') && !in_array($userRole, ['Management', 'HOD'])) {
             $query->where(function ($q) use ($user, $userDept) {
                 // Own deals
                 $q->where('user_id', $user->id)
@@ -288,7 +288,7 @@ class DealController extends Controller
 
             if (!$isOwnerCircle) {
                 // For those outside the owner's immediate team, show the department's share if a filter is active
-                if ($activeDeptForMetrics || !in_array($user->role, ['Super Admin', 'Management', 'HOD'])) {
+                if ($activeDeptForMetrics || (!$user->hasRole('Super Admin') && !in_array($user->role, ['Management', 'HOD']))) {
                     $deal->dept_share_revenue = $deptRevenue;
                     $deal->dept_share_contribution = $deptContribution;
                     $deal->dept_share_invoiced = $deptInvoiced;

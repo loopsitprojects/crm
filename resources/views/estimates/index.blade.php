@@ -161,7 +161,7 @@
                                                 <option value="approved" {{ $estimate->status == 'approved' ? 'selected' : '' }}>Approved</option>
                                                 <option value="rejected" {{ $estimate->status == 'rejected' ? 'selected' : '' }}>Rejected</option>
                                                 <option value="ready_to_invoice" {{ $estimate->status == 'ready_to_invoice' ? 'selected' : '' }}>Ready to Invoice</option>
-                                                @if(auth()->user()->role === 'Super Admin')
+                                                @if(auth()->user()->hasRole('Super Admin'))
                                                     <option value="invoiced" {{ $estimate->status == 'invoiced' ? 'selected' : '' }}>Invoiced</option>
                                                 @endif
                                             @endif
@@ -194,7 +194,7 @@
 
                                 @php
                                     $canEditOrDelete = false;
-                                    if ($user->role === 'Super Admin') {
+                                    if ($user->hasRole('Super Admin')) {
                                         $canEditOrDelete = true;
                                     } elseif ($user->role === 'Management') {
                                         $canEditOrDelete = !in_array($estimate->status, ['invoiced', 'approved']);

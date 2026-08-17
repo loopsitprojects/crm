@@ -77,9 +77,7 @@
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
                                 <option value="">-- Select Role --</option>
                                 @foreach(\App\Models\User::ROLES as $role)
-                                    @if($role !== 'Super Admin')
-                                        <option value="{{ $role }}" {{ old('role') == $role ? 'selected' : '' }}>{{ $role }}</option>
-                                    @endif
+                                    <option value="{{ $role }}" {{ old('role') == $role ? 'selected' : '' }}>{{ $role }}</option>
                                 @endforeach
                             </select>
                             @error('role') <p class="mt-2 text-sm text-red-600"><i
@@ -106,11 +104,11 @@
                         <div>
                             <label for="department" class="block text-sm font-semibold text-gray-700 mb-2">
                                 <i class="fas fa-building text-brand-purple mr-2"></i>Department <span
-                                    class="text-red-500">*</span>
+                                    id="department-asterisk" class="text-red-500">*</span>
                             </label>
-                            <select name="department" id="department" required
+                            <select name="department" id="department"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
-                                <option value="">-- Select Department --</option>
+                                <option value="">-- Select Department (Optional for IT Admin & Super Admin) --</option>
                                 @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
                                     @foreach($departments as $key => $label)
                                         <option value="{{ $key }}" {{ old('department') == $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -188,4 +186,27 @@
             </form>
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleSelect = document.getElementById('role');
+            const deptSelect = document.getElementById('department');
+            const deptAsterisk = document.getElementById('department-asterisk');
+
+            function toggleDeptRequirement() {
+                const role = roleSelect ? roleSelect.value : '';
+                if (role === 'IT Admin' || role === 'Super Admin') {
+                    if (deptSelect) deptSelect.removeAttribute('required');
+                    if (deptAsterisk) deptAsterisk.style.display = 'none';
+                } else {
+                    if (deptSelect) deptSelect.setAttribute('required', 'required');
+                    if (deptAsterisk) deptAsterisk.style.display = 'inline';
+                }
+            }
+
+            if (roleSelect) {
+                roleSelect.addEventListener('change', toggleDeptRequirement);
+                toggleDeptRequirement();
+            }
+        });
+    </script>
 @endsection

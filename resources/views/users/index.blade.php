@@ -71,6 +71,7 @@
                                 <span
                                     class="px-2 py-1 text-xs font-semibold rounded-full 
                                                                     {{ $user->role === 'Super Admin' ? 'bg-purple-100 text-purple-800' : '' }}
+                                                                    {{ $user->role === 'IT Admin' ? 'bg-orange-100 text-orange-800' : '' }}
                                                                     {{ $user->role === 'Management' ? 'bg-blue-100 text-blue-800' : '' }}
                                                                     {{ $user->role === 'HOD' ? 'bg-green-100 text-green-800' : '' }}
                                                                     {{ $user->role === 'Manager' ? 'bg-gray-100 text-gray-800' : '' }}">

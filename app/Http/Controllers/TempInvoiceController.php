@@ -26,7 +26,7 @@ class TempInvoiceController extends Controller
         $user = auth()->user();
         
         // Final processing should be allowed for Super Admin / Management
-        $readonly = !in_array($user->role, ['Super Admin', 'Management']);
+        $readonly = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         $customers = Customer::all();
         $standardTerms = StandardTerm::all();
@@ -54,7 +54,7 @@ class TempInvoiceController extends Controller
     public function update(Request $request, TempInvoice $tempInvoice)
     {
         $user = auth()->user();
-        if (!in_array($user->role, ['Super Admin', 'Management'])) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             abort(403, 'Unauthorized action.');
         }
 

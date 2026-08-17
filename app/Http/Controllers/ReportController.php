@@ -50,7 +50,7 @@ class ReportController extends Controller
         ];
 
         $user = auth()->user();
-        $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
+        $isRestricted = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         // Category Mappings
         $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];

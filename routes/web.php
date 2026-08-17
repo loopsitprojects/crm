@@ -75,7 +75,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('temp-invoices/{tempInvoice}/revert', [InvoiceController::class, 'revertToPending'])->name('temp-invoices.revert');
 
 
-    // Super Admin Only Routes
+    // Super Admin Routes (Accessible by Super Admin & IT Admin)
     Route::middleware(['role:Super Admin'])->group(function () {
         Route::get('activities', [ActivityController::class, 'index'])->name('activities.index');
         Route::get('users/download-sample', [UserController::class, 'downloadSample'])->name('users.download-sample');

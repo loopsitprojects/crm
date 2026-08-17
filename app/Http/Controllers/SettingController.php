@@ -210,14 +210,21 @@ class SettingController extends Controller
 
     public function updateMaintenance(Request $request)
     {
-        // Role Check (Super Admin only)
-        if (!auth()->user()->hasRole('super_admin')) {
-            abort(403, 'Unauthorized action.');
+        $user = auth()->user();
+
+        // Role Check (Super Admin or IT Admin)
+        if (!$user->hasRole('IT Admin') && $user->role !== 'Super Admin') {
+            abort(403, 'Unauthorized action. Only IT Admin and Super Admin can manage Maintenance Mode.');
         }
 
         $request->validate([
-            'maintenance_mode' => 'required|in:0,1',
+            'maintenance_mode' => 'required|in:0,1,2',
         ]);
+
+        // Mode 2 (Full IT Maintenance) can only be set by IT Admin
+        if ($request->maintenance_mode == 2 && !$user->hasRole('IT Admin')) {
+            return back()->with('error', 'Only IT Admin can enable Full IT Maintenance Mode.');
+        }
 
         Setting::set('maintenance_mode', $request->maintenance_mode, 'system');
 
