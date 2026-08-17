@@ -6,17 +6,17 @@
             </svg>
             Detailed Report
         </h2>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
             <div class="relative" x-data="{ open: false }">
-                <button @click="open = !open" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                    <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button @click="open = !open" class="inline-flex items-center px-3.5 py-2 border border-gray-300 shadow-sm text-xs font-semibold rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                    <svg class="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
                     </svg>
                     Columns
                 </button>
                 <div x-show="open" @click.away="open = false" 
-                     class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 max-h-72 overflow-y-auto">
-                    <div class="py-1 px-3">
+                     class="origin-top-right absolute right-0 mt-2 w-56 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 max-h-72 overflow-y-auto p-2">
+                    <div class="py-1 px-2">
                         @php
                             $columns = [
                                 'inv_date' => 'Inv Date',
@@ -46,22 +46,84 @@
                             ];
                         @endphp
                         @foreach($columns as $id => $label)
-                            <label class="flex items-center py-2 cursor-pointer hover:bg-gray-50 rounded px-2 transition-colors">
+                            <label class="flex items-center py-1.5 cursor-pointer hover:bg-gray-50 rounded px-2 transition-colors">
                                 <input type="checkbox" class="column-toggle rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 transition-all duration-200" 
                                     data-column="{{ $id }}" checked>
-                                <span class="ml-2 text-sm text-gray-700">{{ $label }}</span>
+                                <span class="ml-2 text-xs text-gray-700 font-medium">{{ $label }}</span>
                             </label>
                         @endforeach
                     </div>
                 </div>
             </div>
-            <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'detailed'])) }}" id="export-csv-btn"
-               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export CSV
-            </a>
+
+            <!-- Export CSV Dropdown -->
+            <div class="relative" x-data="{ exportOpen: false }">
+                <button @click="exportOpen = !exportOpen" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-xs font-bold uppercase tracking-wider rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                    <svg class="w-3.5 h-3.5 ml-1.5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+                <div x-show="exportOpen" @click.away="exportOpen = false" 
+                     class="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50 p-2 space-y-1 border border-gray-100">
+                    <!-- Section 1: Filtered Data (With active filters) -->
+                    <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-gray-400">Filtered Exports (Uses Active Filters)</div>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'deals', 'scope' => 'filtered'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
+                        Filtered Deals CSV
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'estimates', 'scope' => 'filtered'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
+                        Filtered Estimates CSV
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'invoices', 'scope' => 'filtered'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>
+                        Filtered Invoices CSV
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'proforma_invoices', 'scope' => 'filtered'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>
+                        Filtered Proforma Invoices CSV
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'detailed', 'scope' => 'filtered'])) }}" id="export-csv-btn"
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                        <svg class="w-3.5 h-3.5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Filtered Detailed Table
+                    </a>
+
+                    <!-- Section 2: Export All System Data -->
+                    <div class="border-t border-gray-100 my-1 pt-1"></div>
+                    <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-gray-400">All System Data (Unfiltered)</div>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'deals', 'scope' => 'all'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-emerald-300 mr-2"></span>
+                        Export All Deals
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'estimates', 'scope' => 'all'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-amber-50 hover:text-amber-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-amber-300 mr-2"></span>
+                        Export All Estimates
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'invoices', 'scope' => 'all'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-indigo-300 mr-2"></span>
+                        Export All Invoices
+                    </a>
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'proforma_invoices', 'scope' => 'all'])) }}" 
+                       class="flex items-center px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-lg transition-colors">
+                        <span class="w-2 h-2 rounded-full bg-purple-300 mr-2"></span>
+                        Export All Proforma Invoices
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 

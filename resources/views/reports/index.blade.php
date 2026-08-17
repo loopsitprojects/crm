@@ -74,10 +74,6 @@
                     <button type="submit" class="flex-1 px-4 py-2 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95 h-[38px]">
                         <i class="fas fa-sync-alt mr-1"></i> Update
                     </button>
-                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'deals'])) }}" 
-                       class="px-4 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all text-center flex items-center h-[38px] shadow-md border border-emerald-500">
-                        <i class="fas fa-file-csv mr-1"></i> Export Deals
-                    </a>
                     <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all text-center flex items-center h-[38px]">
                         Reset
                     </a>

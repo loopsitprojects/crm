@@ -424,11 +424,14 @@ class ReportController extends Controller
             }
         }
         $department = $request->input('department');
+        $customerName = $request->input('customer_name');
+        $stageFilter = $request->input('stage');
         $type = $request->input('type', 'deals');
         $reportType = $request->input('report_type');
+        $scope = $request->input('scope', 'filtered'); // 'filtered' or 'all'
 
         $user = auth()->user();
-        $isRestricted = !in_array($user->role, ['Super Admin', 'Management']);
+        $isRestricted = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         // Category Mappings
         $sbuDepts = ['Creative', 'Digital', 'Tech', 'PM', 'Corporate'];
@@ -696,121 +699,327 @@ class ReportController extends Controller
                 }
                 fclose($file);
             };
-        } elseif ($type === 'invoices') {
+        } elseif ($type === 'estimates') {
+            $query = Estimate::with('customer', 'deal.owner', 'user');
+
+            if ($scope !== 'all') {
+                if ($startDate && $endDate) {
+                    $query->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+                } elseif ($startDate) {
+                    $query->where('date', '>=', $startDate->format('Y-m-d'));
+                } elseif ($endDate) {
+                    $query->where('date', '<=', $endDate->format('Y-m-d'));
+                }
+
+                if ($customerName) {
+                    $query->whereHas('customer', function ($q) use ($customerName) {
+                        $q->where('name', 'LIKE', "%{$customerName}%");
+                    });
+                }
+
+                if ($stageFilter) {
+                    $query->whereHas('deal', function ($q) use ($stageFilter) {
+                        $q->where('stage', $stageFilter);
+                    });
+                }
+
+                if ($department) {
+                    $query->whereHas('deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
+                        if ($department === 'SBU') {
+                            $q->where(function($sq) use ($sbuDepts) {
+                                foreach ($sbuDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } elseif ($department === 'Sales') {
+                            $q->where(function($sq) use ($salesDepts) {
+                                foreach ($salesDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } else {
+                            $q->whereJsonContains('department_split', [['department' => $department]]);
+                        }
+                    });
+                }
+
+                if ($reportType === 'pending') {
+                    $query->whereHas('deal', function ($dq) {
+                        $dq->whereNotIn('stage', ['Closed Won', 'Rejected']);
+                    });
+                } elseif ($reportType === 'complete') {
+                    $query->whereHas('deal', function ($dq) {
+                        $dq->where('stage', 'Closed Won');
+                    });
+                } elseif ($reportType === 'deadlines') {
+                    $query->whereHas('deal', function ($dq) {
+                        $dq->whereNotNull('close_date')
+                            ->where('close_date', '>=', now()->toDateString());
+                    });
+                }
+            }
+
+            if ($isRestricted) {
+                $query->where(function ($q) use ($user) {
+                    $q->whereHas('deal', function ($dq) use ($user) {
+                        $dq->where(function ($sq) use ($user) {
+                            $sq->where('user_id', $user->id)
+                              ->orWhereHas('teamMembers', function ($tm) use ($user) {
+                                  $tm->where('users.id', $user->id);
+                              });
+                            
+                            if ($user->department) {
+                                $sq->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                            }
+                            
+                            if ($user->role === 'HOD') {
+                                $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                                if ($subordinateIds->isNotEmpty()) {
+                                    $sq->orWhereIn('user_id', $subordinateIds);
+                                }
+                            }
+                        });
+                    })->orWhere('user_id', $user->id);
+                });
+            }
+
+            $data = $query->orderBy('reference_number', 'asc')->get();
+            $filename = ($scope === 'all' ? "all_estimates_export_" : "filtered_estimates_export_") . now()->format('YmdHis') . ".csv";
+            $headers = [
+                'ID', 'Reference #', 'Date', 'Customer Name', 'Linked Deal Title', 'Job Number', 
+                'Brand Name', 'Currency', 'Total Amount', 'Status', 'Attention To', 'Designation', 
+                'Heading', 'Advance Payment', 'Advance %', 'Advance Received Amount', 'Advance Status', 
+                'Third Party Cost', 'Senior Manager', 'Place of Supply', 'Created By', 'Created At'
+            ];
+
+            $callback = function () use ($data, $headers) {
+                $file = fopen('php://output', 'w');
+                fputcsv($file, $headers);
+                foreach ($data as $estimate) {
+                    $advanceStatus = ($estimate->advance_received_amount > 0) ? 'RECEIVED' : 'PENDING';
+                    fputcsv($file, [
+                        $estimate->id,
+                        $estimate->reference_number ?? 'N/A',
+                        $estimate->date ? Carbon::parse($estimate->date)->format('Y-m-d') : 'N/A',
+                        $estimate->customer->name ?? 'N/A',
+                        $estimate->deal->title ?? 'N/A',
+                        $estimate->deal->job_number ?? 'N/A',
+                        $estimate->brand_name ?? 'N/A',
+                        $estimate->currency ?? 'LKR',
+                        $estimate->total_amount ?? 0,
+                        strtoupper($estimate->status ?? 'PENDING'),
+                        $estimate->attention_to ?? 'N/A',
+                        $estimate->designation ?? 'N/A',
+                        $estimate->heading ?? 'N/A',
+                        $estimate->advance_payment ?? 0,
+                        ($estimate->advance_percentage ?? 0) . '%',
+                        $estimate->advance_received_amount ?? 0,
+                        $advanceStatus,
+                        $estimate->third_party_cost ?? 0,
+                        $estimate->senior_manager ?? 'N/A',
+                        $estimate->place_of_supply ?? 'N/A',
+                        $estimate->user->name ?? ($estimate->deal->owner->name ?? 'N/A'),
+                        $estimate->created_at ? $estimate->created_at->format('Y-m-d H:i:s') : 'N/A'
+                    ]);
+                }
+                fclose($file);
+            };
+        } elseif ($type === 'invoices' || $type === 'proforma_invoices' || $type === 'proforma') {
+            $isProformaTarget = ($type === 'proforma_invoices' || $type === 'proforma');
             $query = Invoice::with('customer', 'estimate.deal');
-            if ($startDate && $endDate) {
-                $query->whereBetween('created_at', [$startDate, $endDate]);
-            } elseif ($startDate) {
-                $query->where('created_at', '>=', $startDate);
-            } elseif ($endDate) {
-                $query->where('created_at', '<=', $endDate);
+
+            if ($isProformaTarget) {
+                $query->where('is_proforma', true);
+            } else {
+                $query->where(function($q) {
+                    $q->where('is_proforma', false)->orWhereNull('is_proforma');
+                });
+            }
+
+            if ($scope !== 'all') {
+                if ($startDate && $endDate) {
+                    $query->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+                } elseif ($startDate) {
+                    $query->where('date', '>=', $startDate->format('Y-m-d'));
+                } elseif ($endDate) {
+                    $query->where('date', '<=', $endDate->format('Y-m-d'));
+                }
+
+                if ($customerName) {
+                    $query->whereHas('customer', function ($q) use ($customerName) {
+                        $q->where('name', 'LIKE', "%{$customerName}%");
+                    });
+                }
+
+                if ($stageFilter) {
+                    $query->whereHas('estimate.deal', function ($q) use ($stageFilter) {
+                        $q->where('stage', $stageFilter);
+                    });
+                }
+
+                if ($department) {
+                    $query->whereHas('estimate.deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
+                        if ($department === 'SBU') {
+                            $q->where(function($sq) use ($sbuDepts) {
+                                foreach ($sbuDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } elseif ($department === 'Sales') {
+                            $q->where(function($sq) use ($salesDepts) {
+                                foreach ($salesDepts as $dept) {
+                                    $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
+                                }
+                            });
+                        } else {
+                            $q->whereJsonContains('department_split', [['department' => $department]]);
+                        }
+                    });
+                }
+
+                if ($reportType === 'pending') {
+                    $query->whereHas('estimate.deal', function ($dq) {
+                        $dq->whereNotIn('stage', ['Closed Won', 'Rejected']);
+                    });
+                } elseif ($reportType === 'complete') {
+                    $query->whereHas('estimate.deal', function ($dq) {
+                        $dq->where('stage', 'Closed Won');
+                    });
+                } elseif ($reportType === 'deadlines') {
+                    $query->whereHas('estimate.deal', function ($dq) {
+                        $dq->whereNotNull('close_date')
+                            ->where('close_date', '>=', now()->toDateString());
+                    });
+                }
             }
 
             if ($isRestricted) {
                 $query->whereHas('estimate.deal', function ($q) use ($user) {
                     $q->where(function ($sq) use ($user) {
-                        if ($user->role === 'HOD' && $user->department) {
-                            $sq->whereJsonContains('department_split', [['department' => $user->department]]);
-                        } else {
-                            $sq->where('user_id', $user->id)
-                                ->orWhereHas('teamMembers', function ($ssq) use ($user) {
-                                    $ssq->where('users.id', $user->id);
-                                });
+                        $sq->where('user_id', $user->id)
+                            ->orWhereHas('teamMembers', function ($ssq) use ($user) {
+                                $ssq->where('users.id', $user->id);
+                            });
+                        if ($user->department) {
+                            $sq->orWhereJsonContains('department_split', [['department' => $user->department]]);
+                        }
+                        if ($user->role === 'HOD') {
+                            $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
+                            if ($subordinateIds->isNotEmpty()) {
+                                $sq->orWhereIn('user_id', $subordinateIds);
+                            }
                         }
                     });
                 });
             }
 
-            if ($reportType === 'pending') {
-                $query->whereHas('estimate.deal', function ($dq) {
-                    $dq->whereNotIn('stage', ['Closed Won', 'Rejected']);
-                });
-            } elseif ($reportType === 'complete') {
-                $query->whereHas('estimate.deal', function ($dq) {
-                    $dq->where('stage', 'Closed Won');
-                });
-            } elseif ($reportType === 'deadlines') {
-                $query->whereHas('estimate.deal', function ($dq) {
-                    $dq->whereNotNull('close_date')
-                        ->where('close_date', '>=', now()->toDateString());
-                });
+            if ($isProformaTarget) {
+                $data = $query->orderBy('invoice_number', 'asc')->get();
+            } else {
+                $data = $query->orderBy('date', 'asc')->orderBy('id', 'asc')->get();
             }
-            
-            if ($department) {
-                $query->whereHas('estimate.deal', function ($q) use ($department, $sbuDepts, $salesDepts) {
-                    if ($department === 'SBU') {
-                        $q->where(function($sq) use ($sbuDepts) {
-                            foreach ($sbuDepts as $dept) {
-                                $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                            }
-                        });
-                    } elseif ($department === 'Sales') {
-                        $q->where(function($sq) use ($salesDepts) {
-                            foreach ($salesDepts as $dept) {
-                                $sq->orWhereJsonContains('department_split', [['department' => $dept]]);
-                            }
-                        });
-                    } else {
-                        $q->whereJsonContains('department_split', [['department' => $department]]);
-                    }
-                });
-            }
-
-            $data = $query->get();
-            $filename = "invoices_report_" . now()->format('YmdHis') . ".csv";
-            $headers = ['Date', 'Invoice #', 'Customer', 'Deal', 'Amount', 'Status', 'Is Proforma'];
+            $prefix = $isProformaTarget ? 'proforma_invoices_' : 'invoices_';
+            $filename = ($scope === 'all' ? "all_{$prefix}export_" : "filtered_{$prefix}export_") . now()->format('YmdHis') . ".csv";
+            $headers = [
+                'ID', 'Invoice #', 'Date', 'Due Date', 'Customer Name', 'Linked Deal Title', 'Job Number', 
+                'Estimate Reference #', 'Brand Name', 'Currency', 'Total Amount', 'Status', 'Is Proforma', 
+                'Attention To', 'Designation', 'Heading', 'Advance Payment', 'Advance Received Amount', 
+                'Invoice Type', 'Senior Manager', 'Date of Delivery', 'Place of Supply', 'Created At'
+            ];
 
             $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, $headers);
                 foreach ($data as $invoice) {
                     fputcsv($file, [
-                        $invoice->created_at->format('Y-m-d'),
-                        $invoice->invoice_number,
+                        $invoice->id,
+                        $invoice->invoice_number ?? 'N/A',
+                        $invoice->date ? Carbon::parse($invoice->date)->format('Y-m-d') : ($invoice->created_at ? $invoice->created_at->format('Y-m-d') : 'N/A'),
+                        $invoice->due_date ? Carbon::parse($invoice->due_date)->format('Y-m-d') : 'N/A',
                         $invoice->customer->name ?? 'N/A',
                         $invoice->estimate->deal->title ?? 'N/A',
-                        $invoice->total_amount,
-                        strtoupper($invoice->status),
-                        $invoice->is_proforma ? 'Yes' : 'No'
+                        $invoice->estimate->deal->job_number ?? 'N/A',
+                        $invoice->estimate->reference_number ?? 'N/A',
+                        $invoice->brand_name ?? 'N/A',
+                        $invoice->currency ?? 'LKR',
+                        $invoice->total_amount ?? 0,
+                        strtoupper($invoice->status ?? 'PENDING'),
+                        $invoice->is_proforma ? 'Yes' : 'No',
+                        $invoice->attention_to ?? 'N/A',
+                        $invoice->designation ?? 'N/A',
+                        $invoice->heading ?? 'N/A',
+                        $invoice->advance_payment ?? 0,
+                        $invoice->advance_received_amount ?? 0,
+                        $invoice->invoice_type ?? 'N/A',
+                        $invoice->senior_manager ?? 'N/A',
+                        $invoice->date_of_delivery ?? 'N/A',
+                        $invoice->place_of_supply ?? 'N/A',
+                        $invoice->created_at ? $invoice->created_at->format('Y-m-d H:i:s') : 'N/A'
                     ]);
                 }
                 fclose($file);
             };
         } else {
-            $query = Deal::with('customer', 'owner');
-            if ($startDate && $endDate) {
-                $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
-            } elseif ($startDate) {
-                $query->where('close_date', '>=', $startDate->startOfDay());
-            } elseif ($endDate) {
-                $query->where('close_date', '<=', $endDate->endOfDay());
-            }
+            $query = Deal::with('customer', 'owner', 'estimates.items', 'estimates.thirdPartyCosts');
 
-            if ($reportType === 'pending') {
-                $query->whereNotIn('stage', ['Closed Won', 'Rejected']);
-            } elseif ($reportType === 'complete') {
-                $query->where('stage', 'Closed Won');
-            } elseif ($reportType === 'deadlines') {
-                $query->whereNotNull('close_date')
-                    ->where('close_date', '>=', now()->toDateString())
-                    ->orderBy('close_date', 'asc');
+            if ($scope !== 'all') {
+                if ($startDate && $endDate) {
+                    $query->whereBetween('close_date', [$startDate->startOfDay(), $endDate->endOfDay()]);
+                } elseif ($startDate) {
+                    $query->where('close_date', '>=', $startDate->startOfDay());
+                } elseif ($endDate) {
+                    $query->where('close_date', '<=', $endDate->endOfDay());
+                }
+
+                if ($customerName) {
+                    $query->whereHas('customer', function ($q) use ($customerName) {
+                        $q->where('name', 'LIKE', "%{$customerName}%");
+                    });
+                }
+
+                if ($stageFilter) {
+                    $query->where('stage', $stageFilter);
+                }
+
+                if ($department) {
+                    if ($department === 'SBU') {
+                        $query->where(function($q) use ($sbuDepts) {
+                            foreach ($sbuDepts as $dept) {
+                                $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                            }
+                        });
+                    } elseif ($department === 'Sales') {
+                        $query->where(function($q) use ($salesDepts) {
+                            foreach ($salesDepts as $dept) {
+                                $q->orWhereJsonContains('department_split', [['department' => $dept]]);
+                            }
+                        });
+                    } else {
+                        $query->whereJsonContains('department_split', [['department' => $department]]);
+                    }
+                }
+
+                if ($reportType === 'pending') {
+                    $query->whereNotIn('stage', ['Closed Won', 'Rejected']);
+                } elseif ($reportType === 'complete') {
+                    $query->where('stage', 'Closed Won');
+                } elseif ($reportType === 'deadlines') {
+                    $query->whereNotNull('close_date')
+                        ->where('close_date', '>=', now()->toDateString());
+                }
             }
 
             if ($isRestricted) {
                 $query->where(function ($q) use ($user) {
-                    // Own deals
                     $q->where('user_id', $user->id)
-                      // Team member deals
                       ->orWhereHas('teamMembers', function ($tm) use ($user) {
                           $tm->where('users.id', $user->id);
                       });
                     
-                    // Department split check (if user has a department)
                     if ($user->department) {
                         $q->orWhereJsonContains('department_split', [['department' => $user->department]]);
                     }
                     
-                    // HOD specific: subordinates
                     if ($user->role === 'HOD') {
                         $subordinateIds = \App\Models\User::where('supervisor_id', $user->id)->pluck('id');
                         if ($subordinateIds->isNotEmpty()) {
@@ -819,103 +1028,46 @@ class ReportController extends Controller
                     }
                 });
             }
-            
-            if ($department) {
-                if ($department === 'SBU') {
-                    $query->where(function($q) use ($sbuDepts) {
-                        foreach ($sbuDepts as $dept) {
-                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
-                        }
-                    });
-                } elseif ($department === 'Sales') {
-                    $query->where(function($q) use ($salesDepts) {
-                        foreach ($salesDepts as $dept) {
-                            $q->orWhereJsonContains('department_split', [['department' => $dept]]);
-                        }
-                    });
-                } else {
-                    $query->whereJsonContains('department_split', [['department' => $department]]);
-                }
-            }
 
-            $data = $query->with(['estimates.items', 'estimates.thirdPartyCosts'])->get();
-            
-            // Adjust revenue/contribution metrics to exclude VAT and SSCL, and deduct third party costs
+            $data = $query->orderBy('created_at', 'asc')->get();
+
             $data->each(function($deal) use ($user, $isRestricted, $request) {
-                $estimate = $deal->estimates->first();
-                if ($estimate) {
-                    // Calculate total excluding VAT and SSCL: sum of amount from items
-                    $preTaxTotal = $estimate->items->sum(function($item) {
-                        return (float)$item->amount;
-                    });
-                    
-                    // Calculate third party costs
-                    $thirdPartyTotal = $estimate->thirdPartyCosts->sum('cost');
-                    
-                    if ($preTaxTotal > 0) {
-                        $deal->revenue = $preTaxTotal;
-                        $deal->contribution = $preTaxTotal - $thirdPartyTotal;
-                    }
-                }
-
-                // Apply department split override for CSV export consistency
-                $activeDept = $request->input('department') ?: null;
-                if (!$activeDept && $isRestricted) {
-                    $activeDept = $user->department;
-                }
-
-                $deptRevenue = 0;
-                $deptContribution = 0;
-                
-                if ($activeDept) {
-                    $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
-                    if (is_array($splits) && !empty($splits)) {
-                        foreach ($splits as $split) {
-                            $splitDept = trim(strtolower($split['department'] ?? ''));
-                            $targetDept = trim(strtolower($activeDept));
-                            if ($splitDept === $targetDept) {
-                                $revPercent = (float)($split['revenue_percentage'] ?? 0);
-                                $conPercent = (float)($split['contribution_percentage'] ?? 0);
-                                if ($revPercent > 0) {
-                                    $deptRevenue += ($deal->revenue * ($revPercent / 100));
-                                } else {
-                                    $deptRevenue += (float)($split['revenue_amount'] ?? 0);
-                                }
-                                if ($conPercent > 0) {
-                                    $deptContribution += ($deal->contribution * ($conPercent / 100));
-                                } else {
-                                    $deptContribution += (float)($split['contribution_amount'] ?? 0);
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Owner keeps 100%, others get split if a filter/restriction applies
-                if ($deal->user_id !== $user->id) {
-                    if ($activeDept || $isRestricted) {
-                        $deal->revenue = $deptRevenue;
-                        $deal->contribution = $deptContribution;
-                    }
-                }
+                $this->calculateDealSplits($deal, $request, $user, $isRestricted);
             });
 
-            $filename = "deals_report_" . now()->format('YmdHis') . ".csv";
-            $headers = ['Date', 'Title', 'Customer', 'Owner', 'Type', 'Stage', 'Amount', 'Probability'];
+            $filename = ($scope === 'all' ? "all_deals_export_" : "filtered_deals_export_") . now()->format('YmdHis') . ".csv";
+            $headers = [
+                'ID', 'Job Number', 'Title', 'Customer Name', 'Customer Email', 'Customer Phone', 
+                'Owner / Inputter', 'Currency', 'Revenue', 'Contribution', 'Project Cost', 
+                'Stage', 'Pipeline', 'Type', 'Priority', 'Winning %', 'Close Date', 
+                'Rejection Reason', 'Senior Manager', 'Created At'
+            ];
 
             $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
                 fputcsv($file, $headers);
                 foreach ($data as $deal) {
                     fputcsv($file, [
-                        $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : 'N/A',
-                        $deal->title,
-                        $deal->customer->name ?? 'N/A',
+                        $deal->id,
+                        $deal->job_number ?? 'N/A',
+                        $deal->title ?? 'N/A',
+                        $deal->customer->name ?? $deal->customer_name ?? 'N/A',
+                        $deal->customer->email ?? $deal->customer_email ?? 'N/A',
+                        $deal->customer->phone ?? $deal->customer_phone ?? 'N/A',
                         $deal->owner->name ?? 'N/A',
-                        $deal->type,
-                        $deal->stage,
-                        $deal->revenue,
-                        $deal->probability . '%'
+                        $deal->currency ?? 'LKR',
+                        $deal->revenue ?? 0,
+                        $deal->contribution ?? 0,
+                        $deal->project_cost ?? 0,
+                        $deal->stage ?? 'N/A',
+                        $deal->pipeline ?? 'N/A',
+                        $deal->type ?? 'N/A',
+                        $deal->priority ?? 'N/A',
+                        ($deal->winning_percentage ?? $deal->probability ?? 0) . '%',
+                        $deal->close_date ? \Carbon\Carbon::parse($deal->close_date)->format('Y-m-d') : 'N/A',
+                        $deal->rejection_reason ?? 'N/A',
+                        $deal->senior_manager ?? 'N/A',
+                        $deal->created_at ? $deal->created_at->format('Y-m-d H:i:s') : 'N/A'
                     ]);
                 }
                 fclose($file);
