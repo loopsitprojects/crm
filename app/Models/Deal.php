@@ -54,7 +54,7 @@ class Deal extends Model
 
     /**
      * Check if a specific user can edit this deal.
-     * Logic: Super Admin, Management, or Deal Owner. HOD users can edit their own deals only.
+     * Logic: Super Admin, Management, or Deal Owner. HOD users can edit their own deals and their department managers' deals.
      * 
      * @param User|null $user
      * @return bool
@@ -74,12 +74,22 @@ class Deal extends Model
             return true;
         }
 
-        // 3. HOD role users can edit their own deals ONLY
+        // 3. HOD role users can edit their own department managers' and subordinates' deals
         if ($user->hasRole('HOD')) {
+            if ($this->owner) {
+                // Deal owner is in the same department as the HOD
+                if ($user->department && $this->owner->department === $user->department) {
+                    return true;
+                }
+                // Deal owner is a direct subordinate of the HOD
+                if ($this->owner->supervisor_id === $user->id) {
+                    return true;
+                }
+            }
             return false;
         }
 
-        // 4. Check by direct supervisor_id (for non-HOD roles)
+        // 4. Check by direct supervisor_id (for other roles)
         if ($this->owner && $this->owner->supervisor_id === $user->id) {
             return true;
         }
