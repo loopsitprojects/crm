@@ -57,6 +57,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('estimates/{estimate}/accept', [EstimateController::class, 'markAsAccepted'])->name('estimates.accept');
     Route::post('estimates/{estimate}/reject', [EstimateController::class, 'markAsRejected'])->name('estimates.reject');
+    Route::post('estimates/{estimate}/duplicate', [EstimateController::class, 'duplicate'])->name('estimates.duplicate');
     Route::post('estimates/{estimate}/convert', [
         EstimateController::class,
         'convertToInvoice'

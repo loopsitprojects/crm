@@ -541,8 +541,12 @@ class EstimateController extends Controller
         $estimate = Estimate::with(['items', 'deal.owner'])->findOrFail($id);
 
         $user = auth()->user();
-        $canEditDeal = $estimate->deal ? $estimate->deal->canEdit($user) : true;
-        $readonly = !$canEditDeal;
+        if (!$estimate->canEdit($user)) {
+            $readonly = true;
+        } else {
+            $canEditDeal = $estimate->deal ? $estimate->deal->canEdit($user) : true;
+            $readonly = !$canEditDeal;
+        }
 
         if (!$readonly && !$user->hasRole('Super Admin')) {
             if ($estimate->status === 'ready_to_invoice' || $estimate->status === 'invoiced' || $estimate->status === 'approved') {
@@ -574,6 +578,10 @@ class EstimateController extends Controller
         $estimate = Estimate::findOrFail($id);
 
         $user = auth()->user();
+        if (!$estimate->canEdit($user)) {
+             abort(403, 'You do not have permission to edit this estimate.');
+        }
+
         $canEditDeal = $estimate->deal ? $estimate->deal->canEdit($user) : true;
         if (!$canEditDeal && !$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
              abort(403, 'You do not have permission to edit this estimate.');
@@ -984,6 +992,122 @@ class EstimateController extends Controller
                     'revenue_category' => $item->revenue_category,
                 ]);
             }
+        }
+    }
+
+    public function duplicate(Estimate $estimate)
+    {
+        $estimate->load(['customer', 'items', 'thirdPartyCosts', 'deal']);
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Determine stage for new deal (must skip initial stages like 'Planned to Meet')
+            $stage = 'Working on pitch';
+            if ($estimate->deal && in_array($estimate->deal->stage, ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'])) {
+                $stage = $estimate->deal->stage;
+            }
+
+            // Create a new Deal for the duplicated estimate
+            $dealTitle = ($estimate->heading ?: 'Estimate Deal') . ' (Duplicated)';
+            $newDeal = \App\Models\Deal::create([
+                'title' => $dealTitle,
+                'customer_id' => $estimate->customer_id,
+                'user_id' => auth()->id(),
+                'customer_name' => $estimate->customer->name ?? 'Unknown Customer',
+                'customer_email' => $estimate->customer->email ?? null,
+                'customer_phone' => $estimate->customer->phone ?? null,
+                'revenue' => $estimate->total_amount,
+                'currency' => $estimate->currency ?? 'LKR',
+                'stage' => $stage,
+                'pipeline' => $estimate->deal->pipeline ?? 'Standard',
+                'type' => $estimate->deal->type ?? 'New Business',
+                'priority' => $estimate->deal->priority ?? 'Medium',
+                'winning_percentage' => 40,
+                'senior_manager' => $estimate->senior_manager,
+            ]);
+
+            // Auto-generate job_number for the new deal
+            $year = date('Y');
+            $idPad = str_pad($newDeal->id, 4, '0', STR_PAD_LEFT);
+            $newDeal->update([
+                'job_number' => "LOOPS/{$year}/{$idPad}"
+            ]);
+
+            // Create duplicated Estimate
+            $newEstimate = Estimate::create([
+                'customer_id' => $estimate->customer_id,
+                'user_id' => auth()->id(),
+                'deal_id' => $newDeal->id,
+                'brand_name' => $estimate->brand_name,
+                'reference_number' => Estimate::generateReferenceNumber(),
+                'date' => now(),
+                'total_amount' => $estimate->total_amount,
+                'status' => 'draft',
+                'is_duplicated' => true,
+                'attention_to' => $estimate->attention_to,
+                'address_line_1' => $estimate->address_line_1,
+                'address_line_2' => $estimate->address_line_2,
+                'address_line_3' => $estimate->address_line_3,
+                'designation' => $estimate->designation,
+                'currency' => $estimate->currency,
+                'heading' => $estimate->heading,
+                'terms' => $estimate->terms,
+                'special_terms' => $estimate->special_terms,
+                'advance_payment' => $estimate->advance_payment,
+                'advance_percentage' => $estimate->advance_percentage,
+                'advance_received_amount' => $estimate->advance_received_amount,
+                'proforma_invoice' => $estimate->proforma_invoice,
+                'invoice_type' => $estimate->invoice_type,
+                'third_party_cost' => $estimate->third_party_cost,
+                'proforma_percentage' => $estimate->proforma_percentage,
+                'proforma_tax' => $estimate->proforma_tax,
+                'senior_manager' => $estimate->senior_manager,
+                'additional_notes' => $estimate->additional_notes,
+                'sscl_applicable' => $estimate->sscl_applicable,
+                'vat_applicable' => $estimate->vat_applicable,
+                'po_applicable' => $estimate->po_applicable,
+                'po_number' => $estimate->po_number,
+                'po_file_path' => $estimate->po_file_path,
+                'date_of_delivery' => $estimate->date_of_delivery,
+                'place_of_supply' => $estimate->place_of_supply,
+            ]);
+
+            // Copy Estimate Items
+            foreach ($estimate->items as $item) {
+                $newEstimate->items()->create([
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                    'sscl_amount' => $item->sscl_amount,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->total_with_vat,
+                    'department' => $item->department,
+                    'revenue_category' => $item->revenue_category,
+                    'position' => $item->position ?? 0,
+                    'type' => $item->type ?? 'item',
+                ]);
+            }
+
+            // Copy Third Party Costs
+            foreach ($estimate->thirdPartyCosts as $cost) {
+                $newEstimate->thirdPartyCosts()->create([
+                    'supplier' => $cost->supplier,
+                    'cost' => $cost->cost,
+                    'department' => $cost->department,
+                    'file_path' => $cost->file_path,
+                ]);
+            }
+
+            $this->logAction("Duplicated estimate: {$estimate->reference_number} to new estimate {$newEstimate->reference_number}", $newEstimate);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->route('estimates.edit', $newEstimate->id)->with('success', 'Estimate duplicated successfully with a new Job Number.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to duplicate estimate: ' . $e->getMessage());
+            return back()->with('error', 'Failed to duplicate estimate: ' . $e->getMessage());
         }
     }
 }

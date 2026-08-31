@@ -10,6 +10,9 @@
         activeAttachments: [],
         activePoFile: null,
         activeRef: '',
+        showDuplicateModal: false,
+        duplicateTargetUrl: '',
+        duplicateRef: '',
         isColumnVisible(col) { return this.columns.includes(col); },
         toggleColumn(col) {
             if (this.isColumnVisible(col)) {
@@ -23,6 +26,11 @@
             this.activePoFile = poFile;
             this.activeRef = ref;
             this.showAttachments = true;
+        },
+        confirmDuplicate(url, ref) {
+            this.duplicateTargetUrl = url;
+            this.duplicateRef = ref;
+            this.showDuplicateModal = true;
         }
     }" x-init="if (!columns.includes('heading')) { columns.splice(columns.indexOf('brand') + 1, 0, 'heading'); }">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -192,6 +200,14 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
+                                <!-- Duplicate -->
+                                <button type="button" 
+                                    @click="confirmDuplicate('{{ route('estimates.duplicate', $estimate) }}', '{{ $estimate->reference_number }}')"
+                                    class="text-gray-600 hover:text-brand-purple" 
+                                    title="Duplicate Estimate">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+
                                 @php
                                     $canEditOrDelete = false;
                                     if ($user->hasRole('Super Admin')) {
@@ -321,6 +337,77 @@
                         <button type="button" @click="showAttachments = false"
                             class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
                             Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customized Duplicate Confirmation Modal -->
+        <div x-show="showDuplicateModal" 
+            class="fixed inset-0 z-50 overflow-y-auto" 
+            style="display: none;">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="showDuplicateModal" 
+                    x-transition:enter="ease-out duration-300" 
+                    x-transition:enter-start="opacity-0" 
+                    x-transition:enter-end="opacity-100" 
+                    x-transition:leave="ease-in duration-200" 
+                    x-transition:leave-start="opacity-100" 
+                    x-transition:leave-end="opacity-0" 
+                    class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                <div x-show="showDuplicateModal" 
+                    x-transition:enter="ease-out duration-300" 
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                    x-transition:leave="ease-in duration-200" 
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                    class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full"
+                    @click.away="showDuplicateModal = false">
+                    
+                    <div class="bg-white px-6 pt-6 pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-brand-purple bg-opacity-10 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-copy text-brand-purple text-lg"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg font-bold text-gray-900 leading-6">
+                                    Duplicate Estimate
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-600">
+                                        Are you sure you want to duplicate <span class="font-bold text-gray-800" x-text="duplicateRef"></span>?
+                                    </p>
+                                    <div class="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-100 text-xs text-purple-800 space-y-1">
+                                        <p class="font-semibold"><i class="fas fa-info-circle mr-1"></i> What will happen:</p>
+                                        <ul class="list-disc pl-4 space-y-0.5 text-purple-700">
+                                            <li>A new Estimate copy will be created.</li>
+                                            <li>A new Deal & Job Number will be created.</li>
+                                            <li>Edit access will be restricted to creator, associated HOD, Super Admins & IT Admin.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 sm:flex sm:flex-row-reverse gap-2">
+                        <form :action="duplicateTargetUrl" method="POST" class="inline">
+                            @csrf
+                            <button type="submit"
+                                class="w-full inline-flex justify-center rounded-lg border border-transparent px-4 py-2.5 bg-brand-purple text-sm font-semibold text-white shadow-sm hover:bg-brand-blue focus:outline-none transition-colors sm:w-auto">
+                                <i class="fas fa-copy mr-2 self-center"></i> Duplicate Estimate
+                            </button>
+                        </form>
+                        <button type="button" @click="showDuplicateModal = false"
+                            class="mt-3 sm:mt-0 w-full inline-flex justify-center rounded-lg border border-gray-300 px-4 py-2.5 bg-white text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition-colors sm:w-auto">
+                            Cancel
                         </button>
                     </div>
                 </div>

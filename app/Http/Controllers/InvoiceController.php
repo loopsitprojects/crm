@@ -538,49 +538,93 @@ class InvoiceController extends Controller
 
     public function duplicate(Invoice $invoice)
     {
-        $invoice->load(['customer', 'items', 'estimate']);
+        $invoice->load(['customer', 'items', 'estimate.deal']);
 
-        // Create new Estimate
-        $newEstimate = Estimate::create([
-            'customer_id' => $invoice->customer_id,
-            'reference_number' => Estimate::generateReferenceNumber(),
-            'date' => now(),
-            'total_amount' => $invoice->total_amount,
-            'status' => 'draft',
-            'attention_to' => $invoice->attention_to ?? ($invoice->estimate->attention_to ?? null),
-            'address_line_1' => $invoice->address_line_1 ?? ($invoice->estimate->address_line_1 ?? null),
-            'address_line_2' => $invoice->address_line_2 ?? ($invoice->estimate->address_line_2 ?? null),
-            'address_line_3' => $invoice->address_line_3 ?? ($invoice->estimate->address_line_3 ?? null),
-            'designation' => $invoice->designation ?? ($invoice->estimate->designation ?? null),
-            'currency' => $invoice->currency ?? ($invoice->estimate->currency ?? 'LKR'),
-            'heading' => $invoice->heading ?? ($invoice->estimate->heading ?? null),
-            'terms' => $invoice->terms ?? ($invoice->estimate->terms ?? null),
-            'special_terms' => $invoice->special_terms ?? ($invoice->estimate->special_terms ?? null),
-            'advance_payment' => $invoice->advance_payment ?? ($invoice->estimate->advance_payment ?? null),
-            'advance_percentage' => $invoice->advance_percentage ?? ($invoice->estimate->advance_percentage ?? null),
-            'senior_manager' => $invoice->senior_manager ?? ($invoice->estimate->senior_manager ?? null),
-            'additional_notes' => $invoice->additional_information ?? ($invoice->estimate->additional_notes ?? null),
-            'sscl_applicable' => $invoice->sscl_applicable ?? ($invoice->estimate->sscl_applicable ?? false),
-            'vat_applicable' => $invoice->vat_applicable ?? ($invoice->estimate->vat_applicable ?? false),
-        ]);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $stage = 'Working on pitch';
+            $origDeal = $invoice->estimate->deal ?? null;
+            if ($origDeal && in_array($origDeal->stage, ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'])) {
+                $stage = $origDeal->stage;
+            }
 
-        // Copy Items
-        foreach ($invoice->items as $item) {
-            $newEstimate->items()->create([
-                'description' => $item->description,
-                'quantity' => $item->quantity,
-                'unit_price' => $item->unit_price,
-                'amount' => $item->amount,
-                'sscl_amount' => $item->sscl_amount,
-                'vat_amount' => $item->vat_amount,
-                'total_with_vat' => $item->total_with_vat,
-                'type' => $item->type ?? 'item',
+            $dealTitle = ($invoice->heading ?? ($invoice->estimate->heading ?? 'Invoice Deal')) . ' (Duplicated)';
+            $newDeal = \App\Models\Deal::create([
+                'title' => $dealTitle,
+                'customer_id' => $invoice->customer_id,
+                'user_id' => auth()->id(),
+                'customer_name' => $invoice->customer->name ?? 'Unknown Customer',
+                'customer_email' => $invoice->customer->email ?? null,
+                'customer_phone' => $invoice->customer->phone ?? null,
+                'revenue' => $invoice->total_amount,
+                'currency' => $invoice->currency ?? 'LKR',
+                'stage' => $stage,
+                'pipeline' => $origDeal->pipeline ?? 'Standard',
+                'type' => $origDeal->type ?? 'New Business',
+                'priority' => $origDeal->priority ?? 'Medium',
+                'winning_percentage' => 40,
+                'senior_manager' => $invoice->senior_manager ?? ($invoice->estimate->senior_manager ?? null),
             ]);
+
+            $year = date('Y');
+            $idPad = str_pad($newDeal->id, 4, '0', STR_PAD_LEFT);
+            $newDeal->update([
+                'job_number' => "LOOPS/{$year}/{$idPad}"
+            ]);
+
+            // Create new Estimate
+            $newEstimate = Estimate::create([
+                'customer_id' => $invoice->customer_id,
+                'user_id' => auth()->id(),
+                'deal_id' => $newDeal->id,
+                'reference_number' => Estimate::generateReferenceNumber(),
+                'date' => now(),
+                'total_amount' => $invoice->total_amount,
+                'status' => 'draft',
+                'is_duplicated' => true,
+                'attention_to' => $invoice->attention_to ?? ($invoice->estimate->attention_to ?? null),
+                'address_line_1' => $invoice->address_line_1 ?? ($invoice->estimate->address_line_1 ?? null),
+                'address_line_2' => $invoice->address_line_2 ?? ($invoice->estimate->address_line_2 ?? null),
+                'address_line_3' => $invoice->address_line_3 ?? ($invoice->estimate->address_line_3 ?? null),
+                'designation' => $invoice->designation ?? ($invoice->estimate->designation ?? null),
+                'currency' => $invoice->currency ?? ($invoice->estimate->currency ?? 'LKR'),
+                'heading' => $invoice->heading ?? ($invoice->estimate->heading ?? null),
+                'terms' => $invoice->terms ?? ($invoice->estimate->terms ?? null),
+                'special_terms' => $invoice->special_terms ?? ($invoice->estimate->special_terms ?? null),
+                'advance_payment' => $invoice->advance_payment ?? ($invoice->estimate->advance_payment ?? null),
+                'advance_percentage' => $invoice->advance_percentage ?? ($invoice->estimate->advance_percentage ?? null),
+                'senior_manager' => $invoice->senior_manager ?? ($invoice->estimate->senior_manager ?? null),
+                'additional_notes' => $invoice->additional_information ?? ($invoice->estimate->additional_notes ?? null),
+                'sscl_applicable' => $invoice->sscl_applicable ?? ($invoice->estimate->sscl_applicable ?? false),
+                'vat_applicable' => $invoice->vat_applicable ?? ($invoice->estimate->vat_applicable ?? false),
+            ]);
+
+            // Copy Items
+            foreach ($invoice->items as $item) {
+                $newEstimate->items()->create([
+                    'description' => $item->description,
+                    'quantity' => $item->quantity,
+                    'unit_price' => $item->unit_price,
+                    'amount' => $item->amount,
+                    'sscl_amount' => $item->sscl_amount,
+                    'vat_amount' => $item->vat_amount,
+                    'total_with_vat' => $item->total_with_vat,
+                    'type' => $item->type ?? 'item',
+                    'department' => $item->department ?? 'Creative',
+                    'revenue_category' => $item->revenue_category ?? 'Main',
+                ]);
+            }
+
+            $this->logAction("Duplicated invoice: {$invoice->invoice_number} to new estimate", $invoice);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return redirect()->route('estimates.edit', $newEstimate->id)->with('success', 'Invoice duplicated to a new Estimate.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to duplicate invoice: ' . $e->getMessage());
+            return back()->with('error', 'Failed to duplicate invoice: ' . $e->getMessage());
         }
-
-        $this->logAction("Duplicated invoice: {$invoice->invoice_number} to new estimate", $invoice);
-
-        return redirect()->route('estimates.edit', $newEstimate->id)->with('success', 'Invoice duplicated to a new Estimate.');
     }
 
     public function destroy(string $id)

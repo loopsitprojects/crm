@@ -64,6 +64,34 @@ class Deal extends Model
         $user = $user ?? auth()->user();
         if (!$user) return false;
 
+        $hasDuplicatedEstimate = false;
+        if ($this->relationLoaded('estimates')) {
+            $hasDuplicatedEstimate = $this->estimates->where('is_duplicated', true)->isNotEmpty();
+        } elseif ($this->exists) {
+            $hasDuplicatedEstimate = $this->estimates()->where('is_duplicated', true)->exists();
+        }
+
+        if ($hasDuplicatedEstimate) {
+            // Duplicated estimate permissions: Super Admin, IT Admin, Creator/Owner, and associated HOD only.
+            if ($user->hasRole('Super Admin') || $user->hasRole('IT Admin')) {
+                return true;
+            }
+            if ($this->user_id === $user->id) {
+                return true;
+            }
+            if ($user->hasRole('HOD')) {
+                if ($this->owner) {
+                    if ($user->department && $this->owner->department === $user->department) {
+                        return true;
+                    }
+                    if ($this->owner->supervisor_id === $user->id) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         // 1. Super Admin or Management override
         if ($user->hasRole('Super Admin') || $user->hasRole('Management')) {
             return true;

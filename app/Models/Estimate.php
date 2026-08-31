@@ -42,7 +42,12 @@ class Estimate extends Model
         'po_number',
         'po_file_path',
         'date_of_delivery',
-        'place_of_supply'
+        'place_of_supply',
+        'is_duplicated'
+    ];
+
+    protected $casts = [
+        'is_duplicated' => 'boolean',
     ];
 
     public function customer()
@@ -87,6 +92,29 @@ class Estimate extends Model
     {
         $user = $user ?? auth()->user();
         if (!$user) return false;
+
+        // Special edit restrictions for duplicated estimates:
+        // Only estimate creator, respective HOD associated, Super Admins, and IT Admin can edit.
+        if ($this->is_duplicated) {
+            if ($user->hasRole('Super Admin') || $user->hasRole('IT Admin')) {
+                return true;
+            }
+            if ((int)$this->user_id === (int)$user->id) {
+                return true;
+            }
+            if ($user->hasRole('HOD')) {
+                $creator = $this->user;
+                if ($creator) {
+                    if ($user->department && $creator->department === $user->department) {
+                        return true;
+                    }
+                    if ($creator->supervisor_id === $user->id) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
 
         // If it's linked to a deal, follow the deal's edit permissions
         if ($this->deal) {
