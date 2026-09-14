@@ -31,21 +31,23 @@ return new class extends Migration
         });
 
         // Copy existing delivery fields from quotations to invoices and temp_invoices where NULL
-        DB::table('invoices')
-            ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
-            ->whereNull('invoices.date_of_delivery')
-            ->update([
-                'invoices.date_of_delivery' => DB::raw('quotations.date_of_delivery'),
-                'invoices.place_of_supply' => DB::raw('quotations.place_of_supply'),
-            ]);
+        if (DB::getDriverName() === 'mysql') {
+            DB::table('invoices')
+                ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
+                ->whereNull('invoices.date_of_delivery')
+                ->update([
+                    'invoices.date_of_delivery' => DB::raw('quotations.date_of_delivery'),
+                    'invoices.place_of_supply' => DB::raw('quotations.place_of_supply'),
+                ]);
 
-        DB::table('temp_invoices')
-            ->join('quotations', 'temp_invoices.quotation_id', '=', 'quotations.id')
-            ->whereNull('temp_invoices.date_of_delivery')
-            ->update([
-                'temp_invoices.date_of_delivery' => DB::raw('quotations.date_of_delivery'),
-                'temp_invoices.place_of_supply' => DB::raw('quotations.place_of_supply'),
-            ]);
+            DB::table('temp_invoices')
+                ->join('quotations', 'temp_invoices.quotation_id', '=', 'quotations.id')
+                ->whereNull('temp_invoices.date_of_delivery')
+                ->update([
+                    'temp_invoices.date_of_delivery' => DB::raw('quotations.date_of_delivery'),
+                    'temp_invoices.place_of_supply' => DB::raw('quotations.place_of_supply'),
+                ]);
+        }
     }
 
     /**

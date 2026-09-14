@@ -447,6 +447,16 @@ class DealController extends Controller
 
         $deal = Deal::create($validated);
 
+        // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
+        $jobIdStages = Deal::JOB_STAGES;
+        if (in_array($deal->stage, $jobIdStages) && is_null($deal->job_number)) {
+            $year = date('Y');
+            $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
+            $deal->update([
+                'job_number' => "LOOPS/{$year}/{$idPad}"
+            ]);
+        }
+
         // Handle department allocations
         if ($request->has('department_allocations')) {
             $allocations = collect($request->department_allocations)->map(function($alloc) {
@@ -529,7 +539,7 @@ class DealController extends Controller
         }
 
         // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
-        $jobIdStages = ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'];
+        $jobIdStages = Deal::JOB_STAGES;
         if (in_array($validated['stage'], $jobIdStages) && is_null($deal->job_number)) {
             $year = date('Y');
             $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
@@ -660,7 +670,7 @@ class DealController extends Controller
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages
-            $jobIdStages = ['Working on pitch', 'Pitched', 'Objection handling', 'Finalizing terms', 'Closed Won'];
+            $jobIdStages = Deal::JOB_STAGES;
             if (in_array($validated['stage'], $jobIdStages) && is_null($deal->job_number)) {
                 $year = date('Y');
                 $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);

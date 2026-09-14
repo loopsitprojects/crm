@@ -11,8 +11,10 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        // For MySQL, we can use a raw statement to alter the enum
-        DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('draft', 'sent', 'approved', 'accepted', 'rejected', 'invoiced') DEFAULT 'draft'");
+        if (DB::getDriverName() === 'mysql') {
+            // For MySQL, we can use a raw statement to alter the enum
+            DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('draft', 'sent', 'approved', 'accepted', 'rejected', 'invoiced') DEFAULT 'draft'");
+        }
     }
 
     /**
@@ -20,6 +22,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('draft', 'sent', 'accepted', 'rejected', 'invoiced') DEFAULT 'draft'");
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('draft', 'sent', 'accepted', 'rejected', 'invoiced') DEFAULT 'draft'");
+        }
     }
 };

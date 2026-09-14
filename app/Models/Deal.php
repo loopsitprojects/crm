@@ -28,6 +28,26 @@ class Deal extends Model
         'senior_manager'
     ];
 
+    public const JOB_STAGES = [
+        'Working on pitch',
+        'Pitched',
+        'Objection handling',
+        'Finalizing terms',
+        'Closed Won'
+    ];
+
+    protected static function booted()
+    {
+        static::created(function ($deal) {
+            if (in_array($deal->stage, self::JOB_STAGES) && is_null($deal->job_number)) {
+                $year = date('Y');
+                $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
+                $deal->job_number = "LOOPS/{$year}/{$idPad}";
+                $deal->saveQuietly();
+            }
+        });
+    }
+
     public function owner()
     {
         return $this->belongsTo(User::class, 'user_id');

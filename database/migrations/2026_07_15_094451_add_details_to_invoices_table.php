@@ -36,30 +36,32 @@ return new class extends Migration
         });
 
         // Copy data from quotations to invoices for existing invoices
-        DB::table('invoices')
-            ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
-            ->update([
-                'invoices.brand_name' => DB::raw('quotations.brand_name'),
-                'invoices.attention_to' => DB::raw('quotations.attention_to'),
-                'invoices.address_line_1' => DB::raw('quotations.address_line_1'),
-                'invoices.address_line_2' => DB::raw('quotations.address_line_2'),
-                'invoices.address_line_3' => DB::raw('quotations.address_line_3'),
-                'invoices.designation' => DB::raw('quotations.designation'),
-                'invoices.currency' => DB::raw('quotations.currency'),
-                'invoices.heading' => DB::raw('quotations.heading'),
-                'invoices.terms' => DB::raw('quotations.terms'),
-                'invoices.special_terms' => DB::raw('quotations.special_terms'),
-                'invoices.advance_payment' => DB::raw('quotations.advance_payment'),
-                'invoices.advance_percentage' => DB::raw('quotations.advance_percentage'),
-                'invoices.advance_received_amount' => DB::raw('quotations.advance_received_amount'),
-                'invoices.invoice_type' => DB::raw('quotations.invoice_type'),
-                'invoices.senior_manager' => DB::raw('quotations.senior_manager'),
-                'invoices.sscl_applicable' => DB::raw('quotations.sscl_applicable'),
-                'invoices.vat_applicable' => DB::raw('quotations.vat_applicable'),
-                'invoices.proforma_percentage' => DB::raw('quotations.proforma_percentage'),
-                'invoices.proforma_tax' => DB::raw('quotations.proforma_tax'),
-                'invoices.proforma_with_tax' => DB::raw('quotations.proforma_with_tax'),
-            ]);
+        if (DB::getDriverName() === 'mysql') {
+            DB::table('invoices')
+                ->join('quotations', 'invoices.quotation_id', '=', 'quotations.id')
+                ->update([
+                    'invoices.brand_name' => DB::raw('quotations.brand_name'),
+                    'invoices.attention_to' => DB::raw('quotations.attention_to'),
+                    'invoices.address_line_1' => DB::raw('quotations.address_line_1'),
+                    'invoices.address_line_2' => DB::raw('quotations.address_line_2'),
+                    'invoices.address_line_3' => DB::raw('quotations.address_line_3'),
+                    'invoices.designation' => DB::raw('quotations.designation'),
+                    'invoices.currency' => DB::raw('quotations.currency'),
+                    'invoices.heading' => DB::raw('quotations.heading'),
+                    'invoices.terms' => DB::raw('quotations.terms'),
+                    'invoices.special_terms' => DB::raw('quotations.special_terms'),
+                    'invoices.advance_payment' => DB::raw('quotations.advance_payment'),
+                    'invoices.advance_percentage' => DB::raw('quotations.advance_percentage'),
+                    'invoices.advance_received_amount' => DB::raw('quotations.advance_received_amount'),
+                    'invoices.invoice_type' => DB::raw('quotations.invoice_type'),
+                    'invoices.senior_manager' => DB::raw('quotations.senior_manager'),
+                    'invoices.sscl_applicable' => DB::raw('quotations.sscl_applicable'),
+                    'invoices.vat_applicable' => DB::raw('quotations.vat_applicable'),
+                    'invoices.proforma_percentage' => DB::raw('quotations.proforma_percentage'),
+                    'invoices.proforma_tax' => DB::raw('quotations.proforma_tax'),
+                    'invoices.proforma_with_tax' => DB::raw('quotations.proforma_with_tax'),
+                ]);
+        }
     }
 
     /**
