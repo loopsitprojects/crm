@@ -47,6 +47,20 @@ class EstimateDuplicationTest extends TestCase
         $this->assertTrue($estimate->canEdit($superAdmin));
     }
 
+    public function test_duplicated_estimate_can_be_edited_by_finance_admin()
+    {
+        $creator = new User(['role' => 'Manager', 'department' => 'Creative']);
+        $creator->id = 10;
+
+        $financeAdmin = new User(['role' => 'Finance Admin', 'department' => 'Corporate']);
+        $financeAdmin->id = 1;
+
+        $estimate = new Estimate(['user_id' => 10, 'is_duplicated' => true]);
+        $estimate->setRelation('user', $creator);
+
+        $this->assertTrue($estimate->canEdit($financeAdmin));
+    }
+
     public function test_duplicated_estimate_can_be_edited_by_it_admin()
     {
         $creator = new User(['role' => 'Manager', 'department' => 'Creative']);

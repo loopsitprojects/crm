@@ -40,6 +40,44 @@ class DashboardController extends Controller
         $userRole = $user->role;
         $userDept = $user->department;
 
+        if ($userRole === 'Staff') {
+            $pettyCashes = \App\Models\PettyCashRequest::with(['hod', 'items.category', 'proofs'])
+                ->where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            $expenseCategories = \App\Models\ExpenseCategory::where('status', 'active')->where('name', '!=', 'IOU')->orderBy('name')->get();
+            
+            $hods = \App\Models\User::orderBy('name')->get();
+            if ($user->associated_hod && $hods->contains('id', $user->associated_hod->id)) {
+                $hods = $hods->reject(fn($h) => $h->id === $user->associated_hod->id);
+                $hods->prepend($user->associated_hod);
+            }
+
+            $jobs = \App\Models\Deal::whereNotNull('job_number')
+                ->where('job_number', '!=', '')
+                ->orderBy('job_number', 'desc')
+                ->get(['job_number', 'title', 'customer_name'])
+                ->mapWithKeys(function ($deal) {
+                    $label = $deal->job_number;
+                    if (!empty($deal->title)) {
+                        $label .= ' - ' . $deal->title;
+                        if (!empty($deal->customer_name)) {
+                            $label .= ' (' . $deal->customer_name . ')';
+                        }
+                    }
+                    return [$deal->job_number => $label];
+                });
+
+            return view('dashboard.staff', [
+                'user' => $user,
+                'hodName' => $user->hod_name,
+                'pettyCashes' => $pettyCashes,
+                'expenseCategories' => $expenseCategories,
+                'hods' => $hods,
+                'jobs' => $jobs,
+            ]);
+        }
+
         $managers = \App\Models\User::where('role', 'Manager');
         if ($userRole === 'Manager') {
             $managers->where('id', $user->id);
@@ -66,7 +104,7 @@ class DashboardController extends Controller
         }]);
 
         // Role-based filtering
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        if (!$user->hasAdminPrivileges()) {
             $query->where(function ($q) use ($user, $userDept) {
                 // Own deals
                 $q->where('user_id', $user->id)
@@ -168,7 +206,7 @@ class DashboardController extends Controller
 
         // Determine active department/category filter depts
         $targetDepts = null;
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management') && $userDept) {
+        if (!$user->hasAdminPrivileges() && $userDept) {
             $targetDepts = [$userDept];
         } elseif ($departmentFilter === 'SBU') {
             $targetDepts = $sbuDepts;

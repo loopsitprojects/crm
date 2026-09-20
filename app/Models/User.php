@@ -13,11 +13,12 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     const ROLES = [
-        'Super Admin',
+        'Finance Admin',
         'IT Admin',
         'Management',
         'HOD',
         'Manager',
+        'Staff',
     ];
 
     const DEPARTMENT_HIERARCHY = [
@@ -76,9 +77,62 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'supervisor_id');
     }
 
+    public function assignedHod()
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
+    }
+
     public function subordinates()
     {
         return $this->hasMany(User::class, 'supervisor_id');
+    }
+
+    /**
+     * Resolve the Associated HOD User instance for this user.
+     * Related HOD can be any user. The user's assigned HOD is their assigned supervisor/HOD.
+     * 
+     * @return \App\Models\User|null
+     */
+    public function getAssociatedHodAttribute()
+    {
+        if ($this->supervisor) {
+            return $this->supervisor;
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve the HOD Name for this user.
+     * 
+     * @return string
+     */
+    public function getHodNameAttribute()
+    {
+        return $this->associated_hod ? $this->associated_hod->name : 'Not Assigned';
+    }
+
+    /**
+     * Automatically present legacy 'Super Admin' as 'Finance Admin'.
+     */
+    public function getRoleAttribute($value)
+    {
+        if ($value === 'Super Admin' || $value === 'super_admin') {
+            return 'Finance Admin';
+        }
+        return $value;
+    }
+
+    /**
+     * Automatically store 'Super Admin' input as 'Finance Admin'.
+     */
+    public function setRoleAttribute($value)
+    {
+        if ($value === 'Super Admin' || $value === 'super_admin') {
+            $this->attributes['role'] = 'Finance Admin';
+        } else {
+            $this->attributes['role'] = $value;
+        }
     }
 
     /**
@@ -89,28 +143,66 @@ class User extends Authenticatable
      */
     public function hasRole($role)
     {
-        // Normalize role strings for comparison (e.g., 'super_admin' -> 'Super Admin')
-        // This is a simple implementation. You might want to use a more robust role management system later.
-
         // Exact match
         if ($this->role === $role) {
             return true;
         }
 
         // Case-insensitive match normalization
-        $normalizedInput = str_replace('_', ' ', strtolower($role));
-        $normalizedStored = strtolower($this->role);
+        $normalizedInput = str_replace('_', ' ', strtolower(trim($role)));
+        $normalizedStored = str_replace('_', ' ', strtolower(trim($this->role)));
 
         if ($normalizedInput === $normalizedStored) {
             return true;
         }
 
-        // IT Admin inherits all Super Admin privileges
-        if ($normalizedInput === 'super admin' && $normalizedStored === 'it admin') {
+        // Equate Super Admin and Finance Admin
+        if (in_array($normalizedInput, ['super admin', 'finance admin']) && in_array($normalizedStored, ['super admin', 'finance admin'])) {
+            return true;
+        }
+
+        // IT Admin inherits all Super Admin / Finance Admin privileges
+        if (in_array($normalizedInput, ['super admin', 'finance admin']) && $normalizedStored === 'it admin') {
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Check if user has administrative privileges (Finance Admin, Super Admin, IT Admin, or Management).
+     *
+     * @return bool
+     */
+    public function hasAdminPrivileges(): bool
+    {
+        return in_array($this->role, ['Finance Admin', 'Super Admin', 'IT Admin', 'Management']) ||
+               $this->hasRole('finance_admin') ||
+               $this->hasRole('super_admin') ||
+               $this->hasRole('it_admin') ||
+               $this->hasRole('management');
+    }
+
+    /**
+     * Check if user is a Finance Admin (or legacy Super Admin).
+     *
+     * @return bool
+     */
+    public function isFinanceAdmin(): bool
+    {
+        return in_array($this->role, ['Finance Admin', 'Super Admin']) ||
+               $this->hasRole('finance_admin') ||
+               $this->hasRole('super_admin');
+    }
+
+    /**
+     * Check if user is in Management.
+     *
+     * @return bool
+     */
+    public function isManagement(): bool
+    {
+        return $this->role === 'Management' || $this->hasRole('management');
     }
 
     public function deals()

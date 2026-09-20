@@ -1,0 +1,279 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class PettyCashRequest extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'reference_number',
+        'user_id',
+        'hod_id',
+        'department',
+        'job_number',
+        'extra_notes',
+        'total_amount',
+        'approved_amount',
+        'settlement_amount',
+        'is_iou',
+        'issued_at',
+        'issued_money_notes',
+        'status',
+        'hod_rejection_note',
+        'admin_rejection_note',
+        'signature_path',
+        'settlement_signature_path',
+        'settled_at',
+        'settlement_note',
+        'settlement_money_notes',
+        'management_notes',
+        'sent_to_management_at',
+        'sent_to_management_by',
+        'management_approved_at',
+        'management_approved_by',
+        'management_rejection_note',
+        'reappeal_count',
+    ];
+
+    protected $casts = [
+        'is_iou' => 'boolean',
+        'approved_amount' => 'decimal:2',
+        'settlement_amount' => 'decimal:2',
+        'issued_at' => 'datetime',
+        'settled_at' => 'datetime',
+        'sent_to_management_at' => 'datetime',
+        'management_approved_at' => 'datetime',
+        'issued_money_notes' => 'array',
+        'settlement_money_notes' => 'array',
+    ];
+
+    protected $appends = [
+        'issued_notes_total',
+        'settlement_notes_total',
+        'signature_url',
+        'settlement_signature_url',
+        'status_label',
+    ];
+
+    public function getIssuedNotesTotalAttribute()
+    {
+        if (!$this->issued_money_notes || !is_array($this->issued_money_notes)) {
+            return 0;
+        }
+        $n = $this->issued_money_notes;
+        return ((int)($n['5000'] ?? 0)) * 5000 +
+               ((int)($n['2000'] ?? 0)) * 2000 +
+               ((int)($n['1000'] ?? 0)) * 1000 +
+               ((int)($n['500'] ?? 0)) * 500 +
+               ((int)($n['100'] ?? 0)) * 100 +
+               ((int)($n['50'] ?? 0)) * 50 +
+               ((int)($n['20'] ?? 0)) * 20 +
+               (float)($n['coins'] ?? 0);
+    }
+
+    public function getSettlementNotesTotalAttribute()
+    {
+        if (!$this->settlement_money_notes || !is_array($this->settlement_money_notes)) {
+            return 0;
+        }
+        $n = $this->settlement_money_notes;
+        return ((int)($n['5000'] ?? 0)) * 5000 +
+               ((int)($n['2000'] ?? 0)) * 2000 +
+               ((int)($n['1000'] ?? 0)) * 1000 +
+               ((int)($n['500'] ?? 0)) * 500 +
+               ((int)($n['100'] ?? 0)) * 100 +
+               ((int)($n['50'] ?? 0)) * 50 +
+               ((int)($n['20'] ?? 0)) * 20 +
+               (float)($n['coins'] ?? 0);
+    }
+
+    public function getSignatureUrlAttribute()
+    {
+        if (empty($this->signature_path)) {
+            return null;
+        }
+        if (str_starts_with($this->signature_path, 'data:image/') || str_starts_with($this->signature_path, 'http://') || str_starts_with($this->signature_path, 'https://')) {
+            return $this->signature_path;
+        }
+        $clean = ltrim($this->signature_path, '/');
+        if (str_starts_with($clean, 'public/')) {
+            $clean = substr($clean, 7);
+        }
+        return url($clean);
+    }
+
+    public function getSettlementSignatureUrlAttribute()
+    {
+        if (empty($this->settlement_signature_path)) {
+            return null;
+        }
+        if (str_starts_with($this->settlement_signature_path, 'data:image/') || str_starts_with($this->settlement_signature_path, 'http://') || str_starts_with($this->settlement_signature_path, 'https://')) {
+            return $this->settlement_signature_path;
+        }
+        $clean = ltrim($this->settlement_signature_path, '/');
+        if (str_starts_with($clean, 'public/')) {
+            $clean = substr($clean, 7);
+        }
+        return url($clean);
+    }
+
+    public function getJobNumbersAttribute(): array
+    {
+        if (empty($this->job_number)) {
+            return [];
+        }
+        return array_values(array_filter(array_map('trim', explode(',', $this->job_number))));
+    }
+
+    public function isIOU()
+    {
+        if ($this->is_iou) {
+            return true;
+        }
+        return $this->items()->whereHas('category', function($q) {
+            $q->where('name', 'LIKE', '%IOU%');
+        })->exists();
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function hod()
+    {
+        return $this->belongsTo(User::class, 'hod_id');
+    }
+
+    /**
+     * Get the associated HOD, with fallback to requester's associated HOD.
+     */
+    public function getAssociatedHodAttribute()
+    {
+        if ($this->hod) {
+            return $this->hod;
+        }
+        if ($this->user && $this->user->associated_hod) {
+            return $this->user->associated_hod;
+        }
+        return null;
+    }
+
+    public function items()
+    {
+        return $this->hasMany(PettyCashItem::class, 'petty_cash_request_id');
+    }
+
+    public function proofs()
+    {
+        return $this->hasMany(PettyCashProof::class, 'petty_cash_request_id');
+    }
+
+    public function managementSender()
+    {
+        return $this->belongsTo(User::class, 'sent_to_management_by');
+    }
+
+    public function managementApprover()
+    {
+        return $this->belongsTo(User::class, 'management_approved_by');
+    }
+
+    public static function generateReferenceNumber()
+    {
+        $year = date('Y');
+        $last = self::whereYear('created_at', $year)->orderBy('id', 'desc')->first();
+        $sequence = $last ? ((int) substr($last->reference_number, -4)) + 1 : 1;
+        return 'PC-' . $year . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate a short, encrypted URL-safe token for public voucher links.
+     */
+    public function getSecureVoucherToken(): string
+    {
+        $hash = substr(hash_hmac('sha256', 'pc_' . $this->id . '_' . $this->created_at, config('app.key')), 0, 10);
+        return base_convert($this->id, 10, 36) . 'z' . $hash;
+    }
+
+    /**
+     * Decrypt and validate a short secure voucher token.
+     */
+    public static function findBySecureVoucherToken(string $token)
+    {
+        try {
+            if (str_contains($token, 'z')) {
+                $parts = explode('z', $token, 2);
+                $id = (int) base_convert($parts[0], 36, 10);
+                $hash = $parts[1] ?? '';
+
+                $pc = self::find($id);
+                if ($pc) {
+                    $expectedHash = substr(hash_hmac('sha256', 'pc_' . $pc->id . '_' . $pc->created_at, config('app.key')), 0, 10);
+                    if (hash_equals($expectedHash, $hash)) {
+                        return $pc;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Human-readable label for petty cash status.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'approved' => 'Approved',
+            'iou_issued' => 'IOU Issued (Unsettled)',
+            'settled' => 'Settled',
+            'pending_settlement' => 'Pending Settlement',
+            'pending_settlement_hod' => 'Settlement Exceeded (Pending HOD)',
+            'pending_super_admin' => 'Pending Finance Approval',
+            'pending_hod' => 'Pending HOD Approval',
+            'pending_management' => 'Pending Management Approval',
+            'rejected_by_super_admin' => 'Rejected by Finance',
+            'rejected_by_management' => 'Rejected by Management',
+            'rejected_by_hod' => 'Rejected by HOD',
+            default => ucwords(str_replace('_', ' ', $this->status ?? '')),
+        };
+    }
+
+    /**
+     * Check if the IOU settlement has exceeded the approved amount.
+     */
+    public function isSettlementExceeded(): bool
+    {
+        if (!$this->isIOU()) {
+            return false;
+        }
+        $approved = (float)($this->approved_amount ?: $this->total_amount);
+        $settled = (float)($this->settlement_amount ?: ($this->status === 'pending_settlement' || $this->status === 'pending_settlement_hod' || $this->status === 'settled' ? $this->total_amount : 0));
+        return round($settled, 2) > round($approved, 2);
+    }
+
+    /**
+     * Get the amount by which settlement exceeded the approved amount.
+     */
+    public function getExceededAmountAttribute(): float
+    {
+        $approved = (float)($this->approved_amount ?: $this->total_amount);
+        $settled = (float)($this->settlement_amount ?: $this->total_amount);
+        return max(0, round($settled - $approved, 2));
+    }
+
+    /**
+     * Get the effective approved amount with fallback to total_amount.
+     */
+    public function getEffectiveApprovedAmountAttribute(): float
+    {
+        return (float)($this->approved_amount ?: $this->total_amount);
+    }
+}

@@ -92,8 +92,8 @@ class Deal extends Model
         }
 
         if ($hasDuplicatedEstimate) {
-            // Duplicated estimate permissions: Super Admin, IT Admin, Creator/Owner, and associated HOD only.
-            if ($user->hasRole('Super Admin') || $user->hasRole('IT Admin')) {
+            // Duplicated estimate permissions: Super Admin, Finance Admin, IT Admin, Creator/Owner, and associated HOD only.
+            if ($user->hasRole('Super Admin') || $user->hasRole('Finance Admin') || $user->hasRole('IT Admin')) {
                 return true;
             }
             if ($this->user_id === $user->id) {
@@ -112,8 +112,8 @@ class Deal extends Model
             return false;
         }
 
-        // 1. Super Admin or Management override
-        if ($user->hasRole('Super Admin') || $user->hasRole('Management')) {
+        // 1. Finance Admin, Super Admin, IT Admin or Management override
+        if ($user->hasAdminPrivileges()) {
             return true;
         }
 

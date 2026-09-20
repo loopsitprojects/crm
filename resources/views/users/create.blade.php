@@ -86,11 +86,11 @@
 
                         <div>
                             <label for="supervisor_id" class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-sitemap text-brand-purple mr-2"></i>Assigned Supervisor
+                                <i class="fas fa-sitemap text-brand-purple mr-2"></i>Assigned HOD / Supervisor
                             </label>
                             <select name="supervisor_id" id="supervisor_id"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
-                                <option value="">-- No Supervisor --</option>
+                                <option value="">-- No HOD / Supervisor --</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ old('supervisor_id') == $user->id ? 'selected' : '' }}>
                                         {{ $user->name }} ({{ $user->role }})
@@ -108,7 +108,7 @@
                             </label>
                             <select name="department" id="department"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
-                                <option value="">-- Select Department (Optional for IT Admin & Super Admin) --</option>
+                                <option value="">-- Select Department (Optional for Management & Admins) --</option>
                                 @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
                                     @foreach($departments as $key => $label)
                                         <option value="{{ $key }}" {{ old('department') == $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -194,7 +194,8 @@
 
             function toggleDeptRequirement() {
                 const role = roleSelect ? roleSelect.value : '';
-                if (role === 'IT Admin' || role === 'Super Admin') {
+                const optionalRoles = ['IT Admin', 'Super Admin', 'Finance Admin', 'Management'];
+                if (optionalRoles.includes(role)) {
                     if (deptSelect) deptSelect.removeAttribute('required');
                     if (deptAsterisk) deptAsterisk.style.display = 'none';
                 } else {

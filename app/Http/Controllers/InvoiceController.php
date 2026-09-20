@@ -58,7 +58,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        } elseif (!$user->hasAdminPrivileges()) {
             $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -128,7 +128,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        } elseif (!$user->hasAdminPrivileges()) {
             $query->whereHas('estimate', function($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -196,7 +196,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        } elseif (!$user->hasAdminPrivileges()) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {
@@ -228,7 +228,7 @@ class InvoiceController extends Controller
 
     public function proforma(Request $request)
     {
-        if (!auth()->user()->hasRole('Super Admin')) {
+        if (!auth()->user()->hasAdminPrivileges()) {
             return redirect()->route('invoices.index')->with('error', 'Unauthorized access.');
         }
 
@@ -295,7 +295,7 @@ class InvoiceController extends Controller
                       $dq->where('user_id', $user->id);
                   });
             });
-        } elseif (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        } elseif (!$user->hasAdminPrivileges()) {
             $query->where(function ($q) use ($user) {
                 $q->where('user_id', $user->id)
                   ->orWhereHas('deal', function ($dq) use ($user) {

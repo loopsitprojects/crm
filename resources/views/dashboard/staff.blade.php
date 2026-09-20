@@ -1,0 +1,1426 @@
+@extends('layouts.app')
+
+@section('header', 'Staff Dashboard')
+
+@push('styles')
+<style>
+    .ts-wrapper.multi .ts-control {
+        border-radius: 0.5rem;
+        border-color: #d1d5db;
+        padding: 0.25rem 0.5rem;
+        min-height: 42px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .ts-wrapper.multi .ts-control > div {
+        background-color: #f1f5f9;
+        color: #334155;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.375rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.15rem 0.4rem;
+        display: inline-flex;
+        align-items: center;
+    }
+    .ts-wrapper.multi .ts-control > div .remove {
+        border-left: 1px solid #cbd5e1;
+        margin-left: 0.35rem;
+        padding-left: 0.35rem;
+        color: #64748b;
+        font-size: 0.875rem;
+        cursor: pointer;
+    }
+    .ts-wrapper.multi .ts-control > div .remove:hover {
+        color: #ef4444;
+    }
+    .ts-dropdown {
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
+        z-index: 9999;
+    }
+</style>
+@endpush
+
+@section('content')
+<div class="max-w-5xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
+
+    <!-- Welcome Header Banner -->
+    <div class="bg-gradient-to-r from-brand-pink via-brand-purple to-brand-blue rounded-2xl p-5 sm:p-8 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row justify-between items-stretch md:items-center gap-5 sm:gap-6">
+        <div class="absolute -right-10 -bottom-10 opacity-15 pointer-events-none">
+            <i class="fas fa-id-card text-8xl sm:text-9xl"></i>
+        </div>
+        <div class="relative z-10 flex flex-col sm:flex-row items-center sm:items-start space-y-3 sm:space-y-0 sm:space-x-5 md:space-x-6 text-center sm:text-left">
+            <img src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=random&size=128"
+                 alt="{{ $user->name }}" 
+                 class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white/30 shadow-lg object-cover flex-shrink-0">
+            <div>
+                <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-2 text-white">
+                    <i class="fas fa-user-tag mr-1"></i> Staff Member
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
+                    Welcome, {{ $user->name }}
+                </h1>
+                <p class="text-white/80 text-xs sm:text-sm mt-1">
+                    Staff Portal & Department Information
+                </p>
+            </div>
+        </div>
+        <!-- Petty Cash Action Button -->
+        <div class="relative z-10">
+            <button onclick="handleNewRequestClick(event)"
+                class="w-full md:w-auto px-6 py-3 bg-white text-brand-purple hover:bg-gray-50 font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center">
+                <i class="fas fa-wallet mr-2 text-brand-pink text-lg"></i> Petty Cash Request
+            </button>
+        </div>
+    </div>
+
+    <!-- Staff Information Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Name Card -->
+        <div class="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-100 flex items-center space-x-3.5 sm:space-x-4 hover:shadow-lg transition-shadow">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-pink-50 flex items-center justify-center text-brand-pink text-xl sm:text-2xl flex-shrink-0">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Staff Name</p>
+                <p class="text-base sm:text-lg font-bold text-gray-900 break-words leading-snug mt-0.5 sm:mt-1">{{ $user->name }}</p>
+            </div>
+        </div>
+
+        <!-- Department Card -->
+        <div class="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-100 flex items-center space-x-3.5 sm:space-x-4 hover:shadow-lg transition-shadow">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-purple-50 flex items-center justify-center text-brand-purple text-xl sm:text-2xl flex-shrink-0">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">Department</p>
+                <p class="text-base sm:text-lg font-bold text-gray-900 break-words leading-snug mt-0.5 sm:mt-1">{{ $user->department ?: 'Not Assigned' }}</p>
+            </div>
+        </div>
+
+        <!-- HOD Name Card -->
+        <div class="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-100 flex items-center space-x-3.5 sm:space-x-4 hover:shadow-lg transition-shadow sm:col-span-2 md:col-span-1">
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-50 flex items-center justify-center text-brand-blue text-xl sm:text-2xl flex-shrink-0">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider">HOD Name</p>
+                <p class="text-base sm:text-lg font-bold text-gray-900 break-words leading-snug mt-0.5 sm:mt-1">{{ $hodName }}</p>
+            </div>
+        </div>
+    </div>
+
+    @php
+        $unsettledIou = \App\Models\PettyCashRequest::where('user_id', auth()->id())
+            ->where('is_iou', true)
+            ->whereIn('status', ['approved', 'iou_issued', 'pending_settlement', 'pending_settlement_hod'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+    @endphp
+
+    @if($unsettledIou)
+        @php
+            $rawDate = $unsettledIou->issued_at ?? $unsettledIou->updated_at ?? $unsettledIou->created_at;
+            $startDate = null;
+            if ($rawDate instanceof \Carbon\CarbonInterface) {
+                $startDate = $rawDate;
+            } elseif (!empty($rawDate)) {
+                try {
+                    $startDate = \Carbon\Carbon::parse($rawDate);
+                } catch (\Throwable $e) {
+                    $startDate = null;
+                }
+            }
+            $deadline = $startDate ? $startDate->copy()->addHours(72) : now()->addHours(72);
+            $isOverdue = now()->greaterThan($deadline);
+        @endphp
+
+        <div class="mb-6 p-4 rounded-xl border {{ $isOverdue ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-amber-50 border-amber-300 text-amber-900' }} shadow-sm">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="p-2.5 rounded-lg {{ $isOverdue ? 'bg-rose-200/80 text-rose-700' : 'bg-amber-200/80 text-amber-800' }} mt-0.5 flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-lg"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm flex flex-wrap items-center gap-2">
+                            <span>Urgent IOU Settlement Reminder: {{ $unsettledIou->reference_number }}</span>
+                            @if($isOverdue)
+                                <span class="px-2 py-0.5 text-[10px] uppercase font-extrabold bg-rose-600 text-white rounded-full">OVERDUE</span>
+                            @else
+                                <span class="px-2 py-0.5 text-[10px] uppercase font-extrabold bg-amber-600 text-white rounded-full">72-Hour Policy</span>
+                            @endif
+                        </h4>
+                        <p class="text-xs mt-1 leading-relaxed">
+                            You have an active approved IOU for <strong>LKR {{ number_format($unsettledIou->total_amount, 2) }}</strong> approved on {{ $startDate ? $startDate->format('d M Y, h:i A') : 'N/A' }}.
+                            <br>
+                            @if($isOverdue)
+                                <span class="font-bold text-rose-700">Settlement deadline was {{ $deadline ? $deadline->format('d M Y, h:i A') : 'N/A' }} (Passed 72 hours). Please submit expenditure bills immediately!</span>
+                            @else
+                                <span>Settlement Deadline: <strong class="font-semibold">{{ $deadline ? $deadline->format('d M Y, h:i A') : 'N/A' }}</strong>.</span>
+                            @endif
+                        </p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0 w-full sm:w-auto">
+                    <button type="button" onclick="openSettleIouModal({{ $unsettledIou->id }})" class="w-full sm:w-auto px-4 py-2.5 text-xs font-bold rounded-lg shadow-sm {{ $isOverdue ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-amber-600 text-white hover:bg-amber-700' }} transition-all flex items-center justify-center gap-1.5">
+                        <i class="fas fa-receipt"></i> Settle IOU Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Petty Cash Requests Table -->
+    <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
+        <div class="px-4 sm:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
+            <div>
+                <h2 class="text-base sm:text-lg font-bold text-gray-800">My Petty Cash Requests</h2>
+                <p class="text-xs text-gray-500">Track and manage your submitted expenditure requests.</p>
+            </div>
+            <button onclick="handleNewRequestClick(event)"
+                class="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 bg-brand-pink text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-all flex items-center shadow-sm">
+                <i class="fas fa-plus mr-1.5"></i> New Request
+            </button>
+        </div>
+        <!-- Desktop Table View -->
+        <div class="hidden md:block overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 whitespace-nowrap">
+                        <th class="py-3.5 px-6">Ref #</th>
+                        <th class="py-3.5 px-6">HOD Name</th>
+                        <th class="py-3.5 px-6">Job Number</th>
+                        <th class="py-3.5 px-6">Total Amount</th>
+                        <th class="py-3.5 px-6">Status</th>
+                        <th class="py-3.5 px-6 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-sm">
+                    @forelse($pettyCashes as $pc)
+                        <tr class="hover:bg-gray-50/50 transition-colors whitespace-nowrap">
+                            <td class="py-3.5 px-6 font-mono font-bold text-gray-900">{{ $pc->reference_number }}</td>
+                            <td class="py-3.5 px-6 font-medium text-gray-800">{{ $pc->associated_hod->name ?? ($pc->hod->name ?? 'Not Assigned') }}</td>
+                            <td class="py-3.5 px-6">
+                                @if(count($pc->job_numbers))
+                                    <div class="flex flex-wrap gap-1 max-w-[200px]">
+                                        @foreach($pc->job_numbers as $jn)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">{{ $jn }}</span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="text-gray-400 font-mono text-xs">-</span>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-6 font-bold text-gray-900">LKR {{ number_format($pc->total_amount, 2) }}</td>
+                            <td class="py-3.5 px-6 whitespace-nowrap">
+                                @if($pc->status === 'pending_hod')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 inline-flex items-center whitespace-nowrap">
+                                        Pending HOD
+                                    </span>
+                                @elseif($pc->status === 'pending_super_admin')
+                                    <div class="flex flex-col gap-1 items-start">
+                                        <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 inline-flex items-center whitespace-nowrap">
+                                            Pending Finance Approval
+                                        </span>
+                                        @if($pc->management_approved_at)
+                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center whitespace-nowrap" title="Approved by Management at {{ $pc->management_approved_at->format('Y-m-d H:i') }}">
+                                                <i class="fas fa-user-check mr-1 text-purple-600"></i> Mgmt Approved
+                                            </span>
+                                        @endif
+                                    </div>
+                                @elseif($pc->status === 'pending_management')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center whitespace-nowrap">
+                                        <i class="fas fa-user-tie mr-1"></i> Pending Management
+                                    </span>
+                                @elseif($pc->status === 'approved')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 inline-flex items-center whitespace-nowrap">
+                                        Approved
+                                    </span>
+                                @elseif($pc->status === 'iou_issued')
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300 inline-flex items-center whitespace-nowrap" title="Money Handed Over - IOU Unsettled">
+                                        <i class="fas fa-hand-holding-usd mr-1"></i> Approved (IOU Unsettled)
+                                    </span>
+                                @elseif($pc->status === 'pending_settlement')
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300 inline-flex items-center whitespace-nowrap">
+                                        <i class="fas fa-file-invoice-dollar mr-1"></i> Settlement Pending
+                                    </span>
+                                @elseif($pc->status === 'pending_settlement_hod')
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center whitespace-nowrap" title="Settlement Exceeded Approved Amount - Awaiting HOD Approval">
+                                        <i class="fas fa-exclamation-triangle mr-1 text-amber-600"></i> Exceeded (Pending HOD)
+                                    </span>
+                                @elseif($pc->status === 'settled')
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center whitespace-nowrap">
+                                        <i class="fas fa-check-double mr-1"></i> IOU Settled
+                                    </span>
+                                @elseif($pc->status === 'rejected_by_hod')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 inline-flex items-center whitespace-nowrap" title="{{ $pc->hod_rejection_note }}">
+                                        Rejected by HOD
+                                    </span>
+                                @elseif($pc->status === 'rejected_by_super_admin')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 inline-flex items-center whitespace-nowrap" title="{{ $pc->admin_rejection_note }}">
+                                        Rejected by Finance
+                                    </span>
+                                @elseif($pc->status === 'rejected_by_management')
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 inline-flex items-center whitespace-nowrap" title="{{ $pc->management_rejection_note }}">
+                                        <i class="fas fa-times-circle mr-1 text-rose-600"></i> Rejected by Management
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="py-3.5 px-6 text-right whitespace-nowrap space-x-2">
+                                <button onclick="viewPettyCashDetails({{ $pc->id }})"
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                    Details
+                                </button>
+                                @if($pc->status === 'iou_issued')
+                                    <button onclick="openSettleIouModal({{ $pc->id }})"
+                                        class="px-3 py-1.5 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-pink transition-colors inline-flex items-center shadow-sm">
+                                        <i class="fas fa-file-signature mr-1"></i> Settle IOU
+                                    </button>
+                                @endif
+                                @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']))
+                                    <button onclick="openReappealModal({{ $pc->id }})"
+                                        class="px-3 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors">
+                                        Re-appeal
+                                    </button>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-gray-400">
+                                No Petty Cash requests submitted yet. Click "Petty Cash Request" to create one.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards View -->
+        <div class="block md:hidden space-y-3 p-4 bg-gray-50/50">
+            @forelse($pettyCashes as $pc)
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+                    <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
+                        <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Ref Number</span>
+                            <span class="font-mono text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 inline-block">
+                                {{ $pc->reference_number }}
+                            </span>
+                        </div>
+                        <div>
+                            @if($pc->status === 'pending_hod')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 inline-flex items-center">
+                                    <i class="fas fa-clock mr-1 text-[10px]"></i> Pending HOD
+                                </span>
+                            @elseif($pc->status === 'pending_super_admin')
+                                <div class="flex flex-col gap-1 items-start">
+                                    <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 inline-flex items-center">
+                                        <i class="fas fa-user-shield mr-1 text-[10px]"></i> Pending Finance Approval
+                                    </span>
+                                    @if($pc->management_approved_at)
+                                        <span class="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center" title="Approved by Management at {{ $pc->management_approved_at->format('Y-m-d H:i') }}">
+                                            <i class="fas fa-user-check mr-1 text-purple-600"></i> Mgmt Approved
+                                        </span>
+                                    @endif
+                                </div>
+                            @elseif($pc->status === 'pending_management')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 inline-flex items-center">
+                                    <i class="fas fa-user-tie mr-1 text-[10px]"></i> Pending Mgmt
+                                </span>
+                            @elseif($pc->status === 'approved')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 inline-flex items-center">
+                                    <i class="fas fa-check-circle mr-1 text-[10px]"></i> Approved
+                                </span>
+                            @elseif($pc->status === 'iou_issued')
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300 inline-flex items-center" title="Money Handed Over - IOU Unsettled">
+                                    <i class="fas fa-hand-holding-usd mr-1 text-[10px]"></i> Approved (IOU Unsettled)
+                                </span>
+                            @elseif($pc->status === 'pending_settlement')
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300 inline-flex items-center">
+                                    <i class="fas fa-file-invoice-dollar mr-1 text-[10px]"></i> Settlement Pending
+                                </span>
+                            @elseif($pc->status === 'pending_settlement_hod')
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center" title="Settlement Exceeded Approved Amount - Awaiting HOD Approval">
+                                    <i class="fas fa-exclamation-triangle mr-1 text-[10px] text-amber-600"></i> Exceeded (Pending HOD)
+                                </span>
+                            @elseif($pc->status === 'settled')
+                                <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center">
+                                    <i class="fas fa-check-double mr-1 text-[10px]"></i> IOU Settled
+                                </span>
+                            @elseif($pc->status === 'rejected_by_hod')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 inline-flex items-center" title="{{ $pc->hod_rejection_note }}">
+                                    <i class="fas fa-times-circle mr-1 text-[10px]"></i> Rejected by HOD
+                                </span>
+                            @elseif($pc->status === 'rejected_by_super_admin')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 inline-flex items-center" title="{{ $pc->admin_rejection_note }}">
+                                    <i class="fas fa-ban mr-1 text-[10px]"></i> Rejected by Finance
+                                </span>
+                            @elseif($pc->status === 'rejected_by_management')
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 inline-flex items-center" title="{{ $pc->management_rejection_note }}">
+                                    <i class="fas fa-times-circle mr-1 text-[10px] text-rose-600"></i> Rejected by Mgmt
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-baseline justify-between">
+                            <span class="text-xs text-gray-500 font-medium">Total Amount</span>
+                            <span class="text-base font-black text-brand-purple">
+                                LKR {{ number_format($pc->total_amount, 2) }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                            <div>
+                                <span class="text-gray-400 font-medium block text-[10px] uppercase">HOD Name</span>
+                                <span class="font-semibold text-gray-800 truncate block mt-0.5" title="{{ $pc->associated_hod->name ?? ($pc->hod->name ?? 'Not Assigned') }}">
+                                    {{ $pc->associated_hod->name ?? ($pc->hod->name ?? 'Not Assigned') }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-gray-400 font-medium block text-[10px] uppercase">Job Number(s)</span>
+                                @if(count($pc->job_numbers))
+                                    <div class="flex flex-wrap gap-1 mt-0.5">
+                                        @foreach($pc->job_numbers as $jn)
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">{{ $jn }}</span>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <span class="font-mono text-gray-400 text-xs block mt-0.5">-</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-2.5 border-t border-gray-100 flex items-center justify-end gap-2 flex-wrap">
+                        <button onclick="viewPettyCashDetails({{ $pc->id }})"
+                            class="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                            <i class="fas fa-eye mr-1"></i> Details
+                        </button>
+                        @if($pc->status === 'iou_issued')
+                            <button onclick="openSettleIouModal({{ $pc->id }})"
+                                class="px-3 py-1.5 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-pink transition-colors inline-flex items-center shadow-sm">
+                                <i class="fas fa-file-signature mr-1"></i> Settle IOU
+                            </button>
+                        @endif
+                        @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']))
+                            <button onclick="openReappealModal({{ $pc->id }})"
+                                class="px-3 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors">
+                                <i class="fas fa-redo mr-1"></i> Re-appeal
+                            </button>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div class="py-8 text-center text-gray-400 bg-white rounded-2xl border border-gray-100">
+                    <i class="fas fa-receipt text-3xl text-gray-300 mb-2 block"></i>
+                    No Petty Cash requests submitted yet.
+                </div>
+            @endforelse
+        </div>
+    </div>
+</div>
+
+<!-- New Petty Cash Request Modal -->
+<div id="newPettyCashModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-3xl shadow-2xl rounded-xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3.5 border-b border-gray-200">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-wallet text-brand-pink mr-2 text-base sm:text-lg"></i> New Petty Cash Request
+            </h3>
+            <button onclick="document.getElementById('newPettyCashModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-lg sm:text-xl"></i>
+            </button>
+        </div>
+        <form action="{{ route('petty-cash.store') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5 sm:space-y-6">
+            @csrf
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">HOD Associated With *</label>
+                    @if($user->role === 'HOD' || $user->hasRole('HOD'))
+                        <input type="hidden" name="hod_id" value="{{ $user->id }}">
+                        <div class="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs text-blue-800">
+                            <i class="fas fa-bolt text-blue-600"></i>
+                            <div>
+                                <span class="font-bold">Direct to Finance:</span> As Head of Department, your request bypasses HOD approval and is routed directly to Finance.
+                            </div>
+                        </div>
+                    @else
+                        @php
+                            $assignedHodUser = $user->associated_hod;
+                            $hodDisplayName = $assignedHodUser 
+                                ? ($assignedHodUser->name . ' (' . $assignedHodUser->role . ($assignedHodUser->department ? ' - ' . $assignedHodUser->department : '') . ')')
+                                : 'Not Assigned';
+                        @endphp
+                        <input type="hidden" name="hod_id" value="{{ $assignedHodUser ? $assignedHodUser->id : '' }}">
+                        <div class="relative">
+                            <input type="text" readonly value="{{ $hodDisplayName }}" 
+                                class="w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 font-medium text-base sm:text-sm cursor-not-allowed focus:ring-0 focus:border-gray-300 pl-9 py-2.5" 
+                                title="HOD is read-only and assigned by Administrator">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-user-shield text-sm"></i>
+                            </div>
+                        </div>
+                        @if(!$assignedHodUser)
+                            <p class="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                                <i class="fas fa-exclamation-triangle"></i> No HOD assigned to your account. Please contact an admin.
+                            </p>
+                        @endif
+                    @endif
+                </div>
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Job Number(s)</label>
+                    <select name="job_numbers[]" id="staff_create_job_number" multiple placeholder="-- Select Job Number(s) (Optional) --" class="w-full rounded-lg border-gray-300 text-base sm:text-sm focus:border-brand-blue focus:ring-brand-blue">
+                        @foreach($jobs as $jobNo => $display)
+                            <option value="{{ $jobNo }}">{{ $display }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <!-- IOU Toggle Option Card -->
+            <div class="bg-gradient-to-r from-amber-50/70 via-orange-50/50 to-amber-50/70 border border-amber-200 rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div id="staffIouIconBox" class="w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-lg shadow-sm border border-gray-200 flex-shrink-0 transition-all">
+                        <i id="staffIouIcon" class="fas fa-receipt text-gray-500"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span id="staffIouCardTitle" class="text-xs font-bold text-gray-800">Standard Petty Cash Request</span>
+                            <span id="staffIouStatusBadge" class="hidden text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-500 text-white shadow-sm">IOU Mode Active</span>
+                        </div>
+                        <p id="staffIouCardDesc" class="text-[11px] text-gray-500 mt-0.5 hidden"></p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0">
+                    <input type="hidden" name="is_iou" id="staff_create_is_iou" value="0">
+                    <button type="button" id="staffBtnToggleIou" onclick="toggleStaffIouMode()" class="w-full sm:w-auto px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 hover:text-amber-900 transition-all shadow-sm flex items-center justify-center gap-1.5">
+                        <i class="fas fa-hand-holding-usd text-amber-600"></i>
+                        <span id="staffBtnToggleIouText">Make Request IOU</span>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <div>
+                        <label id="staffItemsSectionLabel" class="block text-xs sm:text-sm font-bold text-gray-800">Expense Line Items *</label>
+                    </div>
+                    <button type="button" id="staffBtnAddExpenseItem" onclick="addExpenseItemRow()" class="text-xs bg-brand-blue text-white px-3 py-1.5 rounded-md hover:bg-brand-purple transition-all font-semibold flex items-center gap-1">
+                        <i class="fas fa-plus"></i> Add Line Item
+                    </button>
+                </div>
+                <div id="expenseItemsContainer" class="space-y-3">
+                    <!-- Initial Row -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 item-row">
+                        <div class="col-span-1 md:col-span-4 category-col">
+                            <select name="items[0][expense_category_id]" required onchange="toggleDinnerAttendees(this)" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
+                                <option value="">Select Category *</option>
+                                @foreach($expenseCategories as $category)
+                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-span-1 md:col-span-3 amount-col">
+                            <input type="number" step="0.01" min="0.01" name="items[0][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
+                        </div>
+                        <div class="col-span-1 md:col-span-4 desc-col">
+                            <input type="text" name="items[0][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
+                        </div>
+                        <div class="col-span-1 md:col-span-1 flex justify-end md:justify-center pt-1 md:pt-0 delete-col">
+                            <button type="button" onclick="if(document.querySelectorAll('#expenseItemsContainer .item-row').length > 1) this.closest('.item-row').remove()" class="text-red-500 hover:text-red-700 text-xs py-1 flex items-center gap-1 font-semibold">
+                                <i class="fas fa-trash"></i> <span class="md:hidden">Remove</span>
+                            </button>
+                        </div>
+                        <div class="attendees-container hidden col-span-1 md:col-span-12 mt-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="font-bold text-blue-900 flex items-center gap-1.5">
+                                    <i class="fas fa-utensils text-brand-blue"></i> Dinner Attendees / People Names (Max 5):
+                                </span>
+                                <span class="text-[11px] text-blue-700">Enter names of people who attended</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs sm:text-sm font-bold text-gray-800 mb-1">Extra Notes / Remarks</label>
+                <textarea name="extra_notes" rows="2" placeholder="Optional extra notes, remarks, or justification for this request..." class="w-full rounded-lg border-gray-300 text-base sm:text-xs focus:border-brand-blue focus:ring-brand-blue"></textarea>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs sm:text-sm font-bold text-gray-800">Proofs of Expenditure</label>
+                    <button type="button" onclick="addProofFileInput('newProofContainerStaff')" class="text-xs bg-brand-blue text-white px-3 py-1.5 rounded-md hover:bg-brand-purple transition-all flex items-center font-semibold">
+                        <i class="fas fa-plus mr-1"></i> Add File
+                    </button>
+                </div>
+                <div id="staffIouProofNotice" class="hidden text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2.5 mb-2 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-amber-600 flex-shrink-0"></i>
+                    <span><strong>IOU Advance Notice:</strong> Expenditure receipts/proofs are not required upfront. You will upload proofs when settling this IOU within 72 hours.</span>
+                </div>
+                <div id="newProofContainerStaff" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="proofs[]" accept="image/*,.pdf,.doc,.docx" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100 border border-gray-200 rounded-lg p-1">
+                        <button type="button" onclick="if(document.querySelectorAll('#newProofContainerStaff > div').length > 1) this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm px-1 flex-shrink-0">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-1.5">Upload receipts, bills, or invoices (PNG, JPG, PDF, DOCX). Click "Add File" to select multiple files.</p>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('newPettyCashModal').classList.add('hidden')"
+                    class="w-full sm:w-auto px-5 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 text-sm">
+                    Cancel
+                </button>
+                <button type="submit" id="staffNewPettyCashSubmitBtn"
+                    class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5">
+                    <span>{{ ($user->role === 'HOD' || $user->hasRole('HOD')) ? 'Submit to Finance' : 'Submit to HOD' }}</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div id="detailsModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-3xl shadow-2xl rounded-xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3.5 border-b border-gray-200">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center" id="modalRef">
+                <i class="fas fa-info-circle text-brand-blue mr-2 text-base sm:text-lg"></i> Request Details
+            </h3>
+            <button onclick="document.getElementById('detailsModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-lg sm:text-xl"></i>
+            </button>
+        </div>
+        <div class="mt-4 space-y-5 sm:space-y-6" id="modalBody">
+            <!-- Dynamic Data inserted by JS -->
+        </div>
+        <div class="flex justify-end pt-4 border-t border-gray-100 mt-6">
+            <button onclick="document.getElementById('detailsModal').classList.add('hidden')"
+                class="w-full sm:w-auto px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 transition-colors text-sm">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Re-appeal Modal -->
+<div id="reappealModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-3xl shadow-2xl rounded-xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3.5 border-b border-gray-200">
+            <h3 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-redo text-brand-blue mr-2 text-base sm:text-lg"></i> Re-appeal Petty Cash Request
+            </h3>
+            <button onclick="document.getElementById('reappealModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-lg sm:text-xl"></i>
+            </button>
+        </div>
+        <form id="reappealForm" action="" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5 sm:space-y-6">
+            @csrf
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">HOD Associated With *</label>
+                    @if($user->role === 'HOD' || $user->hasRole('HOD'))
+                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="{{ $user->id }}">
+                        <div class="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs text-blue-800">
+                            <i class="fas fa-bolt text-blue-600"></i>
+                            <div>
+                                <span class="font-bold">Direct to Finance:</span> As Head of Department, your re-appeal bypasses HOD approval and goes directly to Finance.
+                            </div>
+                        </div>
+                    @else
+                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="">
+                        <div class="relative">
+                            <input type="text" id="reappeal_hod_display" readonly value="" 
+                                class="w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 font-medium text-base sm:text-sm cursor-not-allowed focus:ring-0 focus:border-gray-300 pl-9 py-2.5" 
+                                title="HOD is read-only">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-user-shield text-sm"></i>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+                <div>
+                    <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Job Number(s)</label>
+                    <select name="job_numbers[]" id="reappeal_job_number" multiple placeholder="-- Select Job Number(s) (Optional) --" class="w-full rounded-lg border-gray-300 text-base sm:text-sm focus:border-brand-blue focus:ring-brand-blue">
+                        @foreach($jobs as $jobNo => $display)
+                            <option value="{{ $jobNo }}">{{ $display }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs sm:text-sm font-bold text-gray-800">Expense Line Items *</label>
+                    <button type="button" onclick="addReappealItemRow()" class="text-xs bg-brand-blue text-white px-3 py-1.5 rounded-md hover:bg-brand-purple font-semibold">
+                        <i class="fas fa-plus mr-1"></i> Add Line
+                    </button>
+                </div>
+                <div id="reappealItemsContainer" class="space-y-3">
+                    <!-- Dynamic Rows -->
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs sm:text-sm font-bold text-gray-800 mb-1">Extra Notes / Remarks</label>
+                <textarea name="extra_notes" id="reappealExtraNotes" rows="2" placeholder="Optional extra notes or justification for re-appeal..." class="w-full rounded-lg border-gray-300 text-base sm:text-xs focus:border-brand-blue focus:ring-brand-blue"></textarea>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs sm:text-sm font-bold text-gray-800">Add Additional Expenditure Proofs</label>
+                    <button type="button" onclick="addProofFileInput('reappealProofContainerStaff')" class="text-xs bg-brand-blue text-white px-3 py-1.5 rounded-md hover:bg-brand-purple transition-all flex items-center font-semibold">
+                        <i class="fas fa-plus mr-1"></i> Add File
+                    </button>
+                </div>
+                <div id="reappealProofContainerStaff" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="proofs[]" accept="image/*,.pdf,.doc,.docx" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100 border border-gray-200 rounded-lg p-1">
+                        <button type="button" onclick="if(document.querySelectorAll('#reappealProofContainerStaff > div').length > 1) this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm px-1 flex-shrink-0">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('reappealModal').classList.add('hidden')"
+                    class="w-full sm:w-auto px-5 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 text-sm">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm">
+                    Resubmit Re-appeal
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Settle IOU Modal -->
+<div id="settleIouModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-2xl shadow-2xl rounded-xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 flex items-center" id="settleIouModalRef">
+                <i class="fas fa-file-signature text-brand-purple mr-2"></i> Settle IOU Request
+            </h3>
+            <button onclick="document.getElementById('settleIouModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-lg sm:text-xl"></i>
+            </button>
+        </div>
+        <form id="settleIouForm" action="" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5">
+            @csrf
+            <div class="p-3.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-start gap-2.5">
+                <i class="fas fa-clock text-brand-purple text-lg mt-0.5 flex-shrink-0"></i>
+                <div>
+                    <strong class="text-purple-950 font-extrabold block mb-0.5">IOU 72-Hour Settlement Requirement:</strong>
+                    All IOUs must be settled with expenditure proofs (receipts, bills, or invoices) <strong>within 72 hours of approval</strong>. Once submitted, Finance will review and approve the settlement.
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-xs font-bold text-gray-800">Final Expenditure Line Items & Amounts</label>
+                    <div class="flex items-center gap-2.5 text-xs font-semibold">
+                        <span id="staffSettleApprovedAmountDisplay" class="text-gray-500">Approved: <strong class="text-gray-800 font-mono">LKR 0.00</strong></span>
+                        <span id="staffSettleTotalSpentDisplay" class="text-brand-purple font-mono font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200">Spent: LKR 0.00</span>
+                    </div>
+                </div>
+                <div id="settleItemsContainer" class="space-y-3">
+                    <!-- Dynamic JS content -->
+                </div>
+                <!-- Dynamic Exceeded Warning Banner -->
+                <div id="staffSettleExceededWarning" class="mt-3 hidden p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-base mt-0.5 flex-shrink-0"></i>
+                    <div>
+                        <strong class="text-amber-950 font-bold block mb-0.5">⚠️ Settlement Exceeds Approved Amount</strong>
+                        <span id="staffSettleExceededWarningText" class="text-amber-900">The total expenditure exceeds the approved advance amount. This settlement will be forwarded to your Head of Department (HOD) for approval before Finance review.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extra Notes / Remarks -->
+            <div>
+                <label class="block text-xs font-bold text-gray-800 mb-1">
+                    <i class="fas fa-comment-alt text-brand-purple mr-1"></i> Extra Notes / Remarks
+                </label>
+                <textarea name="extra_notes" id="staffSettleExtraNotesInput" rows="2" placeholder="Optional extra notes, remarks, or details about settlement..." class="w-full rounded-lg border-gray-300 text-xs focus:border-brand-purple focus:ring-brand-purple"></textarea>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-1.5">
+                    <label class="block text-xs font-bold text-gray-800">Proofs of Expenditure * (Receipts / Bills)</label>
+                    <button type="button" onclick="addProofFileInput('settleProofsContainer')" class="text-[11px] text-brand-purple hover:underline font-semibold flex items-center">
+                        <i class="fas fa-plus mr-1"></i> Add Another File
+                    </button>
+                </div>
+                <div id="settleProofsContainer" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <input type="file" name="proofs[]" required accept="image/*,.pdf,.doc,.docx" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-brand-purple hover:file:bg-purple-100 border border-gray-200 rounded-lg p-1">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2.5 pt-4 border-t border-gray-100">
+                <button type="button" onclick="document.getElementById('settleIouModal').classList.add('hidden')"
+                    class="px-4 py-2 bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="px-5 py-2 bg-gradient-to-r from-brand-purple to-brand-pink text-white text-xs font-bold rounded-lg hover:opacity-90 shadow-md flex items-center">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Submit Settlement Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    const categoriesData = @json($expenseCategories);
+
+    function toggleDinnerAttendees(selectElem) {
+        const row = selectElem.closest('.grid');
+        if (!row) return;
+        const container = row.querySelector('.attendees-container');
+        if (!container) return;
+        
+        const selectedText = selectElem.options[selectElem.selectedIndex]?.text || '';
+        if (selectedText.toLowerCase().includes('dinner')) {
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+            container.querySelectorAll('input').forEach(i => i.value = '');
+        }
+    }
+
+    let isStaffIouMode = false;
+
+    function toggleStaffIouMode(forceState) {
+        if (typeof forceState === 'boolean') {
+            isStaffIouMode = forceState;
+        } else {
+            isStaffIouMode = !isStaffIouMode;
+        }
+
+        const input = document.getElementById('staff_create_is_iou');
+        if (input) input.value = isStaffIouMode ? '1' : '0';
+
+        const btn = document.getElementById('staffBtnToggleIou');
+        const btnText = document.getElementById('staffBtnToggleIouText');
+        const badge = document.getElementById('staffIouStatusBadge');
+        const cardTitle = document.getElementById('staffIouCardTitle');
+        const cardDesc = document.getElementById('staffIouCardDesc');
+        const icon = document.getElementById('staffIouIcon');
+        const iconBox = document.getElementById('staffIouIconBox');
+        const proofNotice = document.getElementById('staffIouProofNotice');
+        const submitBtn = document.getElementById('staffNewPettyCashSubmitBtn');
+        const sectionLabel = document.getElementById('staffItemsSectionLabel');
+        const btnAddExpenseItem = document.getElementById('staffBtnAddExpenseItem');
+
+        if (isStaffIouMode) {
+            // IOU Active
+            if (btnAddExpenseItem) btnAddExpenseItem.classList.add('hidden');
+            // In IOU mode, keep only a single row
+            const allRows = document.querySelectorAll('#expenseItemsContainer .item-row');
+            for (let i = 1; i < allRows.length; i++) {
+                allRows[i].remove();
+            }
+
+            if (btn) {
+                btn.className = 'w-full sm:w-auto px-3.5 py-2 text-xs font-bold rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md hover:opacity-90 transition-all flex items-center justify-center gap-1.5 border border-amber-600';
+            }
+            if (btnText) btnText.innerHTML = '<i class="fas fa-check-circle mr-1"></i> IOU Mode Active (Switch Back)';
+            if (badge) badge.classList.remove('hidden');
+            if (cardDesc) {
+                cardDesc.textContent = 'No expense categories needed upfront. You will settle receipts within 72 hours.';
+                cardDesc.classList.remove('hidden');
+            }
+            if (icon) {
+                icon.className = 'fas fa-hand-holding-usd text-amber-700';
+            }
+            if (iconBox) {
+                iconBox.className = 'w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg shadow-sm border border-amber-300 flex-shrink-0 transition-all';
+            }
+            if (proofNotice) proofNotice.classList.remove('hidden');
+            if (sectionLabel) sectionLabel.textContent = 'IOU Advance Amount & Details *';
+            if (submitBtn) {
+                const submitTarget = '{{ ($user->role === "HOD" || $user->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                submitBtn.innerHTML = `<i class="fas fa-hand-holding-usd mr-1.5"></i> Submit IOU to ${submitTarget}`;
+                submitBtn.className = 'w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5';
+            }
+        } else {
+            // Standard Active
+            if (btnAddExpenseItem) btnAddExpenseItem.classList.remove('hidden');
+            if (btn) {
+                btn.className = 'w-full sm:w-auto px-3.5 py-2 text-xs font-bold rounded-lg border border-amber-400 bg-white text-amber-800 hover:bg-amber-100 hover:text-amber-900 transition-all shadow-sm flex items-center justify-center gap-1.5';
+            }
+            if (btnText) btnText.innerHTML = '<i class="fas fa-hand-holding-usd text-amber-600 mr-1"></i> Make Request IOU';
+            if (badge) badge.classList.add('hidden');
+            if (cardTitle) cardTitle.textContent = 'Standard Petty Cash Request';
+            if (cardDesc) {
+                cardDesc.textContent = '';
+                cardDesc.classList.add('hidden');
+            }
+            if (icon) {
+                icon.className = 'fas fa-receipt text-gray-500';
+            }
+            if (iconBox) {
+                iconBox.className = 'w-10 h-10 rounded-xl bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-lg shadow-sm border border-gray-200 flex-shrink-0 transition-all';
+            }
+            if (proofNotice) proofNotice.classList.add('hidden');
+            if (sectionLabel) sectionLabel.textContent = 'Expense Line Items *';
+            if (submitBtn) {
+                const submitTarget = '{{ ($user->role === "HOD" || $user->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                submitBtn.innerHTML = `<span>Submit to ${submitTarget}</span>`;
+                submitBtn.className = 'w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5';
+            }
+        }
+
+        // Update all item rows
+        const rows = document.querySelectorAll('#expenseItemsContainer .item-row');
+        rows.forEach(row => updateStaffRowForIouMode(row, isStaffIouMode));
+    }
+
+    function updateStaffRowForIouMode(row, iouActive) {
+        const catCol = row.querySelector('.category-col');
+        const catSelect = row.querySelector('.item-cat-select');
+        const amountCol = row.querySelector('.amount-col');
+        const amountInput = row.querySelector('.item-amount-input');
+        const descCol = row.querySelector('.desc-col');
+        const descInput = row.querySelector('.item-desc-input');
+        const deleteCol = row.querySelector('.delete-col');
+        const attendeesContainer = row.querySelector('.attendees-container');
+
+        if (iouActive) {
+            if (catCol) catCol.classList.add('hidden');
+            if (catSelect) {
+                catSelect.removeAttribute('required');
+                catSelect.value = '';
+                catSelect.disabled = true;
+            }
+            if (attendeesContainer) attendeesContainer.classList.add('hidden');
+            if (deleteCol) deleteCol.classList.add('hidden');
+            if (amountCol) {
+                amountCol.className = 'col-span-1 md:col-span-5 amount-col';
+            }
+            if (amountInput) {
+                amountInput.placeholder = 'IOU Amount (LKR) *';
+            }
+            if (descCol) {
+                descCol.className = 'col-span-1 md:col-span-7 desc-col';
+            }
+            if (descInput) {
+                descInput.placeholder = 'Purpose / Reason for IOU (e.g. Shoot Advance)';
+            }
+        } else {
+            if (catCol) catCol.classList.remove('hidden');
+            if (catSelect) {
+                catSelect.setAttribute('required', 'required');
+                catSelect.disabled = false;
+            }
+            if (deleteCol) deleteCol.classList.remove('hidden');
+            if (amountCol) {
+                amountCol.className = 'col-span-1 md:col-span-3 amount-col';
+            }
+            if (amountInput) {
+                amountInput.placeholder = 'Amount *';
+            }
+            if (descCol) {
+                descCol.className = 'col-span-1 md:col-span-4 desc-col';
+            }
+            if (descInput) {
+                descInput.placeholder = 'Note / Details';
+            }
+        }
+    }
+
+    function addExpenseItemRow() {
+        if (isStaffIouMode) return;
+        const container = document.getElementById('expenseItemsContainer');
+        const index = container.children.length;
+        
+        let catOptions = categoriesData.map(c => 
+            `<option value="${c.id}">${c.name}</option>`
+        ).join('');
+
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 item-row';
+        row.innerHTML = `
+            <div class="col-span-1 md:col-span-4 category-col">
+                <select name="items[${index}][expense_category_id]" required onchange="toggleDinnerAttendees(this)" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
+                    <option value="">Select Category *</option>
+                    ${catOptions}
+                </select>
+            </div>
+            <div class="col-span-1 md:col-span-3 amount-col">
+                <input type="number" step="0.01" min="0.01" name="items[${index}][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
+            </div>
+            <div class="col-span-1 md:col-span-4 desc-col">
+                <input type="text" name="items[${index}][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
+            </div>
+            <div class="col-span-1 md:col-span-1 flex justify-end md:justify-center pt-1 md:pt-0 delete-col">
+                <button type="button" onclick="if(document.querySelectorAll('#expenseItemsContainer .item-row').length > 1) this.closest('.item-row').remove()" class="text-red-500 hover:text-red-700 text-xs py-1 flex items-center gap-1 font-semibold">
+                    <i class="fas fa-trash"></i> <span class="md:hidden">Remove</span>
+                </button>
+            </div>
+            <div class="attendees-container hidden col-span-1 md:col-span-12 mt-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="font-bold text-blue-900 flex items-center gap-1.5">
+                        <i class="fas fa-utensils text-brand-blue"></i> Dinner Attendees / People Names (Max 5):
+                    </span>
+                    <span class="text-[11px] text-blue-700">Enter names of people who attended</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                </div>
+            </div>
+        `;
+        container.appendChild(row);
+
+        if (isStaffIouMode) {
+            updateStaffRowForIouMode(row, true);
+        }
+    }
+
+    function openSettleIouModal(idParam) {
+        const id = (typeof idParam === 'object' && idParam !== null) ? idParam.id : idParam;
+        if (!id) return;
+        fetch(`{{ route('petty-cash.index') }}/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const pc = data.pettyCash;
+                    document.getElementById('settleIouForm').action = `{{ route('petty-cash.index') }}/${id}/settle`;
+                    document.getElementById('settleIouModalRef').innerHTML = `<i class="fas fa-file-signature text-brand-purple mr-2"></i> Settle IOU Request: ${pc.reference_number}`;
+                    
+                    const container = document.getElementById('settleItemsContainer');
+                    container.innerHTML = '';
+
+                    window.staffCurrentApprovedIouAmount = parseFloat(pc.approved_amount || pc.total_amount) || 0;
+                    const approvedDisplay = document.getElementById('staffSettleApprovedAmountDisplay');
+                    if (approvedDisplay) {
+                        approvedDisplay.innerHTML = `Approved Advance: <strong class="text-gray-800 font-mono">LKR ${window.staffCurrentApprovedIouAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>`;
+                    }
+
+                    pc.items.forEach((item) => {
+                        const div = document.createElement('div');
+                        div.className = 'grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-gray-50 p-3 rounded-lg border border-gray-200';
+                        div.innerHTML = `
+                            <input type="hidden" name="items[${item.id}][id]" value="${item.id}">
+                            <div class="md:col-span-6 font-semibold text-xs text-gray-800">
+                                ${item.category ? item.category.name : (pc.is_iou ? 'IOU Cash Advance' : 'General')}
+                                <span class="text-gray-500 font-normal block text-[11px]">${item.description || 'No note'}</span>
+                            </div>
+                            <div class="md:col-span-6 flex items-center gap-2">
+                                <span class="text-xs text-gray-500 font-bold whitespace-nowrap">Spent LKR:</span>
+                                <input type="number" step="0.01" min="0.01" name="items[${item.id}][amount]" value="${item.amount}" required class="w-full rounded-md border-gray-300 text-xs focus:ring-brand-purple staff-settle-item-input" oninput="calculateStaffSettleSpentTotal()">
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+
+                    calculateStaffSettleSpentTotal();
+
+                    const notesInput = document.getElementById('staffSettleExtraNotesInput');
+                    if (notesInput) {
+                        notesInput.value = pc.extra_notes || pc.settlement_note || '';
+                    }
+
+                    document.getElementById('settleIouModal').classList.remove('hidden');
+                }
+            });
+    }
+
+    function calculateStaffSettleSpentTotal() {
+        let total = 0;
+        document.querySelectorAll('.staff-settle-item-input').forEach(input => {
+            total += parseFloat(input.value) || 0;
+        });
+        const warningEl = document.getElementById('staffSettleExceededWarning');
+        const warningTextEl = document.getElementById('staffSettleExceededWarningText');
+        const totalDisplay = document.getElementById('staffSettleTotalSpentDisplay');
+        if (totalDisplay) {
+            totalDisplay.textContent = `Spent: LKR ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        }
+        const approved = window.staffCurrentApprovedIouAmount || 0;
+        if (warningEl && warningTextEl) {
+            if (approved > 0 && total > approved) {
+                const diff = total - approved;
+                warningTextEl.innerHTML = `Total spent (<strong>LKR ${total.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>) exceeds the approved advance (<strong>LKR ${approved.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>) by <strong class="text-red-700">+ LKR ${diff.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>. This settlement will be routed to your Head of Department (HOD) for approval before Finance review.`;
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+        }
+    }
+
+    function viewPettyCashDetails(id) {
+        fetch(`{{ route('petty-cash.index') }}/${id}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const pc = data.pettyCash;
+                    const baseUrl = "{{ url('/') }}";
+                    document.getElementById('modalRef').innerHTML = `<i class="fas fa-info-circle text-brand-blue mr-2 text-base sm:text-lg"></i> Request: ${pc.reference_number}`;
+                    
+                    let itemsHtml = pc.items.map(item => `
+                        <tr class="border-b border-gray-100 text-xs sm:text-sm">
+                            <td class="py-2.5 px-3 font-semibold text-gray-800">${item.category ? item.category.name : (pc.is_iou ? '<span class="text-amber-700 font-bold">IOU Cash Advance</span>' : 'General')}</td>
+                            <td class="py-2.5 px-3 text-gray-600">${item.description || '-'}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-gray-900">LKR ${parseFloat(item.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                        </tr>
+                    `).join('');
+
+                    let proofsHtml = pc.proofs && pc.proofs.length > 0 ? pc.proofs.map(p => {
+                        const pUrl = p.file_path.startsWith('http') ? p.file_path : `${baseUrl}/${p.file_path.replace(/^\/?(public\/)?/, '')}`;
+                        return `<a href="${pUrl}" target="_blank" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-brand-blue rounded-lg text-xs font-semibold mr-2 mb-2">
+                            <i class="fas fa-paperclip mr-1.5"></i> ${p.file_name}
+                        </a>`;
+                    }).join('') : '<p class="text-xs text-gray-400">No proof attachments uploaded.</p>';
+
+                    let notesHtml = '';
+                    if (pc.extra_notes) {
+                        notesHtml += `<div class="p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-xs text-amber-900 mb-2"><strong class="flex items-center gap-1"><i class="fas fa-comment-alt text-amber-700 mr-1"></i> Extra Notes / Remarks:</strong><p class="mt-1 whitespace-pre-line text-gray-800">${pc.extra_notes}</p></div>`;
+                    }
+                    if (pc.hod_rejection_note) {
+                        notesHtml += `<div class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 mb-2"><strong>HOD Rejection Note:</strong> ${pc.hod_rejection_note}</div>`;
+                    }
+                    if (pc.admin_rejection_note) {
+                        notesHtml += `<div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 mb-2"><strong>Finance Rejection Note:</strong> ${pc.admin_rejection_note}</div>`;
+                    }
+                    if (pc.management_approved_at) {
+                        notesHtml += `<div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-900 mb-2"><strong class="flex items-center text-emerald-800"><i class="fas fa-user-check text-emerald-600 mr-1.5"></i> Management Approved:</strong><p class="mt-0.5 text-emerald-800">Approved by Management on ${formatDateStr(pc.management_approved_at)}</p>${pc.management_notes ? `<p class="mt-1 text-gray-700">Remarks: ${pc.management_notes}</p>` : ''}</div>`;
+                    } else if (pc.status === 'rejected_by_management' || pc.management_rejection_note) {
+                        notesHtml += `<div class="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 mb-2"><strong><i class="fas fa-times-circle text-rose-600 mr-1"></i> Management Rejection Reason:</strong> ${pc.management_rejection_note || '-'}</div>`;
+                    } else if (pc.management_notes) {
+                        notesHtml += `<div class="p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-900 mb-2"><strong><i class="fas fa-user-tie mr-1 text-purple-700"></i> Notes to Management:</strong> ${pc.management_notes}</div>`;
+                    }
+
+                    let cleanSig = pc.signature_path ? pc.signature_path.replace(/^\/?(public\/)?/, '') : '';
+                    let sigUrl = pc.signature_url || (cleanSig ? (cleanSig.startsWith('data:image/') || cleanSig.startsWith('http') ? cleanSig : `${baseUrl}/${cleanSig}`) : '');
+                    let altSigUrl = cleanSig && !cleanSig.startsWith('data:image/') && !cleanSig.startsWith('http') ? `${baseUrl}/public/${cleanSig}` : '';
+                    let signatureHtml = pc.signature_path ? `
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 mb-2 flex items-center">
+                                <i class="fas fa-signature text-brand-purple mr-1.5"></i> Initial Approved Signature (Money Handed Over)
+                            </h4>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 inline-block">
+                                <img src="${sigUrl}" alt="Approved Signature" class="max-h-24 max-w-full object-contain rounded" onerror="if(!this.dataset.triedAlt && '${altSigUrl}' && this.src !== '${altSigUrl}'){this.dataset.triedAlt='1'; this.src='${altSigUrl}';}else{this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs text-amber-700 italic flex items-center gap-1.5 p-1\\'><i class=\\'fas fa-exclamation-triangle text-amber-500\\'></i> Signature image file not found on server</span>';}">
+                            </div>
+                        </div>
+                    ` : '';
+
+                    let cleanSettleSig = pc.settlement_signature_path ? pc.settlement_signature_path.replace(/^\/?(public\/)?/, '') : '';
+                    let settleSigUrl = pc.settlement_signature_url || (cleanSettleSig ? (cleanSettleSig.startsWith('data:image/') || cleanSettleSig.startsWith('http') ? cleanSettleSig : `${baseUrl}/${cleanSettleSig}`) : '');
+                    let altSettleSigUrl = cleanSettleSig && !cleanSettleSig.startsWith('data:image/') && !cleanSettleSig.startsWith('http') ? `${baseUrl}/public/${cleanSettleSig}` : '';
+                    let settlementSignatureHtml = pc.settlement_signature_path ? `
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <h4 class="text-xs sm:text-sm font-bold text-emerald-800 mb-2 flex items-center">
+                                <i class="fas fa-signature text-emerald-600 mr-1.5"></i> Settlement Approved Signature (IOU Settled)
+                            </h4>
+                            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 inline-block">
+                                <img src="${settleSigUrl}" alt="Settlement Signature" class="max-h-24 max-w-full object-contain rounded" onerror="if(!this.dataset.triedAlt && '${altSettleSigUrl}' && this.src !== '${altSettleSigUrl}'){this.dataset.triedAlt='1'; this.src='${altSettleSigUrl}';}else{this.onerror=null; this.parentElement.innerHTML='<span class=\\'text-xs text-amber-700 italic flex items-center gap-1.5 p-1\\'><i class=\\'fas fa-exclamation-triangle text-amber-500\\'></i> Settlement signature file not found on server</span>';}">
+                            </div>
+                        </div>
+                    ` : '';
+
+                    let iouPolicyBannerHtml = '';
+                    if (pc.is_iou && pc.status !== 'settled') {
+                        iouPolicyBannerHtml = `
+                            <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 mb-3 flex items-start gap-2">
+                                <i class="fas fa-clock text-amber-600 text-base mt-0.5 flex-shrink-0"></i>
+                                <div>
+                                    <strong class="text-amber-950 font-bold block">72-Hour IOU Settlement Policy Notice:</strong>
+                                    This IOU must be settled with expenditure proofs & receipts <strong>within 72 hours of approval</strong>.
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    let jobsHtml = '<strong class="text-gray-400 text-xs sm:text-sm font-mono">-</strong>';
+                    if (pc.job_number) {
+                        const jobsArr = pc.job_number.split(',').map(s => s.trim()).filter(Boolean);
+                        if (jobsArr.length > 0) {
+                            jobsHtml = `<div class="flex flex-wrap gap-1 mt-1">` + 
+                                jobsArr.map(j => `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-white text-gray-800 border border-gray-300 shadow-sm">${j}</span>`).join('') +
+                                `</div>`;
+                        }
+                    }
+
+                    document.getElementById('modalBody').innerHTML = `
+                        ${iouPolicyBannerHtml}
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 bg-gray-50 p-3.5 sm:p-4 rounded-xl text-xs">
+                            <div><span class="text-gray-500 block text-[10px] sm:text-xs">Requested By:</span><strong class="text-gray-800 text-xs sm:text-sm">${pc.user ? pc.user.name : '-'}</strong></div>
+                            <div><span class="text-gray-500 block text-[10px] sm:text-xs">Department:</span><strong class="text-gray-800 text-xs sm:text-sm">${pc.department || '-'}</strong></div>
+                            <div><span class="text-gray-500 block text-[10px] sm:text-xs">HOD:</span><strong class="text-gray-800 text-xs sm:text-sm">${pc.hod ? pc.hod.name : 'Not Assigned'}</strong></div>
+                            <div><span class="text-gray-500 block text-[10px] sm:text-xs">Job Number(s):</span>${jobsHtml}</div>
+                        </div>
+
+                        ${notesHtml}
+
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 mb-2">Expense Line Items</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse min-w-[400px]">
+                                    <thead>
+                                        <tr class="bg-gray-100 text-[11px] sm:text-xs font-semibold text-gray-600 uppercase">
+                                            <th class="py-2 px-3">Category</th>
+                                            <th class="py-2 px-3">Description</th>
+                                            <th class="py-2 px-3 text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${itemsHtml}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-gray-50 font-bold text-xs sm:text-sm">
+                                            <td colspan="2" class="py-2.5 px-3 text-right text-gray-700">Total:</td>
+                                            <td class="py-2.5 px-3 text-right text-brand-pink">LKR ${parseFloat(pc.total_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="text-xs sm:text-sm font-bold text-gray-800 mb-2">Proof Attachments</h4>
+                            <div class="flex flex-wrap">${proofsHtml}</div>
+                        </div>
+
+                        ${signatureHtml}
+                        ${settlementSignatureHtml}
+                    `;
+
+                    document.getElementById('detailsModal').classList.remove('hidden');
+                }
+            });
+    }
+
+    function openReappealModal(id) {
+        fetch(`{{ route('petty-cash.index') }}/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const pc = data.pettyCash;
+                    document.getElementById('reappealForm').action = `{{ route('petty-cash.index') }}/${id}/reappeal`;
+                    const hodObj = pc.hod || pc.associated_hod;
+                    const hodIdVal = pc.hod_id || (hodObj ? hodObj.id : '');
+                    const hodInput = document.getElementById('reappeal_hod_id');
+                    if (hodInput) hodInput.value = hodIdVal;
+                    const displayEl = document.getElementById('reappeal_hod_display');
+                    if (displayEl) {
+                        displayEl.value = hodObj 
+                            ? `${hodObj.name} (${hodObj.role}${hodObj.department ? ' - ' + hodObj.department : ''})` 
+                            : 'Not Assigned';
+                    }
+                    if (pc.job_number) {
+                        const jobList = pc.job_number.split(',').map(s => s.trim()).filter(Boolean);
+                        if (typeof reappealJobTs !== 'undefined' && reappealJobTs) {
+                            jobList.forEach(job => {
+                                if (!reappealJobTs.options[job]) {
+                                    reappealJobTs.addOption({ value: job, text: job });
+                                }
+                            });
+                            reappealJobTs.setValue(jobList);
+                        } else {
+                            document.getElementById('reappeal_job_number').value = pc.job_number;
+                        }
+                    } else {
+                        if (typeof reappealJobTs !== 'undefined' && reappealJobTs) reappealJobTs.setValue([]);
+                        else document.getElementById('reappeal_job_number').value = '';
+                    }
+                    const reappealNotesInput = document.getElementById('reappealExtraNotes');
+                    if (reappealNotesInput) reappealNotesInput.value = pc.extra_notes || '';
+
+                    const container = document.getElementById('reappealItemsContainer');
+                    container.innerHTML = '';
+
+                    pc.items.forEach((item, index) => {
+                        addReappealItemRow(item.expense_category_id, item.amount, item.description);
+                    });
+
+                    document.getElementById('reappealModal').classList.remove('hidden');
+                }
+            });
+    }
+
+    function addReappealItemRow(catId = '', amount = '', desc = '') {
+        const container = document.getElementById('reappealItemsContainer');
+        const index = container.children.length;
+        
+        let catOptions = categoriesData.map(c => 
+            `<option value="${c.id}" ${c.id == catId ? 'selected' : ''}>${c.name}</option>`
+        ).join('');
+
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-gray-50 p-3 rounded-lg border border-gray-200';
+        row.innerHTML = `
+            <div class="md:col-span-4">
+                <select name="items[${index}][expense_category_id]" required class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue">
+                    <option value="">Select Category *</option>
+                    ${catOptions}
+                </select>
+            </div>
+            <div class="md:col-span-3">
+                <input type="number" step="0.01" min="0.01" name="items[${index}][amount]" value="${amount}" required placeholder="Amount *" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue">
+            </div>
+            <div class="md:col-span-4">
+                <input type="text" name="items[${index}][description]" value="${desc}" placeholder="Note / Details" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue">
+            </div>
+            <div class="md:col-span-1 flex justify-end md:justify-center pt-1 md:pt-0">
+                <button type="button" onclick="this.closest('.grid').remove()" class="text-red-500 hover:text-red-700 text-xs py-1 flex items-center gap-1 font-semibold">
+                    <i class="fas fa-trash"></i> <span class="md:hidden">Remove</span>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    function validateProofFile(input) {
+        if (!input || !input.files || !input.files[0]) return true;
+        
+        const file = input.files[0];
+        const maxSizeBytes = 10 * 1024 * 1024; // 10MB
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
+        const fileName = file.name || 'Selected file';
+        const fileExt = fileName.includes('.') ? fileName.split('.').pop().toLowerCase() : '';
+
+        // Validate format extension
+        if (!allowedExtensions.includes(fileExt)) {
+            input.value = ''; // Reset invalid input
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Invalid File Format',
+                    html: `The file <strong>"${fileName}"</strong> is not in a supported format.<br><br>Allowed formats: <strong>PNG, JPG, JPEG, PDF, DOC, DOCX</strong>.`,
+                    confirmButtonColor: '#ec4899',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                alert(`Invalid File Format: "${fileName}". Allowed formats are PNG, JPG, JPEG, PDF, DOC, DOCX.`);
+            }
+            return false;
+        }
+
+        // Validate size limit (10MB)
+        if (file.size > maxSizeBytes) {
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            input.value = ''; // Reset invalid input
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'File Too Large',
+                    html: `The file <strong>"${fileName}"</strong> (${fileSizeMB} MB) exceeds the maximum allowed size limit of <strong>10MB</strong>.`,
+                    confirmButtonColor: '#ec4899',
+                    confirmButtonText: 'OK'
+                });
+            } else {
+                alert(`File Too Large: "${fileName}" (${fileSizeMB} MB) exceeds the 10MB limit.`);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.matches && e.target.matches('input[type="file"][name="proofs[]"]')) {
+            validateProofFile(e.target);
+        }
+    });
+
+    function addProofFileInput(containerId) {
+        const container = document.getElementById(containerId);
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 mt-2';
+        div.innerHTML = `
+            <input type="file" name="proofs[]" accept="image/*,.pdf,.doc,.docx" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-brand-blue hover:file:bg-blue-100 border border-gray-200 rounded-lg p-1">
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-sm px-1 flex-shrink-0">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+        container.appendChild(div);
+    }
+    function handleNewRequestClick(e) {
+        if (e) e.preventDefault();
+        const activeIouRef = "{{ $unsettledIou ? $unsettledIou->reference_number : '' }}";
+        const activeIouData = @json($unsettledIou);
+
+        if (activeIouRef) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Active Unsettled IOU Detected',
+                    html: `You cannot submit a new petty cash request because you currently have an active unsettled IOU (<strong>${activeIouRef}</strong>).<br><br>According to company policy, you must settle your existing IOU before requesting new petty cash.`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#d97706',
+                    cancelButtonColor: '#6b7280',
+                    confirmButtonText: '<i class="fas fa-receipt mr-1"></i> Settle IOU Now',
+                    cancelButtonText: 'Close'
+                }).then((result) => {
+                    if (result.isConfirmed && activeIouData) {
+                        openSettleIouModal(activeIouData.id || activeIouData);
+                    }
+                });
+            } else {
+                alert(`You have an active unsettled IOU (${activeIouRef}). Please settle it first.`);
+            }
+            return false;
+        }
+
+        toggleStaffIouMode(false);
+        document.getElementById('newPettyCashModal').classList.remove('hidden');
+        if (typeof staffCreateJobTs !== 'undefined' && staffCreateJobTs) staffCreateJobTs.clear();
+    }
+
+    let staffCreateJobTs, reappealJobTs;
+    document.addEventListener('DOMContentLoaded', function() {
+        const tsConfig = {
+            plugins: ['remove_button'],
+            create: false,
+            persist: false,
+            closeAfterSelect: false,
+            placeholder: '-- Select Job Number(s) (Optional) --',
+            allowEmptyOption: true
+        };
+        if (document.getElementById('staff_create_job_number')) {
+            staffCreateJobTs = new TomSelect('#staff_create_job_number', tsConfig);
+        }
+        if (document.getElementById('reappeal_job_number')) {
+            reappealJobTs = new TomSelect('#reappeal_job_number', tsConfig);
+        }
+    });
+</script>
+@endpush
+@endsection

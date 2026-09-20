@@ -32,8 +32,8 @@ class MaintenanceModeMiddleware
             if (auth()->check()) {
                 $user = auth()->user();
 
-                // Mode 1: IT Admin & Super Admin allowed
-                if ($mode == 1 && ($user->hasRole('IT Admin') || $user->role === 'Super Admin')) {
+                // Mode 1: IT Admin & Users with Admin Privileges (Finance Admin, Super Admin, Management) allowed
+                if ($mode == 1 && ($user->hasRole('IT Admin') || $user->hasAdminPrivileges())) {
                     return $next($request);
                 }
 

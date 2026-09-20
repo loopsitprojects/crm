@@ -8,6 +8,7 @@ use App\Models\SystemCurrency;
 use App\Models\StandardTerm;
 use App\Models\Target;
 use App\Models\User;
+use App\Models\ExpenseCategory;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -19,12 +20,13 @@ class SettingController extends Controller
         $managers = SeniorManager::all();
         $terms = StandardTerm::all();
         $currencies = SystemCurrency::all();
+        $expenseCategories = ExpenseCategory::where('name', '!=', 'IOU')->get();
         
         $departmentTargets = Target::where('type', 'department')->get()->keyBy('department');
         $userTargets = Target::where('type', 'user')->get()->keyBy('user_id');
         $users = User::all();
 
-        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'departmentTargets', 'userTargets', 'users'));
+        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'expenseCategories', 'departmentTargets', 'userTargets', 'users'));
     }
 
     public function updateDepartmentTargets(Request $request)
@@ -156,8 +158,8 @@ class SettingController extends Controller
     }
     public function storeCurrency(Request $request)
     {
-        // Role Check (Super Admin only)
-        if (!auth()->user()->hasRole('super_admin')) {
+        // Role Check (Finance Admin & Management)
+        if (!auth()->user()->hasAdminPrivileges()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -174,11 +176,8 @@ class SettingController extends Controller
 
     public function destroyCurrency(\App\Models\SystemCurrency $currency)
     {
-        // Debugging
-        // dd('Arrived at destroyCurrency', $currency);
-
-        // Role Check (Super Admin only)
-        if (!auth()->user()->hasRole('super_admin')) {
+        // Role Check (Finance Admin & Management)
+        if (!auth()->user()->hasAdminPrivileges()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -192,8 +191,8 @@ class SettingController extends Controller
 
     public function updateCurrency(Request $request, \App\Models\SystemCurrency $currency)
     {
-        // Role Check (Super Admin only)
-        if (!auth()->user()->hasRole('super_admin')) {
+        // Role Check (Finance Admin & Management)
+        if (!auth()->user()->hasAdminPrivileges()) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -212,9 +211,9 @@ class SettingController extends Controller
     {
         $user = auth()->user();
 
-        // Role Check (Super Admin or IT Admin)
-        if (!$user->hasRole('IT Admin') && $user->role !== 'Super Admin') {
-            abort(403, 'Unauthorized action. Only IT Admin and Super Admin can manage Maintenance Mode.');
+        // Role Check (Finance Admin, Super Admin, Management, or IT Admin)
+        if (!$user->hasRole('IT Admin') && !$user->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action. Only IT Admin and Admins can manage Maintenance Mode.');
         }
 
         $request->validate([
@@ -229,5 +228,101 @@ class SettingController extends Controller
         Setting::set('maintenance_mode', $request->maintenance_mode, 'system');
 
         return redirect()->route('settings.index')->with('success', 'Maintenance mode status updated successfully.');
+    }
+
+    public function storeExpenseCategory(Request $request)
+    {
+        if (!auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:expense_categories,name',
+            'description' => 'nullable|string',
+            'status' => 'nullable|string|in:active,inactive',
+        ]);
+
+        ExpenseCategory::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'status' => $request->status ?? 'active',
+        ]);
+
+        return redirect()->route('settings.index')->with('success', 'Expense category created successfully.');
+    }
+
+    public function updateExpenseCategory(Request $request, ExpenseCategory $expenseCategory)
+    {
+        if (!auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255|unique:expense_categories,name,' . $expenseCategory->id,
+            'description' => 'nullable|string',
+            'status' => 'required|string|in:active,inactive',
+        ]);
+
+        $expenseCategory->update($request->only('name', 'description', 'status'));
+
+        return redirect()->route('settings.index')->with('success', 'Expense category updated successfully.');
+    }
+
+    public function destroyExpenseCategory(ExpenseCategory $expenseCategory)
+    {
+        if (!auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            $expenseCategory->delete();
+            return redirect()->route('settings.index')->with('success', 'Expense category removed successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('settings.index')->with('error', 'Cannot delete expense category.');
+        }
+    }
+
+    public function updateNotifications(Request $request)
+    {
+        // Role Check (Finance Admin & Management)
+        if (!auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'super_admin_notification_emails' => 'nullable|string',
+            'management_notification_emails' => 'nullable|string',
+        ]);
+
+        $invalidEmails = [];
+        $processEmails = function ($input) use (&$invalidEmails) {
+            $parts = preg_split('/[\r\n,;]+/', (string)$input);
+            $valid = [];
+            foreach ($parts as $part) {
+                $email = trim($part);
+                if (empty($email)) {
+                    continue;
+                }
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $valid[] = strtolower($email);
+                } else {
+                    $invalidEmails[] = $email;
+                }
+            }
+            return implode(', ', array_unique($valid));
+        };
+
+        $cleanSuperAdmin = $processEmails($request->input('super_admin_notification_emails', ''));
+        $cleanManagement = $processEmails($request->input('management_notification_emails', ''));
+
+        if (!empty($invalidEmails)) {
+            return redirect()->route('settings.index')
+                ->with('error', 'The following email addresses are invalid: ' . implode(', ', $invalidEmails));
+        }
+
+        Setting::set('super_admin_notification_emails', $cleanSuperAdmin, 'notifications');
+        Setting::set('management_notification_emails', $cleanManagement, 'notifications');
+
+        return redirect()->route('settings.index')->with('success', 'Notification recipient emails updated successfully.');
     }
 }

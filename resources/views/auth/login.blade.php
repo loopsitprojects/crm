@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Invoice System</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    
+    <!-- PWA Web App Meta Tags -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#8035ca">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Loops CRM">
+    <link rel="apple-touch-icon" href="{{ asset('images/pwa-icon-192.png') }}">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -17,24 +26,39 @@
     </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-4 bg-fixed" style="background: linear-gradient(135deg, #ff0878 0%, #8035ca 35%, #0057be 70%, #2fc9c3 100%);">
+<body class="min-h-screen min-h-[100dvh] flex items-center justify-center p-4 sm:p-6 bg-fixed" style="background: linear-gradient(135deg, #ff0878 0%, #8035ca 35%, #0057be 70%, #2fc9c3 100%);">
     <!-- Animated background shapes for depth -->
     <div class="fixed inset-0 overflow-hidden pointer-events-none">
         <div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-white/10 blur-3xl animate-pulse"></div>
         <div class="absolute top-[60%] -right-[5%] w-[30%] h-[30%] rounded-full bg-white/10 blur-3xl animate-pulse" style="animation-delay: 2s;"></div>
     </div>
 
-    <div class="bg-white/95 backdrop-blur-md p-10 rounded-2xl shadow-2xl w-full max-w-md border border-white/20 transform transition-all duration-300 hover:shadow-white/10">
-        <div class="flex flex-col items-center mb-10">
-            <div class="bg-white p-4 rounded-2xl shadow-sm mb-6">
-                <img src="{{ asset('images/logo_loops.png') }}" alt="Loops Integrated" class="h-16 w-auto">
+    <div class="bg-white/95 backdrop-blur-md p-6 sm:p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md border border-white/20 transform transition-all duration-300 hover:shadow-white/10 my-auto">
+        <div class="flex flex-col items-center mb-6 sm:mb-10">
+            <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-sm mb-4 sm:mb-6">
+                <img src="{{ asset('images/logo_loops.png') }}" alt="Loops Integrated" class="h-12 sm:h-16 w-auto">
             </div>
-            <h2 class="text-3xl font-black text-gray-800 tracking-tight text-center">Welcome Back</h2>
-            <p class="text-gray-500 mt-2 font-medium">Please enter your credentials</p>
+            <h2 class="text-2xl sm:text-3xl font-black text-gray-800 tracking-tight text-center">Welcome Back</h2>
+            <p class="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">Please enter your credentials</p>
         </div>
 
+        @if (session('success'))
+            <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-6 sm:mb-8 rounded-r-xl shadow-sm">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-emerald-700 font-bold">
+                            {{ session('success') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if ($errors->any())
-            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-xl shadow-sm animate-shake">
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 sm:mb-8 rounded-r-xl shadow-sm animate-shake">
                 <div class="flex">
                     <div class="flex-shrink-0">
                         <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
@@ -48,22 +72,27 @@
             </div>
         @endif
 
-        <form action="{{ route('login.post') }}" method="POST" class="space-y-8" x-data="{ showPassword: false }">
+        <form action="{{ route('login.post') }}" method="POST" class="space-y-5 sm:space-y-8" x-data="{ showPassword: false }">
             @csrf
-            <div class="space-y-2">
-                <label for="email" class="block text-sm font-bold text-gray-700 ml-1">Email Address</label>
+            <div class="space-y-1.5 sm:space-y-2">
+                <label for="email" class="block text-xs sm:text-sm font-bold text-gray-700 ml-1">Email Address</label>
                 <div class="relative group">
                     <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 group-focus-within:text-blue-600 transition-colors">
                         <i class="fas fa-envelope"></i>
                     </span>
                     <input type="email" name="email" id="email" required
                         placeholder="name@company.com"
-                        class="block w-full pl-11 pr-4 py-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all duration-300 text-gray-700 font-medium">
+                        class="block w-full pl-11 pr-4 py-3.5 sm:py-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all duration-300 text-gray-700 text-base sm:text-sm font-medium">
                 </div>
             </div>
 
-            <div class="space-y-2">
-                <label for="password" class="block text-sm font-bold text-gray-700 ml-1">Password</label>
+            <div class="space-y-1.5 sm:space-y-2">
+                <div class="flex items-center justify-between">
+                    <label for="password" class="block text-xs sm:text-sm font-bold text-gray-700 ml-1">Password</label>
+                    <a href="{{ route('password.request') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                        Forgot Password?
+                    </a>
+                </div>
                 <div class="relative group" x-data="{ focused: false }">
                     <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400" :class="focused ? 'text-blue-600' : ''">
                         <i class="fas fa-lock"></i>
@@ -71,7 +100,7 @@
                     <input :type="showPassword ? 'text' : 'password'" name="password" id="password" required
                         @focus="focused = true" @blur="focused = false"
                         placeholder="••••••••"
-                        class="block w-full pl-11 pr-12 py-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all duration-300 text-gray-700 font-medium">
+                        class="block w-full pl-11 pr-12 py-3.5 sm:py-4 bg-gray-50 border-2 border-transparent rounded-xl focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all duration-300 text-gray-700 text-base sm:text-sm font-medium">
                     
                     <button type="button" @click="showPassword = !showPassword"
                         class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-blue-600 transition-colors focus:outline-none">
@@ -80,15 +109,30 @@
                 </div>
             </div>
 
+            <div class="flex items-center justify-between pt-1">
+                <label class="flex items-center text-xs sm:text-sm text-gray-600 font-medium cursor-pointer select-none">
+                    <input type="checkbox" name="remember" value="1" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-4 w-4 mr-2">
+                    <span>Keep me signed in</span>
+                </label>
+            </div>
+
             <div class="pt-2">
                 <button type="submit"
-                    class="w-full flex justify-center items-center py-4 px-6 border border-transparent rounded-xl shadow-xl text-lg font-black text-white bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/25 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all duration-300 transform active:scale-95">
+                    class="w-full flex justify-center items-center py-3.5 sm:py-4 px-6 border border-transparent rounded-xl shadow-xl text-base sm:text-lg font-black text-white bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/25 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all duration-300 transform active:scale-95">
                     Sign In <i class="fas fa-arrow-right ml-2 text-sm"></i>
+                </button>
+            </div>
+
+            <!-- PWA Install Button on Login Screen -->
+            <div class="mt-4 pwa-install-btn">
+                <button type="button" class="pwa-install-trigger w-full flex items-center justify-center gap-2 py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs sm:text-sm font-bold rounded-xl border border-gray-200 shadow-2xs hover:border-gray-300 transition-all active:scale-98">
+                    <i class="fas fa-download text-brand-purple"></i>
+                    <span>Install Loops CRM App</span>
                 </button>
             </div>
         </form>
 
-        <div class="mt-8 text-center">
+        <div class="mt-6 sm:mt-8 text-center">
             <p class="text-xs text-gray-400 font-medium uppercase tracking-widest">&copy; {{ date('Y') }} Loops Integrated. All rights reserved.</p>
         </div>
     </div>
@@ -101,6 +145,8 @@
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
     </style>
+    <!-- PWA Install Prompts & Controller -->
+    @include('partials.pwa-install')
 </body>
 
 </html>

@@ -1,0 +1,1090 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\PettyCashRequest;
+use App\Models\PettyCashItem;
+use App\Models\PettyCashProof;
+use App\Models\ExpenseCategory;
+use App\Models\User;
+use App\Models\Deal;
+use App\Notifications\PettyCashNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
+
+class PettyCashController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $scope = $request->input('scope', 'my_requests');
+        $query = PettyCashRequest::with(['user', 'hod', 'items.category', 'proofs']);
+
+        if ($scope === 'my_requests') {
+            // Show only the logged-in user's own requested petty cash requests
+            $query->where('user_id', $user->id);
+        } elseif ($scope === 'approvals') {
+            if ($user->isFinanceAdmin()) {
+                $query->whereIn('status', ['pending_hod', 'pending_super_admin', 'pending_management', 'pending_settlement', 'pending_settlement_hod']);
+            } elseif ($user->isManagement()) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('status', 'pending_management')
+                      ->orWhere(function ($sub) use ($user) {
+                          $sub->where('hod_id', $user->id)
+                              ->whereIn('status', ['pending_hod', 'pending_settlement_hod']);
+                      });
+                });
+            } else {
+                $query->where('hod_id', $user->id)->whereIn('status', ['pending_hod', 'pending_settlement_hod']);
+            }
+        } elseif ($scope === 'all_team') {
+            if ($user->role === 'Staff') {
+                $query->where('user_id', $user->id);
+            } elseif ($user->role === 'HOD') {
+                $query->where(function ($q) use ($user) {
+                    $q->where('hod_id', $user->id)
+                      ->orWhere('department', $user->department)
+                      ->orWhere('user_id', $user->id);
+                });
+            }
+        } else {
+            $query->where('user_id', $user->id);
+        }
+
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $pettyCashes = $query->orderBy('created_at', 'desc')->get();
+
+        // Calculate counts for tabs
+        $myRequestsCount = PettyCashRequest::where('user_id', $user->id)->count();
+        $pendingApprovalsCount = 0;
+        if ($user->isFinanceAdmin()) {
+            $pendingApprovalsCount = PettyCashRequest::whereIn('status', ['pending_hod', 'pending_super_admin', 'pending_management', 'pending_settlement', 'pending_settlement_hod'])->count();
+        } elseif ($user->isManagement()) {
+            $pendingApprovalsCount = PettyCashRequest::where(function ($q) use ($user) {
+                $q->where('status', 'pending_management')
+                  ->orWhere(function ($sub) use ($user) {
+                      $sub->where('hod_id', $user->id)
+                          ->whereIn('status', ['pending_hod', 'pending_settlement_hod']);
+                  });
+            })->count();
+        } else {
+            $pendingApprovalsCount = PettyCashRequest::where('hod_id', $user->id)->whereIn('status', ['pending_hod', 'pending_settlement_hod'])->count();
+        }
+
+        // Data for modals / dropdowns
+        $expenseCategories = ExpenseCategory::where('status', 'active')->where('name', '!=', 'IOU')->orderBy('name')->get();
+        $hods = User::orderBy('name')->get();
+        if ($user->associated_hod && $hods->contains('id', $user->associated_hod->id)) {
+            $hods = $hods->reject(fn($h) => $h->id === $user->associated_hod->id);
+            $hods->prepend($user->associated_hod);
+        }
+
+        // Show all Job Numbers with basic description (Title & Customer)
+        $jobs = Deal::whereNotNull('job_number')
+            ->where('job_number', '!=', '')
+            ->orderBy('job_number', 'desc')
+            ->get(['job_number', 'title', 'customer_name'])
+            ->mapWithKeys(function ($deal) {
+                $label = $deal->job_number;
+                if (!empty($deal->title)) {
+                    $label .= ' - ' . $deal->title;
+                    if (!empty($deal->customer_name)) {
+                        $label .= ' (' . $deal->customer_name . ')';
+                    }
+                }
+                return [$deal->job_number => $label];
+            });
+
+        return view('petty-cash.index', compact('pettyCashes', 'expenseCategories', 'hods', 'jobs', 'scope', 'myRequestsCount', 'pendingApprovalsCount'));
+    }
+
+    public function store(Request $request)
+    {
+        $user = auth()->user();
+
+        // Prevent new petty cash request if user has an active Super Admin approved unsettled IOU
+        $activeUnsettledIou = PettyCashRequest::where('user_id', $user->id)
+            ->where('is_iou', true)
+            ->whereIn('status', ['approved', 'iou_issued', 'pending_settlement', 'pending_settlement_hod'])
+            ->first();
+
+        if ($activeUnsettledIou) {
+            return redirect()->back()->with('error', 'Request Blocked: You cannot submit a new petty cash request because you have an active unsettled IOU (' . $activeUnsettledIou->reference_number . '). According to policy, you must settle your existing IOU first.');
+        }
+
+        $isIou = $request->boolean('is_iou');
+        $isRequesterHod = ($user->role === 'HOD' || $user->hasRole('HOD'));
+
+        $request->validate([
+            'hod_id' => $isRequesterHod ? 'nullable|exists:users,id' : 'nullable|exists:users,id',
+            'job_number' => 'nullable',
+            'job_numbers' => 'nullable|array',
+            'job_numbers.*' => 'nullable|string|max:100',
+            'extra_notes' => 'nullable|string',
+            'is_iou' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.expense_category_id' => $isIou ? 'nullable|exists:expense_categories,id' : 'required|exists:expense_categories,id',
+            'items.*.amount' => 'required|numeric|min:0.01',
+            'items.*.description' => 'nullable|string',
+            'items.*.attendees' => 'nullable|array|max:5',
+            'items.*.attendees.*' => 'nullable|string|max:100',
+            'proofs' => 'nullable|array',
+            'proofs.*' => 'file|mimes:jpeg,png,jpg,pdf,doc,docx|max:10240',
+        ]);
+
+        $resolvedHod = null;
+        if ($isRequesterHod) {
+            $resolvedHod = $user;
+        } else {
+            if ($request->filled('hod_id')) {
+                $resolvedHod = User::find($request->hod_id);
+            }
+            if (!$resolvedHod && $user->associated_hod) {
+                $resolvedHod = $user->associated_hod;
+            }
+        }
+
+        $totalAmount = 0;
+        foreach ($request->items as $item) {
+            $totalAmount += (float)$item['amount'];
+            if (!empty($item['expense_category_id'])) {
+                $category = ExpenseCategory::find($item['expense_category_id']);
+                if ($category && stripos($category->name, 'IOU') !== false) {
+                    $isIou = true;
+                }
+            }
+        }
+
+        $jobNumberString = $this->parseJobNumbers($request);
+        $status = $isRequesterHod ? 'pending_super_admin' : 'pending_hod';
+
+        $pettyCash = PettyCashRequest::create([
+            'reference_number' => PettyCashRequest::generateReferenceNumber(),
+            'user_id' => $user->id,
+            'hod_id' => $resolvedHod ? $resolvedHod->id : ($isRequesterHod ? $user->id : $request->hod_id),
+            'department' => $user->department ?: 'General',
+            'job_number' => $jobNumberString,
+            'extra_notes' => $request->extra_notes,
+            'total_amount' => $totalAmount,
+            'approved_amount' => $totalAmount,
+            'is_iou' => $isIou,
+            'status' => $status,
+        ]);
+
+        // Save Items
+        foreach ($request->items as $itemData) {
+            $attendees = [];
+            if (!empty($itemData['attendees']) && is_array($itemData['attendees'])) {
+                $attendees = array_values(array_slice(array_filter(array_map('trim', $itemData['attendees']), fn($n) => $n !== ''), 0, 5));
+            }
+
+            PettyCashItem::create([
+                'petty_cash_request_id' => $pettyCash->id,
+                'expense_category_id' => !empty($itemData['expense_category_id']) ? $itemData['expense_category_id'] : null,
+                'amount' => $itemData['amount'],
+                'description' => $itemData['description'] ?? null,
+                'attendees' => !empty($attendees) ? $attendees : null,
+            ]);
+        }
+
+        // Handle Proof File Uploads
+        if ($request->hasFile('proofs')) {
+            foreach ($request->file('proofs') as $file) {
+                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $destinationPath = public_path('uploads/petty_cash_proofs');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+                PettyCashProof::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                ]);
+            }
+        }
+
+        // If requester is an HOD, bypass HOD approval and send directly to Finance Admin
+        if ($isRequesterHod) {
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user->id);
+            if ($superAdmins->isNotEmpty()) {
+                Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
+            }
+
+            if ($user) {
+                $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+            }
+
+            return redirect()->back()->with('success', 'Petty Cash request submitted successfully and sent directly to Finance for approval.');
+        }
+
+        // 1. Notify Associated HOD for non-HOD staff
+        $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? User::find($request->hod_id));
+        if ($hod && $hod->id !== $user->id) {
+            $hod->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        }
+
+        // Always notify the requesting user so they receive the confirmation email:
+        // "Thank you, your petty cash request is received and currently sent to the HOD approval."
+        if ($user) {
+            $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        }
+
+        // Notify Finance Admins (only if requester is NOT an admin to prevent duplicate emails)
+        $isRequesterAdmin = $user && $user->hasAdminPrivileges();
+        if (!$isRequesterAdmin) {
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user ? $user->id : null);
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
+        }
+
+        return redirect()->back()->with('success', 'Petty Cash request submitted successfully and sent to HOD for approval.');
+    }
+
+    public function show(PettyCashRequest $pettyCash)
+    {
+        $pettyCash->load(['user', 'hod', 'managementApprover', 'items.category', 'proofs']);
+        $pettyCash->append(['issued_notes_total', 'settlement_notes_total']);
+        return response()->json([
+            'success' => true,
+            'pettyCash' => $pettyCash
+        ]);
+    }
+
+    public function hodApprove(PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        // Ensure user is assigned HOD or Finance Admin
+        if ($user->id !== $pettyCash->hod_id && !$user->isFinanceAdmin()) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        // Check if approving an exceeded IOU settlement
+        if ($pettyCash->status === 'pending_settlement_hod') {
+            $pettyCash->update([
+                'status' => 'pending_settlement',
+            ]);
+
+            // Notify Staff & Super Admins upon HOD Approval of exceeded settlement
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+            if ($superAdmins->isNotEmpty()) {
+                Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'iou_settlement_hod_approved', $user));
+            }
+
+            $requestedUser = User::find($pettyCash->user_id);
+            if ($requestedUser) {
+                $requestedUser->notify(new PettyCashNotification($pettyCash, 'iou_settlement_hod_approved', $user));
+            }
+
+            $associatedHod = $pettyCash->associated_hod;
+            if ($associatedHod && $associatedHod->id !== $user->id && $associatedHod->id !== $pettyCash->user_id) {
+                $associatedHod->notify(new PettyCashNotification($pettyCash, 'iou_settlement_hod_approved', $user));
+            }
+
+            return redirect()->back()->with('success', 'Exceeded IOU settlement approved and forwarded to Finance for final approval.');
+        }
+
+        $pettyCash->update([
+            'status' => 'pending_super_admin',
+        ]);
+
+        // 2. Notify Staff & Super Admins upon HOD Approval
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'hod_approved', $user));
+
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'hod_approved', $user));
+        }
+
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id && $associatedHod->id !== $pettyCash->user_id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'hod_approved', $user));
+        }
+
+        return redirect()->back()->with('success', 'Petty Cash request approved and forwarded to Finance.');
+    }
+
+    public function hodReject(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if ($user->id !== $pettyCash->hod_id && !$user->isFinanceAdmin()) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'hod_rejection_note' => 'required|string',
+        ]);
+
+        $pettyCash->update([
+            'status' => 'rejected_by_hod',
+            'hod_rejection_note' => $request->hod_rejection_note,
+        ]);
+
+        // 4a. Notify Requested User and Super Admins upon HOD Rejection
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'hod_rejected', $user, $request->hod_rejection_note));
+        }
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'hod_rejected', $user, $request->hod_rejection_note));
+
+        return redirect()->back()->with('success', 'Petty Cash request rejected. Staff has been notified.');
+    }
+
+    public function adminApprove(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can perform this action.');
+        }
+
+        $isIOU = $pettyCash->isIOU();
+
+        // Validate mandatory signature for IOU
+        if ($isIOU && (!$request->filled('signature') || !str_starts_with($request->signature, 'data:image/png;base64,'))) {
+            return redirect()->back()->with('error', 'A signature from the requested person is MANDATORY for IOU approvals and settlements.');
+        }
+
+        $savedSignaturePath = null;
+        if ($request->filled('signature') && str_starts_with($request->signature, 'data:image/png;base64,')) {
+            $imageParts = explode(';base64,', $request->signature);
+            if (isset($imageParts[1])) {
+                $imageBase64 = base64_decode($imageParts[1]);
+                $filename = 'sig_' . $pettyCash->id . '_' . time() . '.png';
+                $destinationPath = public_path('uploads/petty_cash_signatures');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                file_put_contents($destinationPath . '/' . $filename, $imageBase64);
+                $savedSignaturePath = 'uploads/petty_cash_signatures/' . $filename;
+            }
+        }
+
+        if ($pettyCash->status === 'pending_settlement') {
+            // Approval of IOU settlement
+            $settledAt = $request->filled('settled_at') ? $request->input('settled_at') : now();
+            $updateData = [
+                'status' => 'settled',
+                'settlement_signature_path' => $savedSignaturePath ?: $pettyCash->settlement_signature_path,
+                'settled_at' => $settledAt,
+            ];
+            if ($request->has('settlement_note')) {
+                $updateData['settlement_note'] = $request->input('settlement_note');
+            }
+            if ($request->has('settlement_money_notes')) {
+                $updateData['settlement_money_notes'] = $request->input('settlement_money_notes');
+            }
+
+            $pettyCash->update($updateData);
+
+            if ($pettyCash->user) {
+                $pettyCash->user->notify(new PettyCashNotification($pettyCash, 'iou_settled', $user));
+            }
+            $associatedHod = $pettyCash->associated_hod;
+            if ($associatedHod && $associatedHod->id !== $user->id) {
+                $associatedHod->notify(new PettyCashNotification($pettyCash, 'iou_settled', $user));
+            }
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'iou_settled', $user));
+            return redirect()->back()->with('success', 'IOU Settlement has been APPROVED and marked as SETTLED.');
+        }
+
+        // Initial Super Admin approval (or money handed over for IOU)
+        $newStatus = $isIOU ? 'iou_issued' : 'approved';
+        $issuedAt = $request->filled('issued_at') ? $request->input('issued_at') : now();
+
+        $updateData = [
+            'status' => $newStatus,
+            'signature_path' => $savedSignaturePath ?: $pettyCash->signature_path,
+            'issued_at' => $issuedAt,
+            'approved_amount' => $pettyCash->approved_amount ?: $pettyCash->total_amount,
+        ];
+        if ($request->has('issued_money_notes')) {
+            $updateData['issued_money_notes'] = $request->input('issued_money_notes');
+        }
+
+        $pettyCash->update($updateData);
+
+        // 3. Notify Staff, Associated HOD, and Super Admins upon Super Admin Approval (with PDF Voucher)
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'admin_approved', $user));
+        }
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'admin_approved', $user));
+        }
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'admin_approved', $user));
+
+        $msg = $isIOU ? 'IOU Request APPROVED & Money Handed Over (Status: Unsettled IOU).' : 'Petty Cash request APPROVED successfully.';
+        return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Send email reminder to Staff and HOD for unsettled IOU.
+     */
+    public function sendIouReminder(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges() && $user->id !== $pettyCash->hod_id) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        if (!$pettyCash->isIOU() || $pettyCash->status === 'settled') {
+            return redirect()->back()->with('error', 'This request is not an active unsettled IOU.');
+        }
+
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'iou_reminder', $user));
+        }
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'iou_reminder', $user));
+        }
+
+        return redirect()->back()->with('success', 'Reminder email to settle the IOU has been sent to ' . ($pettyCash->user->name ?? 'Staff') . ' and HOD.');
+    }
+
+    public function adminReject(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can perform this action.');
+        }
+
+        $request->validate([
+            'admin_rejection_note' => 'required|string',
+        ]);
+
+        $pettyCash->update([
+            'status' => 'rejected_by_super_admin',
+            'admin_rejection_note' => $request->admin_rejection_note,
+        ]);
+
+        // 4b. Notify Staff, Associated HOD, and Super Admins upon Super Admin Rejection
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'admin_rejected', $user, $request->admin_rejection_note));
+        }
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'admin_rejected', $user, $request->admin_rejection_note));
+        }
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'admin_rejected', $user, $request->admin_rejection_note));
+
+        return redirect()->back()->with('success', 'Petty Cash request rejected by Finance. Staff and HOD have been notified.');
+    }
+
+    public function sendToManagement(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can perform this action.');
+        }
+
+        $request->validate([
+            'management_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $pettyCash->update([
+            'status' => 'pending_management',
+            'management_notes' => $request->management_notes,
+            'sent_to_management_at' => now(),
+            'sent_to_management_by' => $user->id,
+        ]);
+
+        // Dispatch notification and email to Management
+        $managementRecipients = PettyCashNotification::getManagementRecipients($user->id);
+        if ($managementRecipients->isNotEmpty()) {
+            Notification::send($managementRecipients, new PettyCashNotification($pettyCash, 'sent_to_management', $user, $request->management_notes));
+        }
+
+        // Also notify the requesting staff member so they are aware their request was escalated to Management
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser && $requestedUser->id !== $user->id) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'sent_to_management', $user, $request->management_notes));
+        }
+
+        // Notify HOD if different
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id && $associatedHod->id !== $pettyCash->user_id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'sent_to_management', $user, $request->management_notes));
+        }
+
+        $recipientCount = $managementRecipients->count();
+        $msg = "Petty Cash request #{$pettyCash->reference_number} was successfully forwarded to Management for approval.";
+        if ($recipientCount > 0) {
+            $msg .= " Notification email sent to {$recipientCount} Management recipient(s).";
+        } else {
+            $msg .= " (Note: No Management notification emails are configured in Settings).";
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    public function managementApprove(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        $isConfiguredMgmt = in_array(strtolower($user->email ?? ''), PettyCashNotification::getConfiguredManagementEmails());
+        if (!$user->hasAdminPrivileges() && !$user->hasRole('Management') && !$user->hasRole('Manager') && !$isConfiguredMgmt) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Management can approve this request.');
+        }
+
+        if ($pettyCash->status !== 'pending_management') {
+            return redirect()->back()->with('error', 'This request is not awaiting Management approval.');
+        }
+
+        $request->validate([
+            'management_approval_notes' => 'nullable|string|max:2000',
+            'management_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $notesVal = $request->input('management_notes', $request->input('management_approval_notes'));
+        $updateNotes = $pettyCash->management_notes;
+        if (!empty($notesVal)) {
+            $prefix = "\n[Management Approval Note by {$user->name}]: ";
+            $updateNotes = $updateNotes ? ($updateNotes . $prefix . $notesVal) : ($notesVal);
+        }
+
+        $pettyCash->update([
+            'status' => 'pending_super_admin',
+            'management_approved_at' => now(),
+            'management_approved_by' => $user->id,
+            'management_notes' => $updateNotes,
+        ]);
+
+        // Email & in-app notification to Finance Admin (Super Admin)
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients();
+        if ($superAdmins->isNotEmpty()) {
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'management_approved', $user, $notesVal));
+        }
+
+        // Also notify the requesting staff user
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser && $requestedUser->id !== $user->id) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'management_approved', $user, $notesVal));
+        }
+
+        // Notify HOD if different
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id && $associatedHod->id !== $pettyCash->user_id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'management_approved', $user, $notesVal));
+        }
+
+        return redirect()->back()->with('success', "Petty Cash request #{$pettyCash->reference_number} was APPROVED by Management. Finance Admin has been notified by email to approve and disburse funds.");
+    }
+
+    public function managementReject(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        $isConfiguredMgmt = in_array(strtolower($user->email ?? ''), PettyCashNotification::getConfiguredManagementEmails());
+        if (!$user->hasAdminPrivileges() && !$user->hasRole('Management') && !$user->hasRole('Manager') && !$isConfiguredMgmt) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Management can reject this request.');
+        }
+
+        if ($pettyCash->status !== 'pending_management') {
+            return redirect()->back()->with('error', 'This request is not awaiting Management approval.');
+        }
+
+        $request->validate([
+            'management_rejection_note' => 'required|string|max:2000',
+        ]);
+
+        $pettyCash->update([
+            'status' => 'rejected_by_management',
+            'management_rejection_note' => $request->management_rejection_note,
+        ]);
+
+        // Notify Staff
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'management_rejected', $user, $request->management_rejection_note));
+        }
+
+        // Notify Associated HOD
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'management_rejected', $user, $request->management_rejection_note));
+        }
+
+        // Notify Finance Admins
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients($pettyCash->user_id);
+        if ($superAdmins->isNotEmpty()) {
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'management_rejected', $user, $request->management_rejection_note));
+        }
+
+        return redirect()->back()->with('success', "Petty Cash request #{$pettyCash->reference_number} was REJECTED by Management. Staff, HOD, and Finance Admin have been notified.");
+    }
+
+    public function settleIOU(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if ($user->id !== $pettyCash->user_id && !$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'proofs' => 'nullable|array',
+            'proofs.*' => 'file|mimes:jpeg,png,jpg,pdf,doc,docx|max:10240',
+            'items' => 'nullable|array',
+            'items.*.id' => 'required|exists:petty_cash_items,id',
+            'items.*.amount' => 'required|numeric|min:0.01',
+            'settled_at' => 'nullable|date',
+            'extra_notes' => 'nullable|string',
+            'settlement_note' => 'nullable|string',
+            'settlement_money_notes' => 'nullable|array',
+        ]);
+
+        // Capture originally approved amount
+        $approvedAmount = (float)($pettyCash->approved_amount ?: $pettyCash->total_amount);
+
+        // Update items/amounts if submitted
+        $settlementTotal = 0;
+        if ($request->has('items')) {
+            foreach ($request->items as $itemData) {
+                $item = PettyCashItem::find($itemData['id']);
+                if ($item) {
+                    $updateItemData = [
+                        'amount' => $itemData['amount'],
+                        'description' => $itemData['description'] ?? $item->description,
+                    ];
+                    if (isset($itemData['attendees']) && is_array($itemData['attendees'])) {
+                        $attendees = array_values(array_slice(array_filter(array_map('trim', $itemData['attendees']), fn($n) => $n !== ''), 0, 5));
+                        $updateItemData['attendees'] = !empty($attendees) ? $attendees : null;
+                    }
+                    $item->update($updateItemData);
+                    $settlementTotal += (float)$itemData['amount'];
+                }
+            }
+        } else {
+            $settlementTotal = (float)$pettyCash->items()->sum('amount');
+        }
+
+        // Upload settlement proofs
+        if ($request->hasFile('proofs')) {
+            foreach ($request->file('proofs') as $file) {
+                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $destinationPath = public_path('uploads/petty_cash_proofs');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+                PettyCashProof::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                ]);
+            }
+        }
+
+        $settledAt = $request->filled('settled_at') ? $request->input('settled_at') : now();
+        $settledNote = $request->input('extra_notes') ?: $request->input('settlement_note');
+
+        // Check if settlement exceeded approved amount
+        $isExceeded = round($settlementTotal, 2) > round($approvedAmount, 2);
+
+        $isRequesterHod = ($pettyCash->user && ($pettyCash->user->role === 'HOD' || $pettyCash->user->hasRole('HOD'))) 
+            || ($user->role === 'HOD' || $user->hasRole('HOD'));
+        $hasHod = !empty($pettyCash->hod_id) || !empty($pettyCash->associated_hod);
+
+        // If exceeded and requester has an HOD (and is not an HOD themselves): goes to HOD approval first!
+        $needsHodApproval = $isExceeded && !$isRequesterHod && $hasHod;
+        $newStatus = $needsHodApproval ? 'pending_settlement_hod' : 'pending_settlement';
+
+        $pettyCash->update([
+            'status' => $newStatus,
+            'approved_amount' => $approvedAmount,
+            'settlement_amount' => $settlementTotal,
+            'total_amount' => $settlementTotal > 0 ? $settlementTotal : $pettyCash->total_amount,
+            'settled_at' => $settledAt,
+            'settlement_note' => $settledNote,
+            'extra_notes' => $settledNote ?: $pettyCash->extra_notes,
+            'settlement_money_notes' => $request->input('settlement_money_notes'),
+        ]);
+
+        if ($isExceeded) {
+            // Send emails immediately when exceeded
+            // 1. Notify HOD for approval
+            $associatedHod = $pettyCash->associated_hod;
+            if ($associatedHod && $associatedHod->id !== $user->id) {
+                $associatedHod->notify(new PettyCashNotification($pettyCash, 'iou_settlement_exceeded', $user));
+            }
+
+            // 2. Notify Requester / Staff member
+            $requestedUser = User::find($pettyCash->user_id);
+            if ($requestedUser) {
+                $requestedUser->notify(new PettyCashNotification($pettyCash, 'iou_settlement_exceeded', $user));
+            }
+
+            // 3. Notify Finance Admins / Super Admins
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user->id);
+            if ($superAdmins->isNotEmpty()) {
+                Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'iou_settlement_exceeded', $user));
+            }
+
+            $exceededAmount = round($settlementTotal - $approvedAmount, 2);
+            $msg = $needsHodApproval 
+                ? 'IOU Settlement exceeded approved amount (Approved: LKR ' . number_format($approvedAmount, 2) . ', Spent: LKR ' . number_format($settlementTotal, 2) . ', Exceeded by: LKR ' . number_format($exceededAmount, 2) . '). It has been forwarded to your HOD for approval, and notification emails have been sent.'
+                : 'IOU Settlement exceeded approved amount. Submitted successfully for Finance approval.';
+
+            return redirect()->back()->with('success', $msg);
+        }
+
+        // Standard settlement within or equal to approved amount
+        // Notify Super Admins, Associated HOD & Requested Staff User
+        $superAdmins = PettyCashNotification::getSuperAdminRecipients();
+        Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
+
+        $associatedHod = $pettyCash->associated_hod;
+        if ($associatedHod && $associatedHod->id !== $user->id) {
+            $associatedHod->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        }
+
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser && $requestedUser->id !== $user->id) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        }
+
+        return redirect()->back()->with('success', 'IOU Settlement details and proofs submitted successfully. Pending Finance final approval.');
+    }
+
+    public function reappeal(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        // Staff or HOD or Admin can re-appeal
+        if ($user->id !== $pettyCash->user_id && $user->id !== $pettyCash->hod_id && !$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $isIou = $request->has('is_iou') ? $request->boolean('is_iou') : $pettyCash->is_iou;
+        $isRequesterHod = ($pettyCash->user && ($pettyCash->user->role === 'HOD' || $pettyCash->user->hasRole('HOD'))) 
+            || $user->role === 'HOD' 
+            || $user->hasRole('HOD');
+
+        $request->validate([
+            'hod_id' => $isRequesterHod ? 'nullable|exists:users,id' : 'required|exists:users,id',
+            'job_number' => 'nullable',
+            'job_numbers' => 'nullable|array',
+            'job_numbers.*' => 'nullable|string|max:100',
+            'extra_notes' => 'nullable|string',
+            'is_iou' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.expense_category_id' => $isIou ? 'nullable|exists:expense_categories,id' : 'required|exists:expense_categories,id',
+            'items.*.amount' => 'required|numeric|min:0.01',
+            'items.*.description' => 'nullable|string',
+            'proofs' => 'nullable|array',
+            'proofs.*' => 'file|mimes:jpeg,png,jpg,pdf,doc,docx|max:10240',
+        ]);
+
+        $totalAmount = 0;
+        foreach ($request->items as $item) {
+            $totalAmount += (float)$item['amount'];
+            if (!empty($item['expense_category_id'])) {
+                $category = ExpenseCategory::find($item['expense_category_id']);
+                if ($category && stripos($category->name, 'IOU') !== false) {
+                    $isIou = true;
+                }
+            }
+        }
+
+        // Determine new status:
+        // If requester is HOD, always route directly to Finance -> pending_super_admin
+        // If rejected by Super Admin/Management and re-appealed by HOD, send to Super Admin -> pending_super_admin
+        // If re-appealed by Staff, send back to HOD -> pending_hod
+        $newStatus = ($isRequesterHod || ($user->id === $pettyCash->hod_id && in_array($pettyCash->status, ['rejected_by_super_admin', 'rejected_by_management']))) 
+                     ? 'pending_super_admin' 
+                     : 'pending_hod';
+
+        $reappealHodId = $request->hod_id;
+        if ($isRequesterHod) {
+            $reappealHodId = $user->id;
+        }
+
+        $jobNumberString = $this->parseJobNumbers($request);
+
+        $pettyCash->update([
+            'hod_id' => $reappealHodId ?: $pettyCash->hod_id,
+            'job_number' => $jobNumberString,
+            'extra_notes' => $request->extra_notes,
+            'total_amount' => $totalAmount,
+            'is_iou' => $isIou,
+            'status' => $newStatus,
+            'hod_rejection_note' => null,
+            'admin_rejection_note' => null,
+            'management_rejection_note' => null,
+            'reappeal_count' => $pettyCash->reappeal_count + 1,
+        ]);
+
+        // Delete existing items and recreate
+        $pettyCash->items()->delete();
+        foreach ($request->items as $itemData) {
+            $attendees = [];
+            if (!empty($itemData['attendees']) && is_array($itemData['attendees'])) {
+                $attendees = array_values(array_slice(array_filter(array_map('trim', $itemData['attendees']), fn($n) => $n !== ''), 0, 5));
+            }
+
+            PettyCashItem::create([
+                'petty_cash_request_id' => $pettyCash->id,
+                'expense_category_id' => !empty($itemData['expense_category_id']) ? $itemData['expense_category_id'] : null,
+                'amount' => $itemData['amount'],
+                'description' => $itemData['description'] ?? null,
+                'attendees' => !empty($attendees) ? $attendees : null,
+            ]);
+        }
+
+        // Add additional Proof File Uploads if provided
+        if ($request->hasFile('proofs')) {
+            foreach ($request->file('proofs') as $file) {
+                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $destinationPath = public_path('uploads/petty_cash_proofs');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+                PettyCashProof::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                ]);
+            }
+        }
+
+        // Notify HOD or Super Admin based on new status
+        if ($newStatus === 'pending_super_admin') {
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user ? $user->id : null);
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'reappealed', $user));
+        } else {
+            $hod = User::find($request->hod_id) ?? $pettyCash->associated_hod;
+            if ($hod && $hod->id !== $user->id) {
+                $hod->notify(new PettyCashNotification($pettyCash, 'reappealed', $user));
+            }
+        }
+
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser && $requestedUser->id !== $user->id) {
+            $requestedUser->notify(new PettyCashNotification($pettyCash, 'reappealed', $user));
+        }
+
+        return redirect()->back()->with('success', 'Petty Cash request re-appealed and resubmitted successfully.');
+    }
+
+    public function downloadVoucher(Request $request, PettyCashRequest $pettyCash)
+    {
+        $token = $pettyCash->getSecureVoucherToken();
+        $params = ['token' => $token];
+        if ($request->has('with_buttons')) {
+            $params['with_buttons'] = 1;
+        }
+        return redirect()->route('petty-cash.download-secure', $params);
+    }
+
+    public function downloadVoucherSecure(Request $request, $token)
+    {
+        $pettyCash = PettyCashRequest::findBySecureVoucherToken($token);
+        if (!$pettyCash && is_numeric($token)) {
+            $pettyCash = PettyCashRequest::find($token);
+        }
+
+        if (!$pettyCash) {
+            abort(404, 'Petty Cash Voucher not found or link has expired.');
+        }
+
+        $pettyCash->load(['user', 'hod', 'items.category', 'proofs']);
+        $hideButtons = !$request->has('with_buttons');
+
+        return view('petty-cash.voucher', compact('pettyCash', 'hideButtons'));
+    }
+
+    public function update(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can edit petty cash requests.');
+        }
+
+        $isIou = $request->has('is_iou') ? $request->boolean('is_iou') : $pettyCash->is_iou;
+
+        $request->validate([
+            'hod_id' => 'required|exists:users,id',
+            'job_number' => 'nullable',
+            'job_numbers' => 'nullable|array',
+            'job_numbers.*' => 'nullable|string|max:100',
+            'extra_notes' => 'nullable|string',
+            'status' => 'required|string|in:pending_hod,pending_super_admin,pending_management,approved,rejected_by_hod,rejected_by_super_admin,rejected_by_management,iou_issued,pending_settlement,pending_settlement_hod,settled',
+            'management_notes' => 'nullable|string',
+            'created_at' => 'nullable|date',
+            'issued_at' => 'nullable|date',
+            'settled_at' => 'nullable|date',
+            'is_iou' => 'nullable|boolean',
+            'items' => 'required|array|min:1',
+            'items.*.expense_category_id' => $isIou ? 'nullable|exists:expense_categories,id' : 'required|exists:expense_categories,id',
+            'items.*.amount' => 'required|numeric|min:0.01',
+            'items.*.description' => 'nullable|string',
+            'proofs' => 'nullable|array',
+            'proofs.*' => 'file|mimes:jpeg,png,jpg,pdf,doc,docx|max:10240',
+            'delete_proofs' => 'nullable|array',
+            'delete_proofs.*' => 'exists:petty_cash_proofs,id',
+        ]);
+
+        $totalAmount = 0;
+        foreach ($request->items as $item) {
+            $totalAmount += (float)$item['amount'];
+            if (!empty($item['expense_category_id'])) {
+                $category = ExpenseCategory::find($item['expense_category_id']);
+                if ($category && stripos($category->name, 'IOU') !== false) {
+                    $isIou = true;
+                }
+            }
+        }
+
+        $jobNumberString = $this->parseJobNumbers($request);
+
+        $updateData = [
+            'hod_id' => $request->hod_id,
+            'job_number' => $jobNumberString,
+            'extra_notes' => $request->extra_notes,
+            'status' => $request->status,
+            'management_notes' => $request->management_notes,
+            'total_amount' => $totalAmount,
+            'is_iou' => $isIou,
+        ];
+
+        if ($request->filled('created_at')) {
+            $updateData['created_at'] = $request->created_at;
+        }
+        if ($request->has('issued_at')) {
+            $updateData['issued_at'] = $request->filled('issued_at') ? $request->issued_at : null;
+        }
+        if ($request->has('settled_at')) {
+            $updateData['settled_at'] = $request->filled('settled_at') ? $request->settled_at : null;
+        }
+
+        $pettyCash->update($updateData);
+
+        // Recreate items
+        $pettyCash->items()->delete();
+        foreach ($request->items as $itemData) {
+            PettyCashItem::create([
+                'petty_cash_request_id' => $pettyCash->id,
+                'expense_category_id' => !empty($itemData['expense_category_id']) ? $itemData['expense_category_id'] : null,
+                'amount' => $itemData['amount'],
+                'description' => $itemData['description'] ?? null,
+            ]);
+        }
+
+        // Handle deletion of existing proofs
+        if ($request->has('delete_proofs')) {
+            $proofsToDelete = PettyCashProof::whereIn('id', $request->delete_proofs)
+                ->where('petty_cash_request_id', $pettyCash->id)
+                ->get();
+            foreach ($proofsToDelete as $proof) {
+                $fullPath = public_path($proof->file_path);
+                if (file_exists($fullPath)) {
+                    @unlink($fullPath);
+                }
+                $proof->delete();
+            }
+        }
+
+        // Upload new proof files
+        if ($request->hasFile('proofs')) {
+            foreach ($request->file('proofs') as $file) {
+                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $destinationPath = public_path('uploads/petty_cash_proofs');
+                if (!file_exists($destinationPath)) {
+                    mkdir($destinationPath, 0777, true);
+                }
+                $file->move($destinationPath, $filename);
+                $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+                PettyCashProof::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_type' => $file->getClientMimeType(),
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Petty Cash request updated successfully.');
+    }
+
+    public function destroy(PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can delete petty cash requests.');
+        }
+
+        // Clean up proof files
+        foreach ($pettyCash->proofs as $proof) {
+            $fullPath = public_path($proof->file_path);
+            if (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+        }
+
+        // Clean up signature files
+        if ($pettyCash->signature_path) {
+            $sigPath = public_path($pettyCash->signature_path);
+            if (file_exists($sigPath)) {
+                @unlink($sigPath);
+            }
+        }
+        if ($pettyCash->settlement_signature_path) {
+            $setSigPath = public_path($pettyCash->settlement_signature_path);
+            if (file_exists($setSigPath)) {
+                @unlink($setSigPath);
+            }
+        }
+
+        $pettyCash->items()->delete();
+        $pettyCash->proofs()->delete();
+        $pettyCash->delete();
+
+        return back()->with('success', 'Petty cash request deleted successfully.');
+    }
+
+    /**
+     * Parse and normalize single or multiple job numbers into a comma-separated string.
+     */
+    protected function parseJobNumbers(Request $request): ?string
+    {
+        $input = $request->input('job_numbers', $request->input('job_number'));
+        if (is_array($input)) {
+            $clean = array_values(array_unique(array_filter(array_map('trim', $input))));
+            return !empty($clean) ? implode(', ', $clean) : null;
+        } elseif (is_string($input)) {
+            $clean = array_values(array_unique(array_filter(array_map('trim', explode(',', $input)))));
+            return !empty($clean) ? implode(', ', $clean) : null;
+        }
+        return null;
+    }
+}

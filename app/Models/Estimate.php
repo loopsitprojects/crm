@@ -96,7 +96,7 @@ class Estimate extends Model
         // Special edit restrictions for duplicated estimates:
         // Only estimate creator, respective HOD associated, Super Admins, and IT Admin can edit.
         if ($this->is_duplicated) {
-            if ($user->hasRole('Super Admin') || $user->hasRole('IT Admin')) {
+            if ($user->hasRole('Super Admin') || $user->hasRole('Finance Admin') || $user->hasRole('IT Admin')) {
                 return true;
             }
             if ((int)$this->user_id === (int)$user->id) {
@@ -122,7 +122,7 @@ class Estimate extends Model
         }
 
         // Fallback for standalone estimates (if any)
-        return $this->user_id === $user->id || $user->hasRole('Super Admin') || $user->hasRole('Management');
+        return $this->user_id === $user->id || $user->hasAdminPrivileges();
     }
 
 

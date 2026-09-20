@@ -18,6 +18,16 @@ class DealCanEditTest extends TestCase
         $this->assertTrue($deal->canEdit($admin));
     }
 
+    public function test_finance_admin_can_edit_any_deal()
+    {
+        $admin = new User(['id' => 1, 'role' => 'Finance Admin', 'department' => 'Tech']);
+        $manager = new User(['id' => 2, 'role' => 'Manager', 'department' => 'Creative']);
+        $deal = new Deal(['user_id' => 2]);
+        $deal->setRelation('owner', $manager);
+
+        $this->assertTrue($deal->canEdit($admin));
+    }
+
     public function test_management_can_edit_any_deal()
     {
         $management = new User(['id' => 1, 'role' => 'Management', 'department' => 'Corporate']);

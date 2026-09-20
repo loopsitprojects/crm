@@ -21,28 +21,28 @@
     }
 }">
     <!-- Professional Filter Grid (Matching Reference Style) -->
-    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+    <div class="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
         <form action="{{ route('reports.index') }}" method="GET" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 items-end">
                 <!-- Column 1: Period -->
-                <div class="space-y-2 col-span-1 md:col-span-1">
+                <div class="space-y-2 col-span-1">
                     <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Analysis Period</label>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">From</span>
                             <input type="month" name="start_date" value="{{ $startDate ? $startDate->format('Y-m') : '' }}" 
-                                class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
+                                class="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                         <div>
                             <span class="text-[9px] text-gray-400 block mb-1">To</span>
                             <input type="month" name="end_date" value="{{ $endDate ? $endDate->format('Y-m') : '' }}" 
-                                class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
+                                class="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30">
                         </div>
                     </div>
                 </div>
 
-                <!-- Column 2: Department (Only for Admins/Management) -->
-                @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Management'))
+                <!-- Column 2: Department (Only for Finance Admin / Management) -->
+                @if(auth()->user()->hasAdminPrivileges())
                 <div class="space-y-2">
                     <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Department / Category</label>
                     <select name="department" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
@@ -58,23 +58,33 @@
                 <div class="space-y-2">
                     <label class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Stage / Customer</label>
                     <div class="grid grid-cols-2 gap-2">
-                        <select name="stage" class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
+                        <select name="stage" class="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
                             <option value="">All Stages</option>
                             @foreach($stages as $s)
                                 <option value="{{ $s }}" {{ $stageFilter == $s ? 'selected' : '' }}>{{ $s }}</option>
                             @endforeach
                         </select>
                         <input type="text" name="customer_name" value="{{ $customerName }}" placeholder="Customer..."
-                            class="w-full px-3 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
+                            class="w-full px-2.5 py-2 text-xs border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-gray-50/30 h-[38px]">
                     </div>
                 </div>
 
                 <!-- Column 4: Actions -->
-                <div class="flex space-x-2">
-                    <button type="submit" class="flex-1 px-4 py-2 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95 h-[38px]">
+                <div class="flex flex-wrap sm:flex-nowrap gap-2">
+                    <button type="submit" class="flex-1 px-3 py-2 bg-brand-blue text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-brand-purple transition-all shadow-md active:scale-95 h-[38px]">
                         <i class="fas fa-sync-alt mr-1"></i> Update
                     </button>
-                    <a href="{{ route('reports.index') }}" class="px-4 py-2 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all text-center flex items-center h-[38px]">
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'deals'])) }}" 
+                       class="px-3 py-2 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-700 transition-all text-center flex items-center justify-center h-[38px] shadow-md border border-emerald-500 whitespace-nowrap" title="Export Deals to CSV">
+                        <i class="fas fa-file-csv mr-1"></i> Export Deals
+                    </a>
+                    @if(auth()->user()->hasAdminPrivileges())
+                    <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'petty_cash'])) }}" 
+                       class="px-3 py-2 bg-gradient-to-r from-brand-pink to-brand-purple text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:opacity-90 transition-all text-center flex items-center justify-center h-[38px] shadow-md border border-pink-500 whitespace-nowrap" title="Export Petty Cash Report to CSV">
+                        <i class="fas fa-wallet mr-1"></i> Export Petty Cash
+                    </a>
+                    @endif
+                    <a href="{{ route('reports.index') }}" class="px-3 py-2 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-gray-200 transition-all text-center flex items-center justify-center h-[38px]">
                         Reset
                     </a>
                 </div>
@@ -83,7 +93,7 @@
     </div>
 
     <!-- Quick Insights (Added for HOD/Managers) -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 {{ auth()->user()->hasAdminPrivileges() ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-4 sm:gap-6">
         <a href="{{ route('reports.index', array_merge(request()->query(), ['report_type' => 'pending'])) }}" 
            class="group p-6 rounded-2xl border-2 transition-all duration-300 {{ $reportType === 'pending' ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:border-indigo-100 hover:shadow-md' }}">
             <div class="flex items-center justify-between mb-4">
@@ -125,6 +135,32 @@
             <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Project Deadlines</h3>
             <p class="text-xs text-gray-500 mt-1">Upcoming project estimated closing dates.</p>
         </a>
+
+        @if(auth()->user()->hasAdminPrivileges())
+        <a href="{{ route('reports.export', array_merge(request()->all(), ['type' => 'petty_cash'])) }}" 
+           class="group p-6 rounded-2xl border-2 transition-all duration-300 bg-white border-transparent hover:border-pink-100 hover:shadow-md" title="Download Petty Cash CSV Report">
+            <div class="flex items-center justify-between mb-4">
+                <div class="p-3 rounded-xl bg-pink-50 text-brand-pink group-hover:bg-brand-pink group-hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                </div>
+                <div class="text-right">
+                    <span class="text-lg font-black text-slate-800">LKR {{ number_format($pettyCashTotal, 2) }}</span>
+                    <span class="block text-[10px] text-gray-400 font-bold uppercase">{{ number_format($pettyCashCount) }} Vouchers</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Petty Cash Report</h3>
+                    <p class="text-xs text-gray-500 mt-1">Export approved & settled expenses.</p>
+                </div>
+                <span class="text-xs text-brand-pink font-bold group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+                    CSV <i class="fas fa-arrow-down text-[10px]"></i>
+                </span>
+            </div>
+        </a>
+        @endif
     </div>
 
     <!-- Original Sections -->

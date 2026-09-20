@@ -4,54 +4,61 @@
 
 @section('content')
     <div class="max-w-6xl mx-auto space-y-8 pb-12">
-        @if(session('success'))
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             <!-- Sidebar Navigation for Settings -->
             <div class="col-span-1 space-y-2">
-                <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">Management</h3>
-                <button onclick="showSection('general')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-general">
-                    <i class="fas fa-building mr-2 text-brand-blue"></i> Company & Branding
-                </button>
-                <button onclick="showSection('tax')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-tax">
-                    <i class="fas fa-percentage mr-2 text-green-600"></i> Tax Rates (VAT/SSCL)
-                </button>
-                <button onclick="showSection('terms')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-terms">
-                    <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
-                </button>
-                <button onclick="showSection('targets')"
-                    class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                    id="btn-targets">
-                    <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
-                </button>
-                @if(auth()->user()->hasRole('super_admin'))
-                    <button onclick="showSection('currencies')"
-                        class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                        id="btn-currencies">
-                        <i class="fas fa-coins mr-2 text-yellow-500"></i> Currencies
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider px-1 sm:px-3 mb-2">Management</h3>
+                <div class="flex flex-row overflow-x-auto whitespace-nowrap pb-2 md:pb-0 gap-2 md:flex-col md:space-y-2 md:gap-0 -mx-2 px-2 md:mx-0 md:px-0">
+                    <button onclick="showSection('general')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-general">
+                        <i class="fas fa-building mr-2 text-brand-blue"></i> Company & Branding
                     </button>
-                @endif
-                @if(auth()->user()->hasRole('Super Admin'))
-                    <button onclick="showSection('maintenance')"
-                        class="section-btn w-full text-left px-4 py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all"
-                        id="btn-maintenance">
-                        <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
+                    <button onclick="showSection('tax')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-tax">
+                        <i class="fas fa-percentage mr-2 text-green-600"></i> Tax Rates (VAT/SSCL)
                     </button>
-                @endif
+                    <button onclick="showSection('terms')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-terms">
+                        <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
+                    </button>
+                    <button onclick="showSection('targets')"
+                        class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                        id="btn-targets">
+                        <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
+                    </button>
+                    @if(auth()->user()->hasAdminPrivileges())
+                        <button onclick="showSection('notifications')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-notifications">
+                            <i class="fas fa-envelope mr-2 text-purple-600"></i> Notification Emails
+                        </button>
+                        <button onclick="showSection('currencies')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-currencies">
+                            <i class="fas fa-coins mr-2 text-yellow-500"></i> Currencies
+                        </button>
+                        <button onclick="showSection('expense-categories')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-expense-categories">
+                            <i class="fas fa-tags mr-2 text-indigo-500"></i> Expense Categories
+                        </button>
+                    @endif
+                    @if(auth()->user()->hasAdminPrivileges() || auth()->user()->hasRole('IT Admin'))
+                        <button onclick="showSection('maintenance')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-maintenance">
+                            <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
+                        </button>
+                    @endif
+                </div>
             </div>
 
             <!-- Settings Content Area -->
-            <div class="col-span-2">
+            <div class="col-span-1 md:col-span-2">
                 <!-- General Settings Section -->
                 <section id="section-general" class="settings-section space-y-6">
                     <form action="{{ route('settings.updateGeneral') }}" method="POST">
@@ -342,8 +349,8 @@
                     </div>
                 </section>
 
-                <!-- Currency Management Section (Super Admin Only) -->
-                @if(auth()->user()->hasRole('super_admin'))
+                <!-- Currency Management Section (Finance Admin / Management) -->
+                @if(auth()->user()->hasAdminPrivileges())
                     <section id="section-currencies" class="settings-section hidden space-y-6">
                         <div class="bg-white rounded-xl shadow-md overflow-hidden">
                             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
@@ -471,45 +478,292 @@
                             </div>
                         </div>
                     </section>
-                @endif
-                
-                <!-- Maintenance Mode Section -->
-                @if(auth()->user()->hasRole('Super Admin'))
-                        <section id="section-maintenance" class="settings-section hidden space-y-6">
-                            <form action="{{ route('settings.updateMaintenance') }}" method="POST">
-                                @csrf
-                                <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                                        <h3 class="text-lg font-bold text-gray-800">Maintenance Mode</h3>
-                                        <button type="submit"
-                                            class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
-                                            Save Changes
-                                        </button>
+                    
+                    <!-- Notification Emails Section -->
+                    <section id="section-notifications" class="settings-section hidden space-y-6">
+                        <form action="{{ route('settings.updateNotifications') }}" method="POST">
+                            @csrf
+                            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                    <div>
+                                        <div class="flex items-center space-x-2">
+                                            <h3 class="text-lg font-bold text-gray-800">Notification Emails</h3>
+                                            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-700">Finance Admin & Management</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-0.5">Configure recipient email addresses for system notifications and alerts.</p>
                                     </div>
-                                    <div class="p-6">
-                                        <div class="max-w-xl">
-                                            <label class="block text-sm font-medium text-gray-700 mb-2">System Maintenance Status</label>
-                                            @php $currentMode = \App\Models\Setting::get('maintenance_mode', 0); @endphp
-                                            <select name="maintenance_mode" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                                <option value="0" {{ $currentMode == 0 ? 'selected' : '' }}>Active (Normal Operation - Everyone Allowed)</option>
-                                                <option value="1" {{ $currentMode == 1 ? 'selected' : '' }}>Admin Maintenance Mode (Block Standard Roles, Allow Super Admin & IT Admin)</option>
-                                                @if(auth()->user()->hasRole('IT Admin'))
-                                                    <option value="2" {{ $currentMode == 2 ? 'selected' : '' }}>Full IT Maintenance Mode (Block All Roles Except IT Admin)</option>
-                                                @endif
-                                            </select>
-                                            <div class="text-xs text-gray-600 mt-3 space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                                <p><strong>• Active:</strong> All users can log in and use the system.</p>
-                                                <p><strong>• Admin Maintenance Mode:</strong> Standard roles (Management, HOD, Manager) are blocked from logging in. Both Super Admins and IT Admins can access.</p>
-                                                @if(auth()->user()->hasRole('IT Admin'))
-                                                    <p><strong>• Full IT Maintenance Mode:</strong> All roles except IT Admins are blocked (including Super Admins).</p>
-                                                @endif
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all shadow-sm">
+                                        Save Changes
+                                    </button>
+                                </div>
+                                <div class="p-6 space-y-6">
+                                    <div class="bg-blue-50/70 border border-blue-100 rounded-lg p-4 text-xs sm:text-sm text-blue-900 space-y-2">
+                                        <div class="flex items-start">
+                                            <i class="fas fa-info-circle text-brand-blue mt-0.5 mr-2.5 text-base"></i>
+                                            <div>
+                                                <p class="font-semibold mb-1">Notification Routing Rules:</p>
+                                                <ul class="list-disc list-inside space-y-1 text-xs text-blue-800">
+                                                    <li><strong>Associated HOD:</strong> Requests and status updates automatically go to the requesting staff member's associated HOD (based on department or direct reporting structure).</li>
+                                                    <li><strong>Finance Admin Recipients:</strong> Email notifications for Finance Admins are sent to the addresses configured below.</li>
+                                                    <li><strong>Management Recipients:</strong> Notifications sent when Finance Admin forwards approval requests to Management (includes all registered Management role users plus addresses configured below).</li>
+                                                </ul>
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-800 mb-1">
+                                            Finance Admin Notification Recipient Emails
+                                        </label>
+                                        <p class="text-xs text-gray-500 mb-2">
+                                            Enter email addresses that should receive Finance Admin notifications (e.g. Petty Cash submissions, HOD approvals, settlement requests). Separate multiple emails with commas or line breaks.
+                                        </p>
+                                        @php
+                                            $currentEmails = \App\Models\Setting::get('super_admin_notification_emails', '');
+                                        @endphp
+                                        <textarea name="super_admin_notification_emails" rows="3"
+                                            placeholder="e.g. finance@loopsintegrated.com, admin@loopsintegrated.com"
+                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm font-mono text-xs sm:text-sm p-3">{{ old('super_admin_notification_emails', $currentEmails) }}</textarea>
+                                    </div>
+
+                                    <!-- Quick Preview of Currently Configured Finance Admin Emails -->
+                                    <div>
+                                        <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Active Finance Admin Notification Recipients</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            @php
+                                                $activeList = \App\Notifications\PettyCashNotification::getConfiguredSuperAdminEmails();
+                                            @endphp
+                                            @forelse($activeList as $email)
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                                    <i class="fas fa-envelope mr-1.5 text-purple-500"></i>
+                                                    {{ $email }}
+                                                </span>
+                                            @empty
+                                                <span class="text-xs text-gray-400 italic">No Finance Admin emails configured.</span>
+                                            @endforelse
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-4 border-t border-gray-200">
+                                        <label class="block text-sm font-semibold text-gray-800 mb-1">
+                                            Management Notification Recipient Emails
+                                        </label>
+                                        <p class="text-xs text-gray-500 mb-2">
+                                            Enter email addresses that should receive notifications when Finance Admin sends a Petty Cash approval request to Management. Users with the <strong class="text-purple-700">Management</strong> role in the system are automatically included. Separate multiple emails with commas or line breaks.
+                                        </p>
+                                        @php
+                                            $currentManagementEmails = \App\Models\Setting::get('management_notification_emails', '');
+                                        @endphp
+                                        <textarea name="management_notification_emails" rows="3"
+                                            placeholder="e.g. management@loopsintegrated.com, director@loopsintegrated.com"
+                                            class="w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-blue focus:ring-brand-blue sm:text-sm font-mono text-xs sm:text-sm p-3">{{ old('management_notification_emails', $currentManagementEmails) }}</textarea>
+                                    </div>
+
+                                    <!-- Quick Preview of Currently Active Management Emails -->
+                                    <div>
+                                        <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Active Management Notification Recipients</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            @php
+                                                $activeManagementList = \App\Notifications\PettyCashNotification::getConfiguredManagementEmails();
+                                            @endphp
+                                            @forelse($activeManagementList as $mEmail)
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                    <i class="fas fa-user-tie mr-1.5 text-indigo-500"></i>
+                                                    {{ $mEmail }}
+                                                </span>
+                                            @empty
+                                                <span class="text-xs text-gray-400 italic">No Management emails configured or Management users registered.</span>
+                                            @endforelse
+                                        </div>
+                                    </div>
                                 </div>
-                            </form>
-                        </section>
+                            </div>
+                        </form>
+                    </section>
+                    
+                    <!-- Maintenance Mode Section -->
+                    @if(auth()->user()->hasAdminPrivileges() || auth()->user()->hasRole('IT Admin'))
+                    <section id="section-maintenance" class="settings-section hidden space-y-6">
+                        <form action="{{ route('settings.updateMaintenance') }}" method="POST">
+                            @csrf
+                            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                    <h3 class="text-lg font-bold text-gray-800">Maintenance Mode</h3>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
+                                        Save Changes
+                                    </button>
+                                </div>
+                                <div class="p-6">
+                                    <div class="max-w-xl">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">System Maintenance Status</label>
+                                        @php $currentMode = \App\Models\Setting::get('maintenance_mode', 0); @endphp
+                                        <select name="maintenance_mode" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="0" {{ $currentMode == 0 ? 'selected' : '' }}>Active (Normal Operation - Everyone Allowed)</option>
+                                            <option value="1" {{ $currentMode == 1 ? 'selected' : '' }}>Admin Maintenance Mode (Block Standard Roles, Allow Finance Admin & IT Admin)</option>
+                                            @if(auth()->user()->hasRole('IT Admin'))
+                                                <option value="2" {{ $currentMode == 2 ? 'selected' : '' }}>Full IT Maintenance Mode (Block All Roles Except IT Admin)</option>
+                                            @endif
+                                        </select>
+                                        <div class="text-xs text-gray-600 mt-3 space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <p><strong>• Active:</strong> All users can log in and use the system.</p>
+                                            <p><strong>• Admin Maintenance Mode:</strong> Standard roles are blocked from logging in. Both Finance Admins and IT Admins can access.</p>
+                                            @if(auth()->user()->hasRole('IT Admin'))
+                                                <p><strong>• Full IT Maintenance Mode:</strong> All roles except IT Admins are blocked (including Finance Admins).</p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
                     @endif
+
+                    <!-- Expense Categories Section -->
+                    <section id="section-expense-categories" class="settings-section hidden space-y-6">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">Expense Categories</h3>
+                                    <p class="text-xs text-gray-500">Manage category classifications for company expenses.</p>
+                                </div>
+                                <button onclick="document.getElementById('addExpenseCategoryModal').classList.remove('hidden')"
+                                    class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all flex items-center">
+                                    <i class="fas fa-plus mr-2"></i> Add Expense Category
+                                </button>
+                            </div>
+                            <div class="p-6">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <th class="py-3 px-4">Name</th>
+                                                <th class="py-3 px-4">Description</th>
+                                                <th class="py-3 px-4">Status</th>
+                                                <th class="py-3 px-4 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 text-sm">
+                                            @forelse($expenseCategories as $category)
+                                                <tr class="hover:bg-gray-50/50 transition-all">
+                                                    <td class="py-3 px-4 font-semibold text-gray-800">{{ $category->name }}</td>
+                                                    <td class="py-3 px-4 text-gray-600">{{ $category->description ?: '-' }}</td>
+                                                    <td class="py-3 px-4">
+                                                        <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ $category->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                                            {{ ucfirst($category->status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-3 px-4 text-right space-x-2">
+                                                        <button onclick="editExpenseCategory('{{ route('settings.updateExpenseCategory', $category) }}', '{{ addslashes($category->name) }}', '{{ addslashes($category->description ?? '') }}', '{{ $category->status }}')"
+                                                            class="text-brand-blue hover:text-brand-purple transition-colors">
+                                                            <i class="fas fa-edit"></i> Edit
+                                                        </button>
+                                                        <form action="{{ route('settings.destroyExpenseCategory', $category) }}" method="POST" class="inline-block"
+                                                            onsubmit="return confirm('Are you sure you want to delete this expense category?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-500 hover:text-red-700 transition-colors">
+                                                                <i class="fas fa-trash"></i> Delete
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="py-6 text-center text-gray-400">
+                                                        No expense categories found. Click "Add Expense Category" to create one.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add Expense Category Modal -->
+                        <div id="addExpenseCategoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Add Expense Category</h3>
+                                    <button onclick="document.getElementById('addExpenseCategoryModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form action="{{ route('settings.storeExpenseCategory') }}" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                                        <input type="text" name="name" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <textarea name="description" rows="3" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('addExpenseCategoryModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Save Category
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Edit Expense Category Modal -->
+                        <div id="editExpenseCategoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Edit Expense Category</h3>
+                                    <button onclick="document.getElementById('editExpenseCategoryModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form id="editExpenseCategoryForm" action="" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    @method('PUT')
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Category Name *</label>
+                                        <input type="text" name="name" id="edit_exp_cat_name" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <textarea name="description" id="edit_exp_cat_description" rows="3" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" id="edit_exp_cat_status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('editExpenseCategoryModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Update Category
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+                @endif
             </div>
         </div>
     </div>
@@ -545,6 +799,15 @@
             document.getElementById('edit_currency_name').value = name;
             document.getElementById('edit_currency_symbol').value = symbol;
             document.getElementById('editCurrencyModal').classList.remove('hidden');
+        }
+
+        function editExpenseCategory(url, name, description, status) {
+            const form = document.getElementById('editExpenseCategoryForm');
+            form.action = url;
+            document.getElementById('edit_exp_cat_name').value = name;
+            document.getElementById('edit_exp_cat_description').value = description;
+            document.getElementById('edit_exp_cat_status').value = status;
+            document.getElementById('editExpenseCategoryModal').classList.remove('hidden');
         }
 
         // Initialize
