@@ -42,32 +42,6 @@
             <p class="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm font-medium">Please enter your credentials</p>
         </div>
 
-        @php
-            $currentMaintenanceMode = (int) ($mode ?? \App\Models\Setting::get('maintenance_mode', 0));
-        @endphp
-
-        @if ($currentMaintenanceMode > 0)
-            <div class="bg-amber-50 border-l-4 border-amber-500 p-4 mb-6 rounded-r-xl shadow-sm">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0 mt-0.5">
-                        <i class="fas fa-tools text-amber-500 text-base"></i>
-                    </div>
-                    <div class="ml-3 text-left">
-                        <p class="text-xs sm:text-sm font-bold text-amber-800">
-                            Maintenance Mode Active
-                        </p>
-                        <p class="text-xs text-amber-700 mt-0.5 font-medium">
-                            @if ($currentMaintenanceMode == 2)
-                                Full IT maintenance is underway. Only IT Administrators may sign in.
-                            @else
-                                System upgrades are in progress. Only authorized administrators may sign in.
-                            @endif
-                        </p>
-                    </div>
-                </div>
-            </div>
-        @endif
-
         @if (session('success'))
             <div class="bg-emerald-50 border-l-4 border-emerald-500 p-4 mb-6 sm:mb-8 rounded-r-xl shadow-sm">
                 <div class="flex items-center">

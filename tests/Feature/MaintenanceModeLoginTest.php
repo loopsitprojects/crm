@@ -123,20 +123,23 @@ class MaintenanceModeLoginTest extends TestCase
         $response1 = $this->get('/maintenance');
         $response1->assertStatus(503);
         $response1->assertSee('System Under Maintenance');
-        $response1->assertSee('Administrator Sign In');
+        $response1->assertSee('Refresh Status');
+        $response1->assertDontSee('Administrator Sign In');
 
         Setting::set('maintenance_mode', 2);
         $response2 = $this->get('/maintenance');
         $response2->assertStatus(503);
         $response2->assertSee('System Under Maintenance');
-        $response2->assertSee('Administrator Sign In');
+        $response2->assertSee('Refresh Status');
+        $response2->assertDontSee('Administrator Sign In');
     }
 
-    public function test_login_page_shows_maintenance_banner_when_active(): void
+    public function test_login_page_does_not_show_maintenance_banner(): void
     {
         Setting::set('maintenance_mode', 1);
         $response = $this->get('/login');
         $response->assertStatus(200);
-        $response->assertSee('Maintenance Mode Active');
+        $response->assertDontSee('Maintenance Mode Active');
+        $response->assertDontSee('Only IT Administrators may sign in');
     }
 }

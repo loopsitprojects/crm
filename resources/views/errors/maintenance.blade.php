@@ -42,11 +42,8 @@
             </p>
         </div>
 
-        <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <a href="{{ route('login') }}" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
-                <i class="fas fa-user-shield mr-2 text-indigo-600"></i> Administrator Sign In
-            </a>
-            <button onclick="window.location.reload()" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
+        <div class="mt-6 flex items-center justify-center">
+            <button onclick="window.location.reload()" class="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
                 <i class="fas fa-sync-alt mr-2"></i> Refresh Status
             </button>
         </div>
