@@ -2267,7 +2267,7 @@
                     `).join('');
 
                     let proofsHtml = pc.proofs && pc.proofs.length > 0 ? pc.proofs.map(p => {
-                        const pUrl = p.file_path.startsWith('http') ? p.file_path : `${baseUrl}/${p.file_path.replace(/^\/?(public\/)?/, '')}`;
+                        const pUrl = p.url || (p.file_path && p.file_path.startsWith('http') ? p.file_path : `${baseUrl}/${(p.file_path || '').replace(/^\/?(public\/)?/, '')}`);
                         return `<a href="${pUrl}" target="_blank" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-brand-blue rounded-lg text-xs font-semibold mr-2 mb-2">
                             <i class="fas fa-paperclip mr-1.5"></i> ${p.file_name}
                         </a>`;
@@ -2749,7 +2749,7 @@
                             const div = document.createElement('div');
                             div.className = 'flex items-center justify-between bg-white p-2 rounded border border-gray-200 text-xs';
                             div.innerHTML = `
-                                <a href="{{ url('/') }}/${proof.file_path}" target="_blank" class="text-brand-blue hover:underline flex items-center gap-1.5 truncate">
+                                <a href="${proof.url || '{{ url('/') }}/' + (proof.file_path || '')}" target="_blank" class="text-brand-blue hover:underline flex items-center gap-1.5 truncate">
                                     <i class="fas fa-paperclip text-gray-400"></i> ${proof.file_name || 'Proof File'}
                                 </a>
                                 <label class="flex items-center gap-1 text-red-600 text-[11px] font-semibold cursor-pointer whitespace-nowrap ml-2">

@@ -197,20 +197,7 @@ class PettyCashController extends Controller
         // Handle Proof File Uploads
         if ($request->hasFile('proofs')) {
             foreach ($request->file('proofs') as $file) {
-                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-                $destinationPath = public_path('uploads/petty_cash_proofs');
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
-                }
-                $file->move($destinationPath, $filename);
-                $filePath = 'uploads/petty_cash_proofs/' . $filename;
-
-                PettyCashProof::create([
-                    'petty_cash_request_id' => $pettyCash->id,
-                    'file_path' => $filePath,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                ]);
+                $this->saveProofFile($file, $pettyCash->id);
             }
         }
 
@@ -695,20 +682,7 @@ class PettyCashController extends Controller
         // Upload settlement proofs
         if ($request->hasFile('proofs')) {
             foreach ($request->file('proofs') as $file) {
-                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-                $destinationPath = public_path('uploads/petty_cash_proofs');
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
-                }
-                $file->move($destinationPath, $filename);
-                $filePath = 'uploads/petty_cash_proofs/' . $filename;
-
-                PettyCashProof::create([
-                    'petty_cash_request_id' => $pettyCash->id,
-                    'file_path' => $filePath,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                ]);
+                $this->saveProofFile($file, $pettyCash->id);
             }
         }
 
@@ -880,20 +854,7 @@ class PettyCashController extends Controller
         // Add additional Proof File Uploads if provided
         if ($request->hasFile('proofs')) {
             foreach ($request->file('proofs') as $file) {
-                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-                $destinationPath = public_path('uploads/petty_cash_proofs');
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
-                }
-                $file->move($destinationPath, $filename);
-                $filePath = 'uploads/petty_cash_proofs/' . $filename;
-
-                PettyCashProof::create([
-                    'petty_cash_request_id' => $pettyCash->id,
-                    'file_path' => $filePath,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                ]);
+                $this->saveProofFile($file, $pettyCash->id);
             }
         }
 
@@ -947,6 +908,72 @@ class PettyCashController extends Controller
         $hideButtons = !$request->has('with_buttons');
 
         return view('petty-cash.voucher', compact('pettyCash', 'hideButtons'));
+    }
+
+    public function showProof(Request $request, PettyCashProof $proof)
+    {
+        $filename = basename($proof->file_path);
+        
+        $candidatePaths = array_unique(array_filter([
+            public_path($proof->file_path),
+            public_path('uploads/petty_cash_proofs/' . $filename),
+            base_path('public/' . ltrim($proof->file_path, '/')),
+            base_path('public/uploads/petty_cash_proofs/' . $filename),
+            base_path(ltrim($proof->file_path, '/')),
+            base_path('uploads/petty_cash_proofs/' . $filename),
+            storage_path('app/public/' . ltrim($proof->file_path, '/')),
+            storage_path('app/public/uploads/petty_cash_proofs/' . $filename),
+            public_path('uploads/petty_cash_proofs/' . urldecode($filename)),
+            base_path('public/uploads/petty_cash_proofs/' . urldecode($filename)),
+        ]));
+
+        foreach ($candidatePaths as $candidate) {
+            if (file_exists($candidate) && is_file($candidate)) {
+                $mime = $proof->file_type ?: (mime_content_type($candidate) ?: 'application/octet-stream');
+                $downloadName = $proof->file_name ?: $filename;
+                
+                return response()->file($candidate, [
+                    'Content-Type' => $mime,
+                    'Content-Disposition' => 'inline; filename="' . addslashes($downloadName) . '"',
+                    'Cache-Control' => 'public, max-age=604800',
+                ]);
+            }
+        }
+
+        abort(404, 'Proof file not found on server.');
+    }
+
+    protected function saveProofFile(\Illuminate\Http\UploadedFile $file, int $pettyCashId): PettyCashProof
+    {
+        $origName = $file->getClientOriginalName();
+        $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $origName);
+        $filename = time() . '_' . uniqid() . '_' . $safeName;
+
+        $destinationPath = public_path('uploads/petty_cash_proofs');
+        if (!file_exists($destinationPath)) {
+            @mkdir($destinationPath, 0777, true);
+        }
+        $file->move($destinationPath, $filename);
+        $filePath = 'uploads/petty_cash_proofs/' . $filename;
+
+        // Mirror to alternative paths for shared hosting / LiteSpeed deployments
+        $alt1 = base_path('public/uploads/petty_cash_proofs');
+        if ($destinationPath !== $alt1 && !file_exists($alt1 . '/' . $filename)) {
+            @mkdir($alt1, 0777, true);
+            @copy($destinationPath . '/' . $filename, $alt1 . '/' . $filename);
+        }
+        $alt2 = base_path('uploads/petty_cash_proofs');
+        if ($destinationPath !== $alt2 && !file_exists($alt2 . '/' . $filename)) {
+            @mkdir($alt2, 0777, true);
+            @copy($destinationPath . '/' . $filename, $alt2 . '/' . $filename);
+        }
+
+        return PettyCashProof::create([
+            'petty_cash_request_id' => $pettyCashId,
+            'file_path' => $filePath,
+            'file_name' => $origName,
+            'file_type' => $file->getClientMimeType(),
+        ]);
     }
 
     public function update(Request $request, PettyCashRequest $pettyCash)
@@ -1044,20 +1071,7 @@ class PettyCashController extends Controller
         // Upload new proof files
         if ($request->hasFile('proofs')) {
             foreach ($request->file('proofs') as $file) {
-                $filename = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
-                $destinationPath = public_path('uploads/petty_cash_proofs');
-                if (!file_exists($destinationPath)) {
-                    mkdir($destinationPath, 0777, true);
-                }
-                $file->move($destinationPath, $filename);
-                $filePath = 'uploads/petty_cash_proofs/' . $filename;
-
-                PettyCashProof::create([
-                    'petty_cash_request_id' => $pettyCash->id,
-                    'file_path' => $filePath,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_type' => $file->getClientMimeType(),
-                ]);
+                $this->saveProofFile($file, $pettyCash->id);
             }
         }
 

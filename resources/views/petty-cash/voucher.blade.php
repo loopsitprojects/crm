@@ -41,13 +41,15 @@
 @endpush
 
 @php
-    $getProofUrl = function($path) {
-        if (!$path) return '';
-        $clean = ltrim($path, '/');
-        if (str_starts_with($clean, 'public/')) {
-            return url($clean);
+    $getProofUrl = function($item) {
+        if (is_object($item) && !empty($item->id)) {
+            return route('petty-cash.proofs.show', $item->id);
         }
-        return url('/public/' . $clean);
+        $path = is_string($item) ? $item : ($item->file_path ?? '');
+        if (!$path) return '';
+        if (str_starts_with($path, 'http')) return $path;
+        $clean = preg_replace('#^(public/)?(uploads/)?#i', '', ltrim($path, '/'));
+        return url('uploads/' . $clean);
     };
 
     $checkFileExists = function($path) {
@@ -401,7 +403,7 @@
                 @if($nonImages->count() > 0)
                     <div class="flex flex-wrap gap-2">
                         @foreach($nonImages as $proof)
-                            <a href="{{ $getProofUrl($proof->file_path) }}" target="_blank" class="inline-flex items-center px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-brand-blue border border-gray-300 rounded-lg text-xs font-semibold transition-colors">
+                            <a href="{{ $getProofUrl($proof) }}" target="_blank" class="inline-flex items-center px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-brand-blue border border-gray-300 rounded-lg text-xs font-semibold transition-colors">
                                 <i class="fas fa-file-pdf text-red-500 mr-2 text-sm"></i> {{ $proof->file_name }}
                             </a>
                         @endforeach
@@ -415,12 +417,12 @@
                             <div class="bg-gray-50/70 border border-gray-200 rounded-xl p-3 text-center space-y-2">
                                 <div class="flex justify-between items-center text-xs font-bold text-gray-700 px-1 border-b border-gray-200 pb-1.5">
                                     <span class="truncate max-w-[200px]" title="{{ $proof->file_name }}">{{ $proof->file_name }}</span>
-                                    <a href="{{ $getProofUrl($proof->file_path) }}" target="_blank" class="text-brand-blue hover:underline text-[11px] no-print">
+                                    <a href="{{ $getProofUrl($proof) }}" target="_blank" class="text-brand-blue hover:underline text-[11px] no-print">
                                         <i class="fas fa-external-link-alt mr-0.5"></i> Open Full
                                     </a>
                                 </div>
                                 <div class="bg-white rounded-lg p-2 border border-gray-200 flex items-center justify-center">
-                                    <img src="{{ $getProofUrl($proof->file_path) }}" alt="{{ $proof->file_name }}" class="w-full max-h-[420px] object-contain rounded-md proof-img mx-auto">
+                                    <img src="{{ $getProofUrl($proof) }}" alt="{{ $proof->file_name }}" class="w-full max-h-[420px] object-contain rounded-md proof-img mx-auto">
                                 </div>
                             </div>
                         @endforeach

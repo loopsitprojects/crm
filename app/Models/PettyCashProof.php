@@ -16,6 +16,17 @@ class PettyCashProof extends Model
         'file_type',
     ];
 
+    protected $appends = ['url'];
+
+    public function getUrlAttribute(): string
+    {
+        try {
+            return route('petty-cash.proofs.show', $this->id);
+        } catch (\Throwable $e) {
+            return url($this->file_path);
+        }
+    }
+
     public function request()
     {
         return $this->belongsTo(PettyCashRequest::class, 'petty_cash_request_id');

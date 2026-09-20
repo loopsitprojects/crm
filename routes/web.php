@@ -159,6 +159,7 @@ Route::get('maintenance', function () {
 
 Route::get('/petty-cash/{pettyCash}/download', [PettyCashController::class, 'downloadVoucher'])->name('petty-cash.download');
 Route::get('/v/{token}', [PettyCashController::class, 'downloadVoucherSecure'])->name('petty-cash.download-secure');
+Route::get('/petty-cash/proofs/{proof}', [PettyCashController::class, 'showProof'])->name('petty-cash.proofs.show');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -279,26 +280,41 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// Direct route to serve uploads in shared-hosting / subfolder deployments (e.g. Hostinger LiteSpeed where /pc/uploads rewrites to index.php)
-Route::get('uploads/{path}', function ($path) {
-    $cleanPath = ltrim($path, '/');
-    $possiblePaths = [
-        public_path('uploads/' . $cleanPath),
-        base_path('public/uploads/' . $cleanPath),
-        base_path('uploads/' . $cleanPath),
-        storage_path('app/public/' . $cleanPath),
-    ];
+// Direct route to serve uploads in shared-hosting / subfolder deployments (e.g. Hostinger LiteSpeed where /uploads or /public/uploads rewrites to index.php)
+$serveUploadFile = function ($path) {
+    // Strip any leading slashes, public/, uploads/
+    $cleanPath = preg_replace('#^(public/)?(uploads/)?#i', '', ltrim($path, '/'));
+    $decodedPath = urldecode($cleanPath);
+    
+    $checkPaths = array_unique(array_filter([$cleanPath, $decodedPath]));
+    $possiblePaths = [];
+    foreach ($checkPaths as $p) {
+        $possiblePaths[] = public_path('uploads/' . $p);
+        $possiblePaths[] = public_path($p);
+        $possiblePaths[] = base_path('public/uploads/' . $p);
+        $possiblePaths[] = base_path('public/' . $p);
+        $possiblePaths[] = base_path('uploads/' . $p);
+        $possiblePaths[] = base_path($p);
+        $possiblePaths[] = storage_path('app/public/' . $p);
+        $possiblePaths[] = storage_path('app/public/uploads/' . $p);
+        $possiblePaths[] = storage_path('app/' . $p);
+    }
+
     foreach ($possiblePaths as $file) {
         if (file_exists($file) && is_file($file)) {
             $mime = mime_content_type($file) ?: 'application/octet-stream';
             return response()->file($file, [
                 'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . basename($file) . '"',
                 'Cache-Control' => 'public, max-age=604800',
             ]);
         }
     }
-    abort(404);
-})->where('path', '.*');
+    abort(404, 'Upload file not found.');
+};
+
+Route::get('uploads/{path}', $serveUploadFile)->where('path', '.*');
+Route::get('public/uploads/{path}', $serveUploadFile)->where('path', '.*');
 
 // Secure diagnostic & maintenance endpoint for Hostinger deployment troubleshooting
 Route::get('system-diagnose', function (\Illuminate\Http\Request $request) {
@@ -343,6 +359,23 @@ Route::get('system-diagnose', function (\Illuminate\Http\Request $request) {
         $results['cache_clear'] = trim(\Illuminate\Support\Facades\Artisan::output());
     } catch (\Throwable $e) {
         $results['cache_clear_error'] = $e->getMessage();
+    }
+
+    // Ensure uploads/petty_cash_proofs directories exist and are writable
+    $uploadDirs = [
+        public_path('uploads/petty_cash_proofs'),
+        base_path('public/uploads/petty_cash_proofs'),
+        base_path('uploads/petty_cash_proofs'),
+    ];
+    $results['upload_dirs'] = [];
+    foreach ($uploadDirs as $dir) {
+        if (!file_exists($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        $results['upload_dirs'][$dir] = [
+            'exists' => file_exists($dir),
+            'writable' => is_writable($dir),
+        ];
     }
 
     // 3. Test render petty-cash index for each user

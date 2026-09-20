@@ -1166,7 +1166,7 @@
                     `).join('');
 
                     let proofsHtml = pc.proofs && pc.proofs.length > 0 ? pc.proofs.map(p => {
-                        const pUrl = p.file_path.startsWith('http') ? p.file_path : `${baseUrl}/${p.file_path.replace(/^\/?(public\/)?/, '')}`;
+                        const pUrl = p.url || (p.file_path && p.file_path.startsWith('http') ? p.file_path : `${baseUrl}/${(p.file_path || '').replace(/^\/?(public\/)?/, '')}`);
                         return `<a href="${pUrl}" target="_blank" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-brand-blue rounded-lg text-xs font-semibold mr-2 mb-2">
                             <i class="fas fa-paperclip mr-1.5"></i> ${p.file_name}
                         </a>`;
