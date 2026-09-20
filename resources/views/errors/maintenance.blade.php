@@ -41,8 +41,15 @@
                 Please check back in a few minutes. We apologize for any inconvenience caused.
             </p>
         </div>
-        
 
+        <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a href="{{ route('login') }}" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
+                <i class="fas fa-user-shield mr-2 text-indigo-600"></i> Administrator Sign In
+            </a>
+            <button onclick="window.location.reload()" class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm cursor-pointer">
+                <i class="fas fa-sync-alt mr-2"></i> Refresh Status
+            </button>
+        </div>
 
         <div class="mt-8 text-center border-t border-gray-100 pt-6">
             <p class="text-xs text-gray-400 font-medium uppercase tracking-widest">&copy; {{ date('Y') }} Loops Integrated. All rights reserved.</p>

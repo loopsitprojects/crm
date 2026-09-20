@@ -5,16 +5,37 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Setting;
+use App\Models\User;
 
 class AuthController extends Controller
 {
     public function showLogin()
     {
+        $mode = (int) Setting::get('maintenance_mode', 0);
+
         if (Auth::check()) {
+            $user = Auth::user();
+
+            // If system is in maintenance mode, check if logged in user is authorized
+            if ($mode == 1 && !($user->hasRole('IT Admin') || $user->hasAdminPrivileges())) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+                return redirect()->route('maintenance');
+            }
+
+            if ($mode == 2 && !$user->hasRole('IT Admin')) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
+                return redirect()->route('maintenance');
+            }
+
             return redirect()->route('dashboard');
         }
 
-        return view('auth.login');
+        return view('auth.login', compact('mode'));
     }
 
     public function login(Request $request)
@@ -24,10 +45,49 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        $mode = (int) Setting::get('maintenance_mode', 0);
+
+        // If maintenance mode is active, check if user is authorized before processing
+        if ($mode == 1 || $mode == 2) {
+            $targetUser = User::where('email', $credentials['email'])->first();
+
+            $isAllowed = false;
+            if ($targetUser) {
+                if ($mode == 1 && ($targetUser->hasRole('IT Admin') || $targetUser->hasAdminPrivileges())) {
+                    $isAllowed = true;
+                } elseif ($mode == 2 && $targetUser->hasRole('IT Admin')) {
+                    $isAllowed = true;
+                }
+            }
+
+            // If user is not authorized during maintenance mode, immediately show maintenance page
+            if (!$isAllowed) {
+                return redirect()->route('maintenance');
+            }
+        }
+
         // Default remember to true so mobile PWA and desktop sessions persist across app restarts
         $remember = $request->boolean('remember', true);
 
         if (Auth::attempt($credentials, $remember)) {
+            // Extra safety verification post-auth
+            if ($mode == 1 || $mode == 2) {
+                $user = Auth::user();
+                $isAllowed = false;
+                if ($mode == 1 && ($user->hasRole('IT Admin') || $user->hasAdminPrivileges())) {
+                    $isAllowed = true;
+                } elseif ($mode == 2 && $user->hasRole('IT Admin')) {
+                    $isAllowed = true;
+                }
+
+                if (!$isAllowed) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                    return redirect()->route('maintenance');
+                }
+            }
+
             $request->session()->regenerate();
 
             return redirect()->intended(route('dashboard'));

@@ -151,10 +151,11 @@ Route::get('images/pwa-icon-{size}.png', function ($size) {
 });
 
 Route::get('maintenance', function () {
-    if (\App\Models\Setting::get('maintenance_mode') != 1) {
+    $mode = (int) \App\Models\Setting::get('maintenance_mode', 0);
+    if ($mode === 0) {
         return redirect()->route('login');
     }
-    return view('errors.maintenance');
+    return response()->view('errors.maintenance', ['mode' => $mode], 503);
 })->name('maintenance');
 
 Route::get('/petty-cash/{pettyCash}/download', [PettyCashController::class, 'downloadVoucher'])->name('petty-cash.download');
