@@ -438,7 +438,7 @@
                 <i class="fas fa-times text-lg sm:text-xl"></i>
             </button>
         </div>
-        <form action="{{ route('petty-cash.store') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5 sm:space-y-6">
+        <form id="staffNewPettyCashForm" action="{{ route('petty-cash.store') }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-5 sm:space-y-6">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -584,6 +584,27 @@
                 <p class="text-xs text-gray-400 mt-1.5">Upload receipts, bills, or invoices (PNG, JPG, PDF, DOCX). Click "Add File" to select multiple files.</p>
             </div>
 
+            <!-- Upload Progress Bar -->
+            <div id="staffNewPettyCash_progress" class="hidden bg-blue-50/90 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all duration-300">
+                <div class="flex items-center justify-between text-xs font-semibold text-gray-700 mb-1.5">
+                    <span class="flex items-center gap-1.5 text-brand-blue" id="staffNewPettyCash_status">
+                        <i class="fas fa-spinner fa-spin text-brand-blue"></i>
+                        <span>Uploading expense proofs...</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] text-gray-500 font-normal" id="staffNewPettyCash_size">0 MB / 0 MB</span>
+                        <span class="text-xs font-bold text-brand-blue px-2 py-0.5 bg-white rounded-full border border-blue-100 shadow-xs" id="staffNewPettyCash_percent">0%</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200/80 rounded-full h-2.5 overflow-hidden shadow-inner">
+                    <div id="staffNewPettyCash_bar" class="bg-gradient-to-r from-brand-blue via-brand-purple to-brand-pink h-2.5 rounded-full transition-all duration-150 ease-out" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
+                    <i class="fas fa-lock text-gray-400 text-[10px]"></i>
+                    <span>Please do not close this window or navigate away until the upload is complete.</span>
+                </p>
+            </div>
+
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-gray-100">
                 <button type="button" onclick="document.getElementById('newPettyCashModal').classList.add('hidden')"
                     class="w-full sm:w-auto px-5 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 text-sm">
@@ -701,12 +722,33 @@
                 </div>
             </div>
 
+            <!-- Upload Progress Bar -->
+            <div id="staffReappeal_progress" class="hidden bg-blue-50/90 border border-blue-200 rounded-xl p-3.5 shadow-sm transition-all duration-300">
+                <div class="flex items-center justify-between text-xs font-semibold text-gray-700 mb-1.5">
+                    <span class="flex items-center gap-1.5 text-brand-blue" id="staffReappeal_status">
+                        <i class="fas fa-spinner fa-spin text-brand-blue"></i>
+                        <span>Uploading proofs & resubmitting...</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] text-gray-500 font-normal" id="staffReappeal_size">0 MB / 0 MB</span>
+                        <span class="text-xs font-bold text-brand-blue px-2 py-0.5 bg-white rounded-full border border-blue-100 shadow-xs" id="staffReappeal_percent">0%</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200/80 rounded-full h-2.5 overflow-hidden shadow-inner">
+                    <div id="staffReappeal_bar" class="bg-gradient-to-r from-brand-blue via-brand-purple to-brand-pink h-2.5 rounded-full transition-all duration-150 ease-out" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
+                    <i class="fas fa-lock text-gray-400 text-[10px]"></i>
+                    <span>Please do not close this window or navigate away until the upload is complete.</span>
+                </p>
+            </div>
+
             <div class="flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 pt-4 border-t border-gray-100">
                 <button type="button" onclick="document.getElementById('reappealModal').classList.add('hidden')"
                     class="w-full sm:w-auto px-5 py-2.5 bg-gray-200 text-gray-800 font-medium rounded-lg hover:bg-gray-300 text-sm">
                     Cancel
                 </button>
-                <button type="submit"
+                <button type="submit" id="staffReappealSubmitBtn"
                     class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm">
                     Resubmit Re-appeal
                 </button>
@@ -779,12 +821,33 @@
                 </div>
             </div>
 
+            <!-- Upload Progress Bar -->
+            <div id="staffSettleIou_progress" class="hidden bg-purple-50/90 border border-purple-200 rounded-xl p-3.5 shadow-sm transition-all duration-300">
+                <div class="flex items-center justify-between text-xs font-semibold text-gray-700 mb-1.5">
+                    <span class="flex items-center gap-1.5 text-brand-purple" id="staffSettleIou_status">
+                        <i class="fas fa-spinner fa-spin text-brand-purple"></i>
+                        <span>Uploading settlement proofs...</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] text-gray-500 font-normal" id="staffSettleIou_size">0 MB / 0 MB</span>
+                        <span class="text-xs font-bold text-brand-purple px-2 py-0.5 bg-white rounded-full border border-purple-100 shadow-xs" id="staffSettleIou_percent">0%</span>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-200/80 rounded-full h-2.5 overflow-hidden shadow-inner">
+                    <div id="staffSettleIou_bar" class="bg-gradient-to-r from-brand-purple via-brand-pink to-brand-blue h-2.5 rounded-full transition-all duration-150 ease-out" style="width: 0%"></div>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1.5 flex items-center gap-1">
+                    <i class="fas fa-lock text-gray-400 text-[10px]"></i>
+                    <span>Please do not close this window or navigate away until the upload is complete.</span>
+                </p>
+            </div>
+
             <div class="flex justify-end gap-2.5 pt-4 border-t border-gray-100">
                 <button type="button" onclick="document.getElementById('settleIouModal').classList.add('hidden')"
                     class="px-4 py-2 bg-gray-200 text-gray-800 text-xs font-semibold rounded-lg hover:bg-gray-300">
                     Cancel
                 </button>
-                <button type="submit"
+                <button type="submit" id="staffSettleIouSubmitBtn"
                     class="px-5 py-2 bg-gradient-to-r from-brand-purple to-brand-pink text-white text-xs font-bold rounded-lg hover:opacity-90 shadow-md flex items-center">
                     <i class="fas fa-paper-plane mr-1.5"></i> Submit Settlement Request
                 </button>
@@ -1404,6 +1467,136 @@
         if (typeof staffCreateJobTs !== 'undefined' && staffCreateJobTs) staffCreateJobTs.clear();
     }
 
+    function setupPettyCashFormWithProgress(formId, submitBtnId, progressPrefix) {
+        const form = document.getElementById(formId);
+        const submitBtn = document.getElementById(submitBtnId);
+        if (!form || !submitBtn) return;
+
+        const progressContainer = document.getElementById(progressPrefix + '_progress');
+        const progressBar = document.getElementById(progressPrefix + '_bar');
+        const percentText = document.getElementById(progressPrefix + '_percent');
+        const sizeText = document.getElementById(progressPrefix + '_size');
+        const statusText = document.getElementById(progressPrefix + '_status');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const fileInputs = form.querySelectorAll('input[type="file"][name="proofs[]"]');
+            let totalBytes = 0;
+            let fileCount = 0;
+            fileInputs.forEach(input => {
+                if (input.files && input.files.length > 0) {
+                    for (let i = 0; i < input.files.length; i++) {
+                        totalBytes += input.files[i].size;
+                        fileCount++;
+                    }
+                }
+            });
+
+            const originalBtnHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+
+            const modal = form.closest('.fixed');
+            const modalButtons = modal ? modal.querySelectorAll('button:not(#' + submitBtnId + ')') : [];
+            modalButtons.forEach(b => {
+                b.setAttribute('data-prev-disabled', b.disabled);
+                b.disabled = true;
+                b.classList.add('opacity-50', 'pointer-events-none');
+            });
+
+            const resetButtons = () => {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                submitBtn.innerHTML = originalBtnHtml;
+                modalButtons.forEach(b => {
+                    b.disabled = b.getAttribute('data-prev-disabled') === 'true';
+                    b.classList.remove('opacity-50', 'pointer-events-none');
+                });
+                if (progressContainer) {
+                    progressContainer.classList.add('hidden');
+                }
+            };
+
+            if (fileCount > 0 && progressContainer && progressBar) {
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                if (percentText) percentText.textContent = '0%';
+                const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+                if (sizeText) sizeText.textContent = `0.0 MB / ${totalMB} MB`;
+                if (statusText) statusText.innerHTML = '<i class="fas fa-spinner fa-spin text-brand-blue"></i> <span>Uploading ' + fileCount + ' proof file' + (fileCount > 1 ? 's' : '') + '...</span>';
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Uploading (' + fileCount + ')...';
+            } else {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Processing...';
+            }
+
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+            xhr.open(form.method || 'POST', form.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfTokenMeta) {
+                xhr.setRequestHeader('X-CSRF-TOKEN', csrfTokenMeta.content);
+            }
+
+            if (xhr.upload && fileCount > 0) {
+                xhr.upload.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        const percent = Math.min(Math.round((event.loaded / event.total) * 100), 99);
+                        if (progressBar) progressBar.style.width = percent + '%';
+                        if (percentText) percentText.textContent = percent + '%';
+                        const loadedMB = (event.loaded / (1024 * 1024)).toFixed(1);
+                        const totalMB = (event.total / (1024 * 1024)).toFixed(1);
+                        if (sizeText) sizeText.textContent = `${loadedMB} MB / ${totalMB} MB`;
+
+                        if (percent >= 98 && statusText) {
+                            statusText.innerHTML = '<i class="fas fa-cog fa-spin text-brand-purple"></i> <span>Upload complete! Processing server request...</span>';
+                            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i> Processing...';
+                        }
+                    }
+                };
+            }
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    if (progressBar) progressBar.style.width = '100%';
+                    if (percentText) percentText.textContent = '100%';
+                    if (statusText) statusText.innerHTML = '<i class="fas fa-check-circle text-emerald-600"></i> <span class="text-emerald-700">Finished! Refreshing...</span>';
+                    submitBtn.innerHTML = '<i class="fas fa-check mr-1.5"></i> Saved!';
+
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 400);
+                } else {
+                    let errorMsg = 'An error occurred while submitting. Please check your inputs and try again.';
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.errors) {
+                            errorMsg = Object.values(response.errors).flat().join('\n');
+                        } else if (response.message) {
+                            errorMsg = response.message;
+                        }
+                    } catch (err) {}
+                    alert(errorMsg);
+                    resetButtons();
+                }
+            };
+
+            xhr.onerror = function() {
+                alert('A network error occurred while uploading. Please check your connection and try again.');
+                resetButtons();
+            };
+
+            xhr.send(formData);
+        });
+    }
+
     let staffCreateJobTs, reappealJobTs;
     document.addEventListener('DOMContentLoaded', function() {
         const tsConfig = {
@@ -1420,6 +1613,10 @@
         if (document.getElementById('reappeal_job_number')) {
             reappealJobTs = new TomSelect('#reappeal_job_number', tsConfig);
         }
+
+        setupPettyCashFormWithProgress('staffNewPettyCashForm', 'staffNewPettyCashSubmitBtn', 'staffNewPettyCash');
+        setupPettyCashFormWithProgress('settleIouForm', 'staffSettleIouSubmitBtn', 'staffSettleIou');
+        setupPettyCashFormWithProgress('reappealForm', 'staffReappealSubmitBtn', 'staffReappeal');
     });
 </script>
 @endpush

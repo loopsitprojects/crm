@@ -112,7 +112,11 @@ class PettyCashController extends Controller
             ->first();
 
         if ($activeUnsettledIou) {
-            return redirect()->back()->with('error', 'Request Blocked: You cannot submit a new petty cash request because you have an active unsettled IOU (' . $activeUnsettledIou->reference_number . '). According to policy, you must settle your existing IOU first.');
+            $msg = 'Request Blocked: You cannot submit a new petty cash request because you have an active unsettled IOU (' . $activeUnsettledIou->reference_number . '). According to policy, you must settle your existing IOU first.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
         }
 
         $isIou = $request->boolean('is_iou');
@@ -221,7 +225,12 @@ class PettyCashController extends Controller
                 $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
             }
 
-            return redirect()->back()->with('success', 'Petty Cash request submitted successfully and sent directly to Finance for approval.');
+            $msg = 'Petty Cash request submitted successfully and sent directly to Finance for approval.';
+            if ($request->ajax() || $request->wantsJson()) {
+                session()->flash('success', $msg);
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
+            return redirect()->back()->with('success', $msg);
         }
 
         // 1. Notify Associated HOD for non-HOD staff
@@ -243,7 +252,12 @@ class PettyCashController extends Controller
             Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
         }
 
-        return redirect()->back()->with('success', 'Petty Cash request submitted successfully and sent to HOD for approval.');
+        $msg = 'Petty Cash request submitted successfully and sent to HOD for approval.';
+        if ($request->ajax() || $request->wantsJson()) {
+            session()->flash('success', $msg);
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+        return redirect()->back()->with('success', $msg);
     }
 
     public function show(PettyCashRequest $pettyCash)
@@ -748,6 +762,10 @@ class PettyCashController extends Controller
                 ? 'IOU Settlement exceeded approved amount (Approved: LKR ' . number_format($approvedAmount, 2) . ', Spent: LKR ' . number_format($settlementTotal, 2) . ', Exceeded by: LKR ' . number_format($exceededAmount, 2) . '). It has been forwarded to your HOD for approval, and notification emails have been sent.'
                 : 'IOU Settlement exceeded approved amount. Submitted successfully for Finance approval.';
 
+            if ($request->ajax() || $request->wantsJson()) {
+                session()->flash('success', $msg);
+                return response()->json(['success' => true, 'message' => $msg]);
+            }
             return redirect()->back()->with('success', $msg);
         }
 
@@ -766,7 +784,12 @@ class PettyCashController extends Controller
             $requestedUser->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
         }
 
-        return redirect()->back()->with('success', 'IOU Settlement details and proofs submitted successfully. Pending Finance final approval.');
+        $msg = 'IOU Settlement details and proofs submitted successfully. Pending Finance final approval.';
+        if ($request->ajax() || $request->wantsJson()) {
+            session()->flash('success', $msg);
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+        return redirect()->back()->with('success', $msg);
     }
 
     public function reappeal(Request $request, PettyCashRequest $pettyCash)
@@ -890,7 +913,13 @@ class PettyCashController extends Controller
             $requestedUser->notify(new PettyCashNotification($pettyCash, 'reappealed', $user));
         }
 
-        return redirect()->back()->with('success', 'Petty Cash request re-appealed and resubmitted successfully.');
+        $msg = 'Petty Cash request re-appealed and resubmitted successfully.';
+        if ($request->ajax() || $request->wantsJson()) {
+            session()->flash('success', $msg);
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function downloadVoucher(Request $request, PettyCashRequest $pettyCash)
@@ -1032,7 +1061,13 @@ class PettyCashController extends Controller
             }
         }
 
-        return redirect()->back()->with('success', 'Petty Cash request updated successfully.');
+        $msg = 'Petty Cash request updated successfully.';
+        if ($request->ajax() || $request->wantsJson()) {
+            session()->flash('success', $msg);
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function destroy(PettyCashRequest $pettyCash)
