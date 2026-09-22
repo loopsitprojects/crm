@@ -209,4 +209,50 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Deal::class, 'deal_user');
     }
+
+    /**
+     * Get dynamic department hierarchy grouped by category.
+     * Falls back to static DEPARTMENT_HIERARCHY if table does not exist or has no active records.
+     *
+     * @return array
+     */
+    public static function getDepartmentHierarchy(): array
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('departments')) {
+                $departments = \App\Models\Department::where('status', 'active')
+                    ->orderBy('group')
+                    ->orderBy('name')
+                    ->get();
+
+                if ($departments->isNotEmpty()) {
+                    $hierarchy = [];
+                    foreach ($departments as $dept) {
+                        $group = $dept->group ?: 'General';
+                        $hierarchy[$group][$dept->name] = $dept->name;
+                    }
+                    return $hierarchy;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Graceful fallback on any exception
+        }
+
+        return self::DEPARTMENT_HIERARCHY;
+    }
+
+    /**
+     * Get flat list of all active department names.
+     *
+     * @return array
+     */
+    public static function getDepartmentList(): array
+    {
+        $hierarchy = self::getDepartmentHierarchy();
+        $list = [];
+        foreach ($hierarchy as $group) {
+            $list = array_merge($list, array_keys($group));
+        }
+        return array_values(array_unique($list));
+    }
 }

@@ -140,15 +140,26 @@ class PettyCashController extends Controller
         ]);
 
         $resolvedHod = null;
+        if ($request->filled('hod_id') && (int)$request->hod_id !== (int)$user->id) {
+            $resolvedHod = User::find($request->hod_id);
+        }
+        if (!$resolvedHod && $user->associated_hod && (int)$user->associated_hod->id !== (int)$user->id) {
+            $resolvedHod = $user->associated_hod;
+        }
+
         if ($isRequesterHod) {
-            $resolvedHod = $user;
+            if ($resolvedHod) {
+                // If HOD has an assigned HOD (most probably Management), route to assigned HOD for approval
+                $status = 'pending_hod';
+                $hodId = $resolvedHod->id;
+            } else {
+                // If HOD is not assigned to an HOD, route directly to Finance
+                $status = 'pending_super_admin';
+                $hodId = null;
+            }
         } else {
-            if ($request->filled('hod_id')) {
-                $resolvedHod = User::find($request->hod_id);
-            }
-            if (!$resolvedHod && $user->associated_hod) {
-                $resolvedHod = $user->associated_hod;
-            }
+            $status = 'pending_hod';
+            $hodId = $resolvedHod ? $resolvedHod->id : ($request->hod_id ?: null);
         }
 
         $totalAmount = 0;
@@ -163,12 +174,11 @@ class PettyCashController extends Controller
         }
 
         $jobNumberString = $this->parseJobNumbers($request);
-        $status = $isRequesterHod ? 'pending_super_admin' : 'pending_hod';
 
         $pettyCash = PettyCashRequest::create([
             'reference_number' => PettyCashRequest::generateReferenceNumber(),
             'user_id' => $user->id,
-            'hod_id' => $resolvedHod ? $resolvedHod->id : ($isRequesterHod ? $user->id : $request->hod_id),
+            'hod_id' => $hodId,
             'department' => $user->department ?: 'General',
             'job_number' => $jobNumberString,
             'extra_notes' => $request->extra_notes,
@@ -201,8 +211,8 @@ class PettyCashController extends Controller
             }
         }
 
-        // If requester is an HOD, bypass HOD approval and send directly to Finance Admin
-        if ($isRequesterHod) {
+        // If request is pending finance directly (e.g. HOD without assigned HOD)
+        if ($status === 'pending_super_admin') {
             $superAdmins = PettyCashNotification::getSuperAdminRecipients($user->id);
             if ($superAdmins->isNotEmpty()) {
                 Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
@@ -212,7 +222,7 @@ class PettyCashController extends Controller
                 $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
             }
 
-            $msg = 'Petty Cash request submitted successfully and sent directly to Finance for approval.';
+            $msg = 'Petty Cash request submitted successfully and routed directly to Finance for approval (no HOD assigned).';
             if ($request->ajax() || $request->wantsJson()) {
                 session()->flash('success', $msg);
                 return response()->json(['success' => true, 'message' => $msg]);
@@ -220,14 +230,13 @@ class PettyCashController extends Controller
             return redirect()->back()->with('success', $msg);
         }
 
-        // 1. Notify Associated HOD for non-HOD staff
-        $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? User::find($request->hod_id));
+        // Request is pending_hod (for staff, or HOD with assigned HOD)
+        $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? ($request->filled('hod_id') ? User::find($request->hod_id) : null));
         if ($hod && $hod->id !== $user->id) {
             $hod->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
         }
 
-        // Always notify the requesting user so they receive the confirmation email:
-        // "Thank you, your petty cash request is received and currently sent to the HOD approval."
+        // Always notify requesting user
         if ($user) {
             $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
         }
@@ -239,7 +248,10 @@ class PettyCashController extends Controller
             Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
         }
 
-        $msg = 'Petty Cash request submitted successfully and sent to HOD for approval.';
+        $msg = ($isRequesterHod && $hod)
+            ? 'Petty Cash request submitted successfully and sent to your assigned HOD (' . $hod->name . ') for approval.'
+            : 'Petty Cash request submitted successfully and sent to HOD for approval.';
+
         if ($request->ajax() || $request->wantsJson()) {
             session()->flash('success', $msg);
             return response()->json(['success' => true, 'message' => $msg]);
@@ -694,10 +706,15 @@ class PettyCashController extends Controller
 
         $isRequesterHod = ($pettyCash->user && ($pettyCash->user->role === 'HOD' || $pettyCash->user->hasRole('HOD'))) 
             || ($user->role === 'HOD' || $user->hasRole('HOD'));
-        $hasHod = !empty($pettyCash->hod_id) || !empty($pettyCash->associated_hod);
+        
+        $requesterAssignedHod = $pettyCash->user ? $pettyCash->user->associated_hod : null;
+        $hasEffectiveHod = $isRequesterHod 
+            ? ($requesterAssignedHod && (int)$requesterAssignedHod->id !== (int)$pettyCash->user_id) 
+            : (!empty($pettyCash->hod_id) || !empty($pettyCash->associated_hod));
 
-        // If exceeded and requester has an HOD (and is not an HOD themselves): goes to HOD approval first!
-        $needsHodApproval = $isExceeded && !$isRequesterHod && $hasHod;
+        // If exceeded and requester has an HOD (or HOD has assigned HOD): goes to HOD approval first!
+        // If HOD is not assigned to an HOD, routes directly to Finance (pending_settlement)
+        $needsHodApproval = $isExceeded && $hasEffectiveHod;
         $newStatus = $needsHodApproval ? 'pending_settlement_hod' : 'pending_settlement';
 
         $pettyCash->update([
@@ -806,23 +823,35 @@ class PettyCashController extends Controller
             }
         }
 
-        // Determine new status:
-        // If requester is HOD, always route directly to Finance -> pending_super_admin
-        // If rejected by Super Admin/Management and re-appealed by HOD, send to Super Admin -> pending_super_admin
-        // If re-appealed by Staff, send back to HOD -> pending_hod
-        $newStatus = ($isRequesterHod || ($user->id === $pettyCash->hod_id && in_array($pettyCash->status, ['rejected_by_super_admin', 'rejected_by_management']))) 
-                     ? 'pending_super_admin' 
-                     : 'pending_hod';
+        $assignedHod = null;
+        if ($request->filled('hod_id') && (int)$request->hod_id !== (int)$user->id) {
+            $assignedHod = User::find($request->hod_id);
+        }
+        if (!$assignedHod && $user->associated_hod && (int)$user->associated_hod->id !== (int)$user->id) {
+            $assignedHod = $user->associated_hod;
+        }
 
-        $reappealHodId = $request->hod_id;
+        // Determine new status and HOD:
+        // If requester is HOD with assigned HOD -> pending_hod
+        // If requester is HOD without assigned HOD -> pending_super_admin
+        // If re-appealed by Staff -> pending_hod
         if ($isRequesterHod) {
-            $reappealHodId = $user->id;
+            if ($assignedHod) {
+                $newStatus = 'pending_hod';
+                $reappealHodId = $assignedHod->id;
+            } else {
+                $newStatus = 'pending_super_admin';
+                $reappealHodId = null;
+            }
+        } else {
+            $newStatus = 'pending_hod';
+            $reappealHodId = $assignedHod ? $assignedHod->id : ($request->hod_id ?: $pettyCash->hod_id);
         }
 
         $jobNumberString = $this->parseJobNumbers($request);
 
         $pettyCash->update([
-            'hod_id' => $reappealHodId ?: $pettyCash->hod_id,
+            'hod_id' => $reappealHodId,
             'job_number' => $jobNumberString,
             'extra_notes' => $request->extra_notes,
             'total_amount' => $totalAmount,
@@ -863,10 +892,12 @@ class PettyCashController extends Controller
             $superAdmins = PettyCashNotification::getSuperAdminRecipients($user ? $user->id : null);
             Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'reappealed', $user));
         } else {
-            $hod = User::find($request->hod_id) ?? $pettyCash->associated_hod;
+            $hod = User::find($reappealHodId) ?? $pettyCash->associated_hod;
             if ($hod && $hod->id !== $user->id) {
                 $hod->notify(new PettyCashNotification($pettyCash, 'reappealed', $user));
             }
+            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user ? $user->id : null);
+            Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'reappealed', $user));
         }
 
         $requestedUser = User::find($pettyCash->user_id);
@@ -987,7 +1018,7 @@ class PettyCashController extends Controller
         $isIou = $request->has('is_iou') ? $request->boolean('is_iou') : $pettyCash->is_iou;
 
         $request->validate([
-            'hod_id' => 'required|exists:users,id',
+            'hod_id' => 'nullable|exists:users,id',
             'job_number' => 'nullable',
             'job_numbers' => 'nullable|array',
             'job_numbers.*' => 'nullable|string|max:100',

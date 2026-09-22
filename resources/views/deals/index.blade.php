@@ -660,7 +660,7 @@
                                 <div class="w-full md:w-3/12">
                                     <select class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-white font-medium text-gray-700" required>
                                         <option value="">Department</option>
-                                        @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
+                                        @foreach(\App\Models\User::getDepartmentHierarchy() as $group => $departments)
                                             @foreach($departments as $key => $label)
                                                 @if(!in_array($key, ['AM', 'BD']))
                                                     <option value="{{ $key }}">{{ $label }}</option>
@@ -870,7 +870,7 @@
                                 <div class="w-full md:w-3/12">
                                     <select class="department-select w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-purple outline-none bg-white font-medium text-gray-700" required>
                                         <option value="">Department</option>
-                                        @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
+                                        @foreach(\App\Models\User::getDepartmentHierarchy() as $group => $departments)
                                             @foreach($departments as $key => $label)
                                                 @if(!in_array($key, ['AM', 'BD']))
                                                     <option value="{{ $key }}">{{ $label }}</option>

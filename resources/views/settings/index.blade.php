@@ -48,6 +48,11 @@
                         </button>
                     @endif
                     @if(auth()->user()->hasAdminPrivileges() || auth()->user()->hasRole('IT Admin'))
+                        <button onclick="showSection('departments')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-departments">
+                            <i class="fas fa-sitemap mr-2 text-blue-600"></i> Departments
+                        </button>
                         <button onclick="showSection('maintenance')"
                             class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
                             id="btn-maintenance">
@@ -294,10 +299,7 @@
                                 @csrf
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     @php
-                                        $departments = [];
-                                        foreach (\App\Models\User::DEPARTMENT_HIERARCHY as $group) {
-                                            $departments = array_merge($departments, array_keys($group));
-                                        }
+                                        $departments = \App\Models\User::getDepartmentList();
                                     @endphp
                                     @foreach($departments as $dept)
                                         <div>
@@ -582,6 +584,181 @@
                         </form>
                     </section>
                     
+                    <!-- Departments Management Section -->
+                    @if(auth()->user()->hasAdminPrivileges() || auth()->user()->hasRole('IT Admin'))
+                    <section id="section-departments" class="settings-section hidden space-y-6">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">Departments</h3>
+                                    <p class="text-xs text-gray-500">Manage company departments, business units, and department groups.</p>
+                                </div>
+                                <button type="button" onclick="document.getElementById('addDepartmentModal').classList.remove('hidden')"
+                                    class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all flex items-center shadow-sm">
+                                    <i class="fas fa-plus mr-2"></i> Add Department
+                                </button>
+                            </div>
+                            <div class="p-6">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50">
+                                                <th class="py-3 px-4">Department Name</th>
+                                                <th class="py-3 px-4">Group</th>
+                                                <th class="py-3 px-4">Assigned Users</th>
+                                                <th class="py-3 px-4">Status</th>
+                                                <th class="py-3 px-4 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 text-sm">
+                                            @forelse($departmentsList as $deptItem)
+                                                @php
+                                                    $userCount = \App\Models\User::where('department', $deptItem->name)->count();
+                                                @endphp
+                                                <tr class="hover:bg-gray-50/50 transition-all">
+                                                    <td class="py-3 px-4 font-semibold text-gray-800 flex items-center">
+                                                        <span class="w-2.5 h-2.5 rounded-full {{ $deptItem->status === 'active' ? 'bg-green-500' : 'bg-gray-400' }} mr-2.5"></span>
+                                                        {{ $deptItem->name }}
+                                                    </td>
+                                                    <td class="py-3 px-4">
+                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                                            {{ $deptItem->group ?: 'General' }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-3 px-4 text-gray-600">
+                                                        <span class="font-medium text-gray-700">{{ $userCount }}</span> {{ Str::plural('user', $userCount) }}
+                                                    </td>
+                                                    <td class="py-3 px-4">
+                                                        <span class="px-2.5 py-1 text-xs font-medium rounded-full {{ $deptItem->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                                            {{ ucfirst($deptItem->status) }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-3 px-4 text-right space-x-2">
+                                                        <button type="button" onclick="editDepartment('{{ route('settings.updateDepartment', $deptItem) }}', '{{ addslashes($deptItem->name) }}', '{{ addslashes($deptItem->group) }}', '{{ $deptItem->status }}')"
+                                                            class="text-brand-blue hover:text-brand-purple transition-colors font-medium">
+                                                            <i class="fas fa-edit mr-1"></i> Edit
+                                                        </button>
+                                                        <form action="{{ route('settings.destroyDepartment', $deptItem) }}" method="POST" class="inline-block"
+                                                            onsubmit="return confirm('Are you sure you want to delete the department {{ addslashes($deptItem->name) }}?')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="text-red-500 hover:text-red-700 transition-colors font-medium">
+                                                                <i class="fas fa-trash mr-1"></i> Delete
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="5" class="py-6 text-center text-gray-400">
+                                                        No departments found. Click "Add Department" to create one.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Add Department Modal -->
+                        <div id="addDepartmentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Add Department</h3>
+                                    <button type="button" onclick="document.getElementById('addDepartmentModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form action="{{ route('settings.storeDepartment') }}" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Department Name *</label>
+                                        <input type="text" name="name" required placeholder="e.g. Creative, Tech, AM" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Department Group *</label>
+                                        <input type="text" name="group" list="dept-groups" required placeholder="e.g. SBU, Sales, Operations" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                        <datalist id="dept-groups">
+                                            <option value="SBU">
+                                            <option value="Sales">
+                                            <option value="Operations">
+                                            <option value="Support">
+                                            <option value="Management">
+                                        </datalist>
+                                        <p class="text-xs text-gray-400 mt-1">Select an existing group or type a new one.</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('addDepartmentModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Save Department
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Edit Department Modal -->
+                        <div id="editDepartmentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+                            <div class="relative top-20 mx-auto p-6 border w-96 shadow-lg rounded-xl bg-white">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <h3 class="text-lg font-bold text-gray-800">Edit Department</h3>
+                                    <button type="button" onclick="document.getElementById('editDepartmentModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <form id="editDepartmentForm" action="" method="POST" class="mt-4 space-y-4">
+                                    @csrf
+                                    @method('PUT')
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Department Name *</label>
+                                        <input type="text" name="name" id="edit_dept_name" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Department Group *</label>
+                                        <input type="text" name="group" id="edit_dept_group" list="edit-dept-groups" required class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                        <datalist id="edit-dept-groups">
+                                            <option value="SBU">
+                                            <option value="Sales">
+                                            <option value="Operations">
+                                            <option value="Support">
+                                            <option value="Management">
+                                        </datalist>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                        <select name="status" id="edit_dept_status" class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
+                                            <option value="active">Active</option>
+                                            <option value="inactive">Inactive</option>
+                                        </select>
+                                    </div>
+                                    <div class="flex justify-end gap-2 pt-2">
+                                        <button type="button" onclick="document.getElementById('editDepartmentModal').classList.add('hidden')"
+                                            class="px-4 py-2 bg-gray-200 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-300">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-md hover:bg-brand-purple">
+                                            Update Department
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </section>
+                    @endif
+
                     <!-- Maintenance Mode Section -->
                     @if(auth()->user()->hasAdminPrivileges() || auth()->user()->hasRole('IT Admin'))
                     <section id="section-maintenance" class="settings-section hidden space-y-6">
@@ -810,9 +987,24 @@
             document.getElementById('editExpenseCategoryModal').classList.remove('hidden');
         }
 
+        function editDepartment(url, name, group, status) {
+            const form = document.getElementById('editDepartmentForm');
+            form.action = url;
+            document.getElementById('edit_dept_name').value = name;
+            document.getElementById('edit_dept_group').value = group;
+            document.getElementById('edit_dept_status').value = status;
+            document.getElementById('editDepartmentModal').classList.remove('hidden');
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            showSection('general');
+            const urlParams = new URLSearchParams(window.location.search);
+            const section = urlParams.get('section') || 'general';
+            if (document.getElementById('section-' + section)) {
+                showSection(section);
+            } else {
+                showSection('general');
+            }
         });
 
         // Update color displays on change

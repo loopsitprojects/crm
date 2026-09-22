@@ -154,10 +154,10 @@ class PettyCashRequest extends Model
      */
     public function getAssociatedHodAttribute()
     {
-        if ($this->hod) {
+        if ($this->hod && (int)$this->hod_id !== (int)$this->user_id) {
             return $this->hod;
         }
-        if ($this->user && $this->user->associated_hod) {
+        if ($this->user && $this->user->associated_hod && (int)$this->user->associated_hod->id !== (int)$this->user_id) {
             return $this->user->associated_hod;
         }
         return null;

@@ -9,6 +9,7 @@ use App\Models\StandardTerm;
 use App\Models\Target;
 use App\Models\User;
 use App\Models\ExpenseCategory;
+use App\Models\Department;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
@@ -25,8 +26,9 @@ class SettingController extends Controller
         $departmentTargets = Target::where('type', 'department')->get()->keyBy('department');
         $userTargets = Target::where('type', 'user')->get()->keyBy('user_id');
         $users = User::all();
+        $departmentsList = Department::orderBy('group')->orderBy('name')->get();
 
-        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'expenseCategories', 'departmentTargets', 'userTargets', 'users'));
+        return view('settings.index', compact('settings', 'managers', 'terms', 'currencies', 'expenseCategories', 'departmentTargets', 'userTargets', 'users', 'departmentsList'));
     }
 
     public function updateDepartmentTargets(Request $request)
@@ -324,5 +326,80 @@ class SettingController extends Controller
         Setting::set('management_notification_emails', $cleanManagement, 'notifications');
 
         return redirect()->route('settings.index')->with('success', 'Notification recipient emails updated successfully.');
+    }
+
+    public function storeDepartment(Request $request)
+    {
+        if (!auth()->user()->hasRole('IT Admin') && !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action. Only IT Admin and Admins can manage departments.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:100|unique:departments,name',
+            'group' => 'required|string|max:100',
+            'status' => 'nullable|string|in:active,inactive',
+        ]);
+
+        Department::create([
+            'name' => trim($request->name),
+            'group' => trim($request->group),
+            'status' => $request->status ?? 'active',
+        ]);
+
+        return redirect()->route('settings.index', ['section' => 'departments'])
+            ->with('success', 'Department created successfully.')
+            ->with('section', 'departments');
+    }
+
+    public function updateDepartment(Request $request, Department $department)
+    {
+        if (!auth()->user()->hasRole('IT Admin') && !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action. Only IT Admin and Admins can manage departments.');
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:100|unique:departments,name,' . $department->id,
+            'group' => 'required|string|max:100',
+            'status' => 'required|string|in:active,inactive',
+        ]);
+
+        $oldName = $department->name;
+        $newName = trim($request->name);
+
+        $department->update([
+            'name' => $newName,
+            'group' => trim($request->group),
+            'status' => $request->status,
+        ]);
+
+        // If department name changed, cascade update users assigned to this department
+        if ($oldName !== $newName) {
+            User::where('department', $oldName)->update(['department' => $newName]);
+            Target::where('type', 'department')->where('department', $oldName)->update(['department' => $newName]);
+        }
+
+        return redirect()->route('settings.index', ['section' => 'departments'])
+            ->with('success', 'Department updated successfully.')
+            ->with('section', 'departments');
+    }
+
+    public function destroyDepartment(Department $department)
+    {
+        if (!auth()->user()->hasRole('IT Admin') && !auth()->user()->hasAdminPrivileges()) {
+            abort(403, 'Unauthorized action. Only IT Admin and Admins can manage departments.');
+        }
+
+        $assignedUsersCount = User::where('department', $department->name)->count();
+        if ($assignedUsersCount > 0) {
+            return redirect()->route('settings.index', ['section' => 'departments'])
+                ->with('error', "Cannot delete department '{$department->name}' because {$assignedUsersCount} user(s) are assigned to it. You can change its status to Inactive instead.")
+                ->with('section', 'departments');
+        }
+
+        $department->delete();
+
+        return redirect()->route('settings.index', ['section' => 'departments'])
+            ->with('success', 'Department deleted successfully.')
+            ->with('section', 'departments');
     }
 }

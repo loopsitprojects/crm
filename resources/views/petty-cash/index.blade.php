@@ -602,22 +602,23 @@
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                    @php
+                        $authAssignedHod = auth()->user()->associated_hod;
+                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'));
+                        $authHodDisplayName = $authAssignedHod 
+                            ? ($authAssignedHod->name . ' (' . $authAssignedHod->role . ($authAssignedHod->department ? ' - ' . $authAssignedHod->department : '') . ')')
+                            : 'Not Assigned';
+                    @endphp
                     <label class="block text-sm font-medium text-gray-700 mb-1">HOD Associated With *</label>
-                    @if(auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'))
-                        <input type="hidden" name="hod_id" value="{{ auth()->id() }}">
+                    @if($isHodUser && !$authAssignedHod)
+                        <input type="hidden" name="hod_id" value="">
                         <div class="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs text-blue-800">
                             <i class="fas fa-bolt text-blue-600"></i>
                             <div>
-                                <span class="font-bold">Direct to Finance:</span> As Head of Department, your request bypasses HOD approval and is routed directly to Finance.
+                                <span class="font-bold">Direct to Finance:</span> You are an HOD with no assigned HOD. Your request will be routed directly to Finance for approval.
                             </div>
                         </div>
                     @else
-                        @php
-                            $authAssignedHod = auth()->user()->associated_hod;
-                            $authHodDisplayName = $authAssignedHod 
-                                ? ($authAssignedHod->name . ' (' . $authAssignedHod->role . ($authAssignedHod->department ? ' - ' . $authAssignedHod->department : '') . ')')
-                                : 'Not Assigned';
-                        @endphp
                         <input type="hidden" name="hod_id" value="{{ $authAssignedHod ? $authAssignedHod->id : '' }}">
                         <div class="relative">
                             <input type="text" readonly value="{{ $authHodDisplayName }}" 
@@ -627,7 +628,11 @@
                                 <i class="fas fa-user-shield text-sm"></i>
                             </div>
                         </div>
-                        @if(!$authAssignedHod)
+                        @if($isHodUser && $authAssignedHod)
+                            <p class="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                                <i class="fas fa-info-circle"></i> As an HOD, your request will be sent to your assigned HOD ({{ $authAssignedHod->name }}) for approval.
+                            </p>
+                        @elseif(!$authAssignedHod)
                             <p class="mt-1 text-xs text-amber-600 flex items-center gap-1">
                                 <i class="fas fa-exclamation-triangle"></i> No HOD assigned to your account. Please contact an admin.
                             </p>
@@ -1157,25 +1162,37 @@
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                    @php
+                        $authAssignedHod = auth()->user()->associated_hod;
+                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'));
+                        $authHodDisplayName = $authAssignedHod 
+                            ? ($authAssignedHod->name . ' (' . $authAssignedHod->role . ($authAssignedHod->department ? ' - ' . $authAssignedHod->department : '') . ')')
+                            : 'Not Assigned';
+                    @endphp
                     <label class="block text-sm font-medium text-gray-700 mb-1">HOD Associated With *</label>
-                    @if(auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'))
-                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="{{ auth()->id() }}">
+                    @if($isHodUser && !$authAssignedHod)
+                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="">
                         <div class="flex items-center gap-2 p-2.5 bg-blue-50/80 border border-blue-200 rounded-lg text-xs text-blue-800">
                             <i class="fas fa-bolt text-blue-600"></i>
                             <div>
-                                <span class="font-bold">Direct to Finance:</span> As Head of Department, your re-appeal bypasses HOD approval and goes directly to Finance.
+                                <span class="font-bold">Direct to Finance:</span> You are an HOD with no assigned HOD. Your re-appeal will be routed directly to Finance.
                             </div>
                         </div>
                     @else
-                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="">
+                        <input type="hidden" name="hod_id" id="reappeal_hod_id" value="{{ $authAssignedHod ? $authAssignedHod->id : '' }}">
                         <div class="relative">
-                            <input type="text" id="reappeal_hod_display" readonly value="" 
+                            <input type="text" id="reappeal_hod_display" readonly value="{{ $authHodDisplayName }}" 
                                 class="w-full rounded-lg border-gray-300 bg-gray-50 text-gray-700 font-medium text-sm cursor-not-allowed focus:ring-0 focus:border-gray-300 pl-9 py-2" 
                                 title="HOD is read-only">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                 <i class="fas fa-user-shield text-sm"></i>
                             </div>
                         </div>
+                        @if($isHodUser && $authAssignedHod)
+                            <p class="mt-1 text-xs text-blue-600 flex items-center gap-1">
+                                <i class="fas fa-info-circle"></i> Sent to your assigned HOD ({{ $authAssignedHod->name }}) for approval.
+                            </p>
+                        @endif
                     @endif
                 </div>
                 <div>

@@ -110,10 +110,12 @@
                             <select name="department" id="department"
                                 class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-brand-purple focus:ring-2 focus:ring-brand-purple/20 transition-all">
                                 <option value="">-- Select Department (Optional for Management & Admins) --</option>
-                                @foreach(\App\Models\User::DEPARTMENT_HIERARCHY as $group => $departments)
-                                    @foreach($departments as $key => $label)
-                                        <option value="{{ $key }}" {{ old('department', $user->department) == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
+                                @foreach(\App\Models\User::getDepartmentHierarchy() as $group => $departments)
+                                    <optgroup label="{{ $group }}">
+                                        @foreach($departments as $key => $label)
+                                            <option value="{{ $key }}" {{ old('department', $user->department) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                             @error('department') <p class="mt-2 text-sm text-red-600"><i

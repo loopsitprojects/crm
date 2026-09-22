@@ -277,6 +277,10 @@ Route::middleware(['auth'])->group(function () {
             Route::get('settings/expense-categories/{expenseCategory}/delete', [SettingController::class, 'destroyExpenseCategory'])->name('settings.destroyExpenseCategory.get');
             Route::delete('settings/expense-categories/{expenseCategory}', [SettingController::class, 'destroyExpenseCategory'])->name('settings.destroyExpenseCategory');
             Route::put('settings/expense-categories/{expenseCategory}', [SettingController::class, 'updateExpenseCategory'])->name('settings.updateExpenseCategory');
+
+            Route::post('settings/departments', [SettingController::class, 'storeDepartment'])->name('settings.storeDepartment');
+            Route::put('settings/departments/{department}', [SettingController::class, 'updateDepartment'])->name('settings.updateDepartment');
+            Route::delete('settings/departments/{department}', [SettingController::class, 'destroyDepartment'])->name('settings.destroyDepartment');
         });
     });
 });
