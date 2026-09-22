@@ -25,8 +25,8 @@ class TempInvoiceController extends Controller
 
         $user = auth()->user();
         
-        // Final processing should be allowed for Super Admin / Management
-        $readonly = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
+        // Final processing should be allowed for Finance Admin / Management / Super Admin
+        $readonly = !$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         $customers = Customer::all();
         $standardTerms = StandardTerm::all();
@@ -36,7 +36,7 @@ class TempInvoiceController extends Controller
         $estimateBrands = Estimate::whereNotNull('brand_name')->distinct()->pluck('brand_name');
         $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
         $brands = $estimateBrands->concat($customerBrands)->unique()->sort()->values();
-        $users = User::whereIn('role', ['HOD', 'Management'])->get();
+        $users = User::whereIn('role', ['HOD', 'Management', 'Finance Admin'])->get();
 
         return view('temp-invoices.edit', compact(
             'tempInvoice',
@@ -54,7 +54,7 @@ class TempInvoiceController extends Controller
     public function update(Request $request, TempInvoice $tempInvoice)
     {
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        if (!$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             abort(403, 'Unauthorized action.');
         }
 

@@ -148,7 +148,7 @@
                                     </button>
                                 @endif
 
-                                @if(in_array(auth()->user()->role, ['Super Admin', 'Management']))
+                                @if(in_array(auth()->user()->role, ['Super Admin', 'Finance Admin', 'Management']) || auth()->user()->isFinanceAdmin() || auth()->user()->isManagement())
                                     <a href="{{ route('temp-invoices.edit', $estimate->id) }}"
                                         class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs shadow-sm font-semibold inline-flex items-center">
                                         <i class="fas fa-cog mr-1"></i> Process Invoice

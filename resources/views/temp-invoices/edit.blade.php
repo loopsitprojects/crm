@@ -628,7 +628,7 @@
                 @if(!(isset($readonly) && $readonly))
                 <button type="submit"
                     class="px-8 py-2.5 rounded-lg bg-brand-pink text-white hover:bg-brand-purple text-sm font-medium shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
-                    <i class="fas fa-save mr-2"></i> Update Invoice
+                    <i class="fas fa-cog mr-2"></i> Process Invoice
                 </button>
                 @endif
             </div>

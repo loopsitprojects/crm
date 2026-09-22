@@ -355,7 +355,7 @@ class InvoiceController extends Controller
         $invoice = Invoice::with(['items'])->findOrFail($id);
         
         $user = auth()->user();
-        $readonly = !$user->hasRole('Super Admin') && !$user->hasRole('Management');
+        $readonly = !$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management');
 
         $customers = Customer::all();
         $standardTerms = \App\Models\StandardTerm::all();
@@ -367,7 +367,7 @@ class InvoiceController extends Controller
         $customerBrands = Customer::whereNotNull('brand')->distinct()->pluck('brand');
         $brands = $estimateBrands->concat($customerBrands)->unique()->sort()->values();
         
-        $users = \App\Models\User::whereIn('role', ['HOD', 'Management'])->get();
+        $users = \App\Models\User::whereIn('role', ['HOD', 'Management', 'Finance Admin'])->get();
 
         return view('invoices.edit', compact(
             'invoice',
@@ -389,7 +389,7 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        if (!$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
             abort(403, 'Unauthorized action.');
         }
 
