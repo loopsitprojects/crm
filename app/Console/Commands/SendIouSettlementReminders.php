@@ -21,7 +21,7 @@ class SendIouSettlementReminders extends Command
      *
      * @var string
      */
-    protected $description = 'Send email reminders to staff and HODs for unsettled IOUs (72-hour settlement policy)';
+    protected $description = 'Send email reminders to staff for unsettled IOUs (72-hour settlement policy)';
 
     /**
      * Execute the console command.
@@ -41,10 +41,6 @@ class SendIouSettlementReminders extends Command
             if ($pettyCash->user) {
                 $pettyCash->user->notify(new PettyCashNotification($pettyCash, 'iou_reminder', $systemUser));
                 $count++;
-            }
-            $associatedHod = $pettyCash->associated_hod;
-            if ($associatedHod && $associatedHod->id !== ($pettyCash->user->id ?? 0)) {
-                $associatedHod->notify(new PettyCashNotification($pettyCash, 'iou_reminder', $systemUser));
             }
         }
 

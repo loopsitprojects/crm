@@ -170,11 +170,108 @@ class PettyCashNotification extends Notification
             $channels[] = 'database';
         }
 
-        if (!empty($notifiable->email) || (method_exists($notifiable, 'routeNotificationFor') && $notifiable->routeNotificationFor('mail'))) {
+        if ($this->shouldSendMailTo($notifiable)) {
             $channels[] = 'mail';
         }
 
         return $channels;
+    }
+
+    /**
+     * Determine whether an email message should be sent to the notifiable.
+     *
+     * Rules:
+     * 1. Requester always receives emails for their own requests.
+     * 2. HOD receives email ONLY if HOD approval is needed.
+     * 3. Finance Admin receives email ONLY if Finance approval is needed.
+     * 4. Management receives email ONLY if Management approval is needed.
+     */
+    public function shouldSendMailTo(object $notifiable): bool
+    {
+        $hasMailRoute = !empty($notifiable->email) 
+            || (method_exists($notifiable, 'routeNotificationFor') && $notifiable->routeNotificationFor('mail'))
+            || ($notifiable instanceof \Illuminate\Notifications\AnonymousNotifiable && !empty($notifiable->routes['mail']));
+
+        if (!$hasMailRoute) {
+            return false;
+        }
+
+        $pettyCash = $this->pettyCash;
+        if (!$pettyCash) {
+            return false;
+        }
+
+        $notifiableId = method_exists($notifiable, 'getKey') ? $notifiable->getKey() : ($notifiable->id ?? null);
+        $notifiableEmail = strtolower(
+            $notifiable->email 
+            ?? (method_exists($notifiable, 'routeNotificationFor') ? (string)$notifiable->routeNotificationFor('mail') : '')
+            ?? ($notifiable->routes['mail'] ?? '')
+        );
+
+        $requesterId = $pettyCash->user_id;
+        $requesterEmail = strtolower($pettyCash->user->email ?? '');
+
+        // 1. Requester always receives emails for their own requests
+        if (($notifiableId && $notifiableId == $requesterId) || ($notifiableEmail && $requesterEmail && $notifiableEmail === $requesterEmail)) {
+            return true;
+        }
+
+        // 2. Check if HOD approval is needed for this notification
+        $isHodApprovalNeeded = (
+            ($this->action === 'submitted' && $pettyCash->status === 'pending_hod') ||
+            ($this->action === 'reappealed' && $pettyCash->status === 'pending_hod') ||
+            ($this->action === 'iou_settlement_exceeded' && $pettyCash->status === 'pending_settlement_hod')
+        );
+
+        if ($isHodApprovalNeeded) {
+            $associatedHod = $pettyCash->associated_hod;
+            $associatedHodId = $associatedHod ? $associatedHod->id : $pettyCash->hod_id;
+            $associatedHodEmail = strtolower($associatedHod ? ($associatedHod->email ?? '') : ($pettyCash->hod->email ?? ''));
+
+            if (($associatedHodId && $notifiableId && $notifiableId == $associatedHodId) ||
+                ($associatedHodEmail && $notifiableEmail && $notifiableEmail === $associatedHodEmail)) {
+                return true;
+            }
+        }
+
+        // 3. Check if Finance Admin approval is needed for this notification
+        $isFinanceApprovalNeeded = (
+            ($this->action === 'submitted' && in_array($pettyCash->status, ['pending_super_admin', 'pending_settlement'])) ||
+            ($this->action === 'hod_approved' && $pettyCash->status === 'pending_super_admin') ||
+            ($this->action === 'management_approved' && $pettyCash->status === 'pending_super_admin') ||
+            ($this->action === 'iou_settlement_hod_approved' && $pettyCash->status === 'pending_settlement') ||
+            ($this->action === 'reappealed' && $pettyCash->status === 'pending_super_admin') ||
+            ($this->action === 'iou_settlement_exceeded' && $pettyCash->status === 'pending_settlement')
+        );
+
+        if ($isFinanceApprovalNeeded) {
+            $superAdminEmails = self::getConfiguredSuperAdminEmails();
+            $isFinanceAdmin = in_array($notifiableEmail, $superAdminEmails)
+                || (method_exists($notifiable, 'isFinanceAdmin') && $notifiable->isFinanceAdmin())
+                || (isset($notifiable->role) && in_array(strtolower($notifiable->role), ['finance admin', 'super admin']));
+
+            if ($isFinanceAdmin) {
+                return true;
+            }
+        }
+
+        // 4. Check if Management approval is needed for this notification
+        $isManagementApprovalNeeded = (
+            $this->action === 'sent_to_management' && $pettyCash->status === 'pending_management'
+        );
+
+        if ($isManagementApprovalNeeded) {
+            $managementEmails = self::getConfiguredManagementEmails();
+            $isManagement = in_array($notifiableEmail, $managementEmails)
+                || (method_exists($notifiable, 'isManagement') && $notifiable->isManagement())
+                || (isset($notifiable->role) && in_array(strtolower($notifiable->role), ['management']));
+
+            if ($isManagement) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
