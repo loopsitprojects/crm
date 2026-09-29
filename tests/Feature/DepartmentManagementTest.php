@@ -206,4 +206,59 @@ class DepartmentManagementTest extends TestCase
         $resDeleteHod = $this->actingAs($hod)->delete(route('settings.destroyDepartment', $department));
         $resDeleteHod->assertForbidden();
     }
+
+    public function test_can_create_and_update_user_with_dynamically_created_department(): void
+    {
+        Department::create([
+            'name' => 'Support',
+            'group' => 'Support',
+            'status' => 'active',
+        ]);
+
+        $response = $this->actingAs($this->itAdmin)->post(route('users.store'), [
+            'name' => 'Support User',
+            'email' => 'supportuser@test.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'Staff',
+            'department' => 'Support',
+        ]);
+
+        $response->assertRedirect(route('users.index'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'supportuser@test.com',
+            'department' => 'Support',
+        ]);
+
+        $user = User::where('email', 'supportuser@test.com')->first();
+
+        // Update user to another active department
+        $updateResponse = $this->actingAs($this->itAdmin)->put(route('users.update', $user), [
+            'name' => 'Support User Updated',
+            'email' => 'supportuser@test.com',
+            'role' => 'Staff',
+            'department' => 'Support',
+        ]);
+
+        $updateResponse->assertRedirect(route('users.index'));
+        $this->assertEquals('Support User Updated', $user->fresh()->name);
+    }
+
+    public function test_user_creation_fails_with_non_existent_department(): void
+    {
+        $response = $this->actingAs($this->itAdmin)->post(route('users.store'), [
+            'name' => 'Invalid Dept User',
+            'email' => 'invaliddept@test.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'Staff',
+            'department' => 'NonExistentDept',
+        ]);
+
+        $response->assertSessionHasErrors('department');
+        $this->assertDatabaseMissing('users', [
+            'email' => 'invaliddept@test.com',
+        ]);
+    }
 }
+

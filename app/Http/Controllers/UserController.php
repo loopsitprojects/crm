@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Traits\LogsActivity;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -32,7 +33,7 @@ class UserController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|in:' . implode(',', \App\Models\User::ROLES) . ',Super Admin',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD,PM,Corporate',
+            'department' => ['nullable', 'string', Rule::in(User::getDepartmentList())],
         ]);
 
         $user = User::create([
@@ -58,13 +59,15 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $allowedDepartments = array_unique(array_merge(User::getDepartmentList(), array_filter([$user->department])));
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
             'role' => 'required|string|in:' . implode(',', \App\Models\User::ROLES) . ',Super Admin',
             'supervisor_id' => 'nullable|exists:users,id',
-            'department' => 'nullable|string|in:Creative,Digital,Tech,AM,BD,PM,Corporate',
+            'department' => ['nullable', 'string', Rule::in($allowedDepartments)],
         ]);
 
         $user->name = $request->name;
