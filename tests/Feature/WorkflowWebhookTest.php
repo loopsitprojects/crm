@@ -142,17 +142,22 @@ class WorkflowWebhookTest extends TestCase
             $testUrl => Http::response(['status' => 'success'], 200),
         ]);
 
+        $deal = Deal::create([
+            'title' => 'Sample Real Deal',
+            'stage' => 'Working on pitch',
+            'revenue' => 150000,
+        ]);
+
         $this->artisan('webhook:workflow-test')
             ->expectsOutputToContain('=== Workflow Webhook Dispatcher ===')
             ->expectsOutputToContain('SUCCESS')
             ->assertExitCode(0);
 
-        Http::assertSent(function ($request) use ($testUrl) {
+        Http::assertSent(function ($request) use ($testUrl, $deal) {
             $data = $request->data();
             return $request->url() === $testUrl
                 && count($data) === 2
-                && str_contains($data['job_number'], 'LOOPS')
-                && $data['brand_name'] === 'Loops Sample Brand';
+                && $data['job_number'] === $deal->job_number;
         });
     }
 

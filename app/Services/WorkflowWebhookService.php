@@ -72,7 +72,9 @@ class WorkflowWebhookService
             return trim((string)$customerBrand);
         }
 
-        return null;
+        // 3. Fallback to customer name or deal title
+        $fallback = $deal->customer_name ?? ($deal->relationLoaded('customer') ? $deal->customer?->name : $deal->customer()->value('name')) ?? $deal->title ?? 'N/A';
+        return trim((string)$fallback);
     }
 
     /**
@@ -109,7 +111,7 @@ class WorkflowWebhookService
     }
 
     /**
-     * Send a test webhook ping.
+     * Send a real webhook ping using the latest actual deal in the database.
      */
     public function sendTest(?string $customUrl = null): array
     {
@@ -124,13 +126,24 @@ class WorkflowWebhookService
             ];
         }
 
-        $year = date('Y');
-        $payload = [
-            'job_number' => "LOOPS/{$year}/TEST",
-            'brand_name' => 'Loops Sample Brand',
-        ];
+        // Pick the latest actual job from the database (no fake test data)
+        $deal = Deal::whereNotNull('job_number')
+            ->where('job_number', '!=', '')
+            ->with(['estimates', 'customer'])
+            ->latest('id')
+            ->first();
 
-        return $this->sendPayload($url, $payload, 'job.test');
+        if (!$deal) {
+            return [
+                'success' => false,
+                'message' => 'No actual jobs found in the database to send.',
+                'status' => null,
+                'payload' => null,
+            ];
+        }
+
+        $payload = $this->buildPayload($deal);
+        return $this->sendPayload($url, $payload, 'job.updated');
     }
 
     /**

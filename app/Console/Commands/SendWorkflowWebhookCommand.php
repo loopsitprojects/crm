@@ -16,6 +16,7 @@ class SendWorkflowWebhookCommand extends Command
     protected $signature = 'webhook:workflow-test 
                             {--deal= : Deal ID to send}
                             {--job= : Job Number to send (e.g. LOOPS/2026/0001)}
+                            {--all : Send all existing jobs in the CRM to the webhook}
                             {--url= : Custom webhook URL to test}';
 
     /**
@@ -33,6 +34,7 @@ class SendWorkflowWebhookCommand extends Command
         $customUrl = $this->option('url');
         $dealId = $this->option('deal');
         $jobNumber = $this->option('job');
+        $all = $this->option('all');
 
         $activeUrl = $customUrl ?: $webhookService->getWebhookUrl();
         $this->info("=== Workflow Webhook Dispatcher ===");
@@ -42,6 +44,36 @@ class SendWorkflowWebhookCommand extends Command
         if (empty($activeUrl)) {
             $this->error("No webhook URL configured! Please set WORKFLOW_WEBHOOK_URL in your .env file or pass --url=http://...");
             return Command::FAILURE;
+        }
+
+        if ($all) {
+            $deals = Deal::whereNotNull('job_number')
+                ->where('job_number', '!=', '')
+                ->with(['estimates', 'customer'])
+                ->orderBy('id', 'asc')
+                ->get();
+
+            $total = $deals->count();
+            $this->info("Found {$total} existing jobs. Dispatching to {$activeUrl}...");
+
+            $bar = $this->output->createProgressBar($total);
+            $successCount = 0;
+            $failedCount = 0;
+
+            foreach ($deals as $deal) {
+                $result = $webhookService->send($deal, 'job.created');
+                if ($result['success']) {
+                    $successCount++;
+                } else {
+                    $failedCount++;
+                }
+                $bar->advance();
+            }
+
+            $bar->finish();
+            $this->newLine(2);
+            $this->info("Batch sync completed: {$successCount} succeeded, {$failedCount} failed.");
+            return $failedCount === 0 ? Command::SUCCESS : Command::FAILURE;
         }
 
         if ($dealId || $jobNumber) {
@@ -61,10 +93,21 @@ class SendWorkflowWebhookCommand extends Command
             }
 
             $this->info("Dispatching webhook for Deal #{$deal->id} (Job: {$deal->job_number})...");
-            $result = $webhookService->send($deal, 'job.updated');
         } else {
-            $this->info("Dispatching test webhook payload...");
-            $result = $webhookService->sendTest($customUrl);
+            // Send the latest actual job from the database (no fake test data)
+            $deal = Deal::whereNotNull('job_number')
+                ->where('job_number', '!=', '')
+                ->with(['estimates', 'customer'])
+                ->latest('id')
+                ->first();
+
+            if (!$deal) {
+                $this->error("No deals with job numbers found in the database.");
+                return Command::FAILURE;
+            }
+
+            $this->info("Dispatching latest actual job from database: Deal #{$deal->id} (Job: {$deal->job_number})...");
+            $result = $webhookService->send($deal, 'job.updated');
         }
 
         $this->newLine();
