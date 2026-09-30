@@ -82,4 +82,23 @@ class JobController extends Controller
 
         return view('jobs.index', compact('jobs', 'users', 'departments'));
     }
+
+    /**
+     * Manually trigger workflow webhook for a deal job.
+     */
+    public function sendWebhook(Deal $deal, \App\Services\WorkflowWebhookService $webhookService)
+    {
+        if (empty($deal->job_number)) {
+            return back()->with('error', 'This deal does not have a job number.');
+        }
+
+        $result = $webhookService->send($deal, 'job.updated');
+
+        if ($result['success']) {
+            $brand = $result['payload']['brand_name'] ?? 'N/A';
+            return back()->with('success', "Webhook delivered successfully for Job {$deal->job_number} (Brand: {$brand}).");
+        }
+
+        return back()->with('error', "Webhook dispatch failed: " . $result['message']);
+    }
 }

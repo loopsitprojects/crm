@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'workflow' => [
+        'webhook_url' => env('WORKFLOW_WEBHOOK_URL'),
+        'webhook_secret' => env('WORKFLOW_WEBHOOK_SECRET'),
+    ],
+
 ];

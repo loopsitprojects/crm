@@ -58,6 +58,11 @@
                             id="btn-maintenance">
                             <i class="fas fa-tools mr-2 text-orange-500"></i> Maintenance Mode
                         </button>
+                        <button onclick="showSection('webhook')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-webhook">
+                            <i class="fas fa-network-wired mr-2 text-purple-600"></i> Workflow Webhook
+                        </button>
                     @endif
                 </div>
             </div>
@@ -937,6 +942,122 @@
                                         </button>
                                     </div>
                                 </form>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Workflow Webhook Section -->
+                    @php
+                        $webhookService = app(\App\Services\WorkflowWebhookService::class);
+                        $envUrl = env('WORKFLOW_WEBHOOK_URL');
+                        $dbUrl = \App\Models\Setting::get('workflow_webhook_url');
+                        $activeUrl = $webhookService->getWebhookUrl();
+                        $hasSecret = !empty($webhookService->getWebhookSecret());
+                    @endphp
+                    <section id="section-webhook" class="settings-section space-y-6 hidden">
+                        <!-- Overview Header -->
+                        <div class="bg-gradient-to-r from-purple-800 to-indigo-900 rounded-xl shadow-md p-6 text-white">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 text-white mb-2">
+                                        <i class="fas fa-bolt mr-1.5 text-yellow-300"></i> Automated Real-Time Webhook
+                                    </div>
+                                    <h3 class="text-xl font-bold">Workflow System Webhook</h3>
+                                    <p class="text-purple-100 text-sm mt-1 max-w-2xl">
+                                        Automatically dispatches an HTTP POST request to your workflow system whenever a job number is generated or updated, passing the <span class="font-semibold text-yellow-200">Job Number</span>, <span class="font-semibold text-yellow-200">Brand Name</span>, customer, and deal details.
+                                    </p>
+                                </div>
+                                <div class="hidden sm:block text-right">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $activeUrl ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30' }}">
+                                        <span class="w-2 h-2 rounded-full mr-2 {{ $activeUrl ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
+                                        {{ $activeUrl ? 'Active & Configured' : 'URL Not Configured' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuration Form Card -->
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div>
+                                    <h4 class="text-base font-bold text-gray-800">Webhook Connection</h4>
+                                    <p class="text-xs text-gray-500 mt-0.5">Configure via <code>.env</code> file (recommended) or manage here</p>
+                                </div>
+                            </div>
+                            <form action="{{ route('settings.webhook.update') }}" method="POST" class="p-6 space-y-4">
+                                @csrf
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                        Workflow Webhook URL
+                                    </label>
+                                    <input type="url" name="workflow_webhook_url" 
+                                        value="{{ old('workflow_webhook_url', $envUrl ?: $dbUrl) }}" 
+                                        placeholder="https://your-workflow-system.com/api/webhook"
+                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-brand-purple focus:border-brand-purple">
+                                    <div class="mt-1.5 flex items-center text-xs text-gray-500 space-x-2">
+                                        @if($envUrl)
+                                            <span class="inline-flex items-center text-emerald-600 font-medium">
+                                                <i class="fas fa-check-circle mr-1"></i> Configured in .env file (<code>WORKFLOW_WEBHOOK_URL</code>)
+                                            </span>
+                                        @else
+                                            <span>Tip: You can also define <code>WORKFLOW_WEBHOOK_URL=https://...</code> directly in your <code>crm/.env</code> file.</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                        Webhook Secret Token (Optional HMAC-SHA256)
+                                    </label>
+                                    <input type="text" name="workflow_webhook_secret" 
+                                        value="{{ old('workflow_webhook_secret', env('WORKFLOW_WEBHOOK_SECRET') ?: \App\Models\Setting::get('workflow_webhook_secret')) }}" 
+                                        placeholder="Optional secret token for verifying webhook signatures"
+                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-brand-purple focus:border-brand-purple">
+                                    <p class="mt-1 text-xs text-gray-500">
+                                        When set, each webhook request includes an <code>X-Webhook-Signature</code> header generated via <code>hash_hmac('sha256', body, secret)</code>.
+                                    </p>
+                                </div>
+
+                                <div class="pt-2 flex justify-between items-center">
+                                    <button type="submit" 
+                                        class="px-5 py-2.5 bg-brand-purple text-white text-sm font-bold rounded-lg hover:opacity-90 transition-all shadow-sm">
+                                        <i class="fas fa-save mr-1.5"></i> Save Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Test Webhook Card -->
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden p-6 space-y-4">
+                            <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+                                <div>
+                                    <h4 class="text-base font-bold text-gray-800">Test Webhook Delivery</h4>
+                                    <p class="text-xs text-gray-500">Send an immediate test payload to your workflow endpoint to verify connectivity.</p>
+                                </div>
+                                <form action="{{ route('settings.webhook.test') }}" method="POST">
+                                    @csrf
+                                    <button type="submit" {{ empty($activeUrl) ? 'disabled' : '' }}
+                                        class="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm inline-flex items-center">
+                                        <i class="fas fa-paper-plane mr-2"></i> Send Test Webhook Ping
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- CLI command hint -->
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 flex items-center justify-between">
+                                <span><i class="fas fa-terminal mr-2 text-slate-500"></i><strong>Terminal command:</strong> <code>php artisan webhook:workflow-test</code></span>
+                                <span class="text-[11px] text-slate-400">Supports <code>--job=LOOPS/2026/0001</code> or <code>--deal=12</code></span>
+                            </div>
+
+                            <!-- Payload Preview -->
+                            <div>
+                                <h5 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Dispatched JSON Payload Structure</h5>
+                                <div class="bg-slate-900 text-slate-200 p-4 rounded-xl text-xs font-mono overflow-x-auto">
+<pre>{
+  <span class="text-purple-400">"job_number"</span>: <span class="text-yellow-300">"LOOPS/2026/0001"</span>,
+  <span class="text-purple-400">"brand_name"</span>: <span class="text-emerald-300">"Brand Name"</span>
+}</pre>
+                                </div>
                             </div>
                         </div>
                     </section>

@@ -218,6 +218,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Jobs
         Route::get('/jobs', [JobController::class, 'index'])->name('jobs.index');
+        Route::post('/jobs/{deal}/send-webhook', [JobController::class, 'sendWebhook'])->name('jobs.send-webhook');
 
         Route::post('estimates/{estimate}/accept', [EstimateController::class, 'markAsAccepted'])->name('estimates.accept');
         Route::post('estimates/{estimate}/reject', [EstimateController::class, 'markAsRejected'])->name('estimates.reject');
@@ -281,6 +282,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('settings/departments', [SettingController::class, 'storeDepartment'])->name('settings.storeDepartment');
             Route::put('settings/departments/{department}', [SettingController::class, 'updateDepartment'])->name('settings.updateDepartment');
             Route::delete('settings/departments/{department}', [SettingController::class, 'destroyDepartment'])->name('settings.destroyDepartment');
+
+            // Workflow Webhook Settings
+            Route::post('settings/webhook', [SettingController::class, 'updateWebhook'])->name('settings.webhook.update');
+            Route::post('settings/webhook/test', [SettingController::class, 'testWorkflowWebhook'])->name('settings.webhook.test');
         });
     });
 });

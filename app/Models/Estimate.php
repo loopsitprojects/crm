@@ -50,6 +50,18 @@ class Estimate extends Model
         'is_duplicated' => 'boolean',
     ];
 
+    protected static function booted()
+    {
+        static::saved(function ($estimate) {
+            if ($estimate->deal_id && !empty($estimate->brand_name)) {
+                $deal = $estimate->deal;
+                if ($deal && !empty($deal->job_number)) {
+                    app(\App\Services\WorkflowWebhookService::class)->send($deal, 'job.updated');
+                }
+            }
+        });
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);

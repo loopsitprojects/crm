@@ -157,10 +157,19 @@
                                 </div>
                             </td>
                             <td x-show="isColumnVisible('actions')" class="px-6 py-4 white-space-nowrap text-right text-sm font-medium">
-                                <a href="{{ route('deals.index', ['deal_id' => $job->id]) }}"
-                                    class="px-3 py-1 bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded-lg text-xs font-bold transition-all inline-flex items-center">
-                                    <i class="fas fa-eye mr-1.5"></i> View Details
-                                </a>
+                                <div class="inline-flex items-center space-x-2">
+                                    <form action="{{ route('jobs.send-webhook', $job->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <button type="submit" title="Send Job Number & Brand Name to Workflow Webhook"
+                                            class="px-2.5 py-1 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 rounded-lg text-xs font-semibold transition-all inline-flex items-center">
+                                            <i class="fas fa-paper-plane mr-1 text-[10px]"></i> Sync Webhook
+                                        </button>
+                                    </form>
+                                    <a href="{{ route('deals.index', ['deal_id' => $job->id]) }}"
+                                        class="px-3 py-1 bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded-lg text-xs font-bold transition-all inline-flex items-center">
+                                        <i class="fas fa-eye mr-1.5"></i> View Details
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     @empty

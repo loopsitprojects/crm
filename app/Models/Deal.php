@@ -44,8 +44,31 @@ class Deal extends Model
                 $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
                 $deal->job_number = "LOOPS/{$year}/{$idPad}";
                 $deal->saveQuietly();
+
+                app(\App\Services\WorkflowWebhookService::class)->send($deal, 'job.created');
+            } elseif (!empty($deal->job_number)) {
+                app(\App\Services\WorkflowWebhookService::class)->send($deal, 'job.created');
             }
         });
+
+        static::updated(function ($deal) {
+            if (!empty($deal->job_number)) {
+                if ($deal->wasChanged('job_number')) {
+                    $event = $deal->getOriginal('job_number') ? 'job.updated' : 'job.created';
+                    app(\App\Services\WorkflowWebhookService::class)->send($deal, $event);
+                } elseif ($deal->wasChanged(['stage', 'title', 'revenue', 'customer_id'])) {
+                    app(\App\Services\WorkflowWebhookService::class)->send($deal, 'job.updated');
+                }
+            }
+        });
+    }
+
+    /**
+     * Dispatch workflow webhook for this deal.
+     */
+    public function sendWorkflowWebhook(string $event = 'job.updated'): array
+    {
+        return app(\App\Services\WorkflowWebhookService::class)->send($this, $event);
     }
 
     public function owner()

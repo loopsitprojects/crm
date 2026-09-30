@@ -402,4 +402,51 @@ class SettingController extends Controller
             ->with('success', 'Department deleted successfully.')
             ->with('section', 'departments');
     }
+
+    public function updateWebhook(Request $request)
+    {
+        if (!auth()->user()->hasAdminPrivileges() && !auth()->user()->hasRole('IT Admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'workflow_webhook_url' => 'nullable|url|max:500',
+            'workflow_webhook_secret' => 'nullable|string|max:255',
+        ]);
+
+        Setting::set('workflow_webhook_url', $request->input('workflow_webhook_url'), 'integrations');
+        Setting::set('workflow_webhook_secret', $request->input('workflow_webhook_secret'), 'integrations');
+
+        return redirect()->route('settings.index', ['section' => 'webhook'])
+            ->with('success', 'Workflow webhook settings updated successfully.')
+            ->with('section', 'webhook');
+    }
+
+    public function testWorkflowWebhook(Request $request, \App\Services\WorkflowWebhookService $webhookService)
+    {
+        if (!auth()->user()->hasAdminPrivileges() && !auth()->user()->hasRole('IT Admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $url = $request->input('workflow_webhook_url') ?: $webhookService->getWebhookUrl();
+
+        if (empty($url)) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'No webhook URL configured.'], 422);
+            }
+            return back()->with('error', 'No webhook URL configured.')->with('section', 'webhook');
+        }
+
+        $result = $webhookService->sendTest($url);
+
+        if ($request->wantsJson()) {
+            return response()->json($result);
+        }
+
+        if ($result['success']) {
+            return back()->with('success', $result['message'])->with('section', 'webhook');
+        } else {
+            return back()->with('error', $result['message'])->with('section', 'webhook');
+        }
+    }
 }
