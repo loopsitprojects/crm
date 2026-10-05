@@ -153,4 +153,40 @@ class FinancialPerformanceAccessTest extends TestCase
             ->get(route('dashboard'))
             ->assertDontSee(route('financial-performance.index'));
     }
+
+    public function test_dashboard_data_has_group_target_annual(): void
+    {
+        $response = $this->actingAs($this->itAdmin)
+            ->getJson(route('financial-performance.data'));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'group' => [
+                'target_annual',
+                'target_quarterly',
+                'revenue',
+                'contribution',
+            ],
+            'departments',
+            'sales_units',
+        ]);
+
+        $this->assertGreaterThan(0, $response->json('group.target_annual'));
+    }
+
+    public function test_service_schema_fallback_when_baseline_missing(): void
+    {
+        $service = app(\App\Services\FinancialPerformanceService::class);
+        $reflection = new \ReflectionMethod($service, 'ensureDefaultSchema');
+        $fallback = $reflection->invoke($service, []);
+
+        $this->assertArrayHasKey('group', $fallback);
+        $this->assertArrayHasKey('target_annual', $fallback['group']);
+        $this->assertEquals(190000000.0, $fallback['group']['target_annual']);
+        $this->assertArrayHasKey('departments', $fallback);
+        $this->assertArrayHasKey('Corporate', $fallback['departments']);
+        $this->assertArrayHasKey('DM', $fallback['departments']);
+        $this->assertArrayHasKey('Creative', $fallback['departments']);
+        $this->assertArrayHasKey('IT', $fallback['departments']);
+    }
 }

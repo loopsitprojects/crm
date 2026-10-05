@@ -17,12 +17,25 @@ class FinancialPerformanceService
      */
     public function getDashboardData(): array
     {
-        $basePath = storage_path('app/financial_performance_baseline.json');
-        $data = [];
+        $candidatePaths = [
+            resource_path('data/financial_performance_baseline.json'),
+            base_path('resources/data/financial_performance_baseline.json'),
+            storage_path('app/financial_performance_baseline.json'),
+        ];
 
-        if (File::exists($basePath)) {
-            $data = json_decode(File::get($basePath), true) ?: [];
+        $data = [];
+        foreach ($candidatePaths as $path) {
+            if (File::exists($path)) {
+                $decoded = json_decode(File::get($path), true);
+                if (is_array($decoded) && !empty($decoded)) {
+                    $data = $decoded;
+                    break;
+                }
+            }
         }
+
+        // Ensure baseline schema guarantees so missing keys never crash UI
+        $data = $this->ensureDefaultSchema($data);
 
         // 1. Sync Department Targets dynamically from DB
         $data = $this->syncTargets($data);
@@ -35,6 +48,109 @@ class FinancialPerformanceService
 
         // 4. Sync Individual Salesperson Performance
         $data = $this->syncIndividuals($data);
+
+        return $data;
+    }
+
+    /**
+     * Ensure baseline schema structure is always present so UI never crashes.
+     */
+    protected function ensureDefaultSchema(array $data): array
+    {
+        if (!isset($data['group']) || !is_array($data['group'])) {
+            $data['group'] = [
+                'revenue' => 0.0,
+                'contribution' => 0.0,
+                'target_annual' => 190000000.0,
+                'target_quarterly' => 47500000.0,
+            ];
+        } else {
+            $data['group']['target_annual'] = (float) ($data['group']['target_annual'] ?? 190000000.0);
+            $data['group']['target_quarterly'] = (float) ($data['group']['target_quarterly'] ?? ($data['group']['target_annual'] / 4));
+            $data['group']['revenue'] = (float) ($data['group']['revenue'] ?? 0.0);
+            $data['group']['contribution'] = (float) ($data['group']['contribution'] ?? 0.0);
+        }
+
+        $defaultDepts = ['Corporate', 'DM', 'Creative', 'IT'];
+        if (!isset($data['departments']) || !is_array($data['departments'])) {
+            $data['departments'] = [];
+        }
+        foreach ($defaultDepts as $dept) {
+            if (!isset($data['departments'][$dept]) || !is_array($data['departments'][$dept])) {
+                $data['departments'][$dept] = [
+                    'target_annual' => 0.0,
+                    'target_quarterly' => 0.0,
+                    'monthly_revenue' => array_fill(0, 12, 0.0),
+                    'monthly_contribution' => array_fill(0, 12, 0.0),
+                    'monthly_hr' => array_fill(0, 12, 0.0),
+                    'monthly_dept_cost' => array_fill(0, 12, 0.0),
+                    'monthly_net_profit' => array_fill(0, 12, 0.0),
+                ];
+            } else {
+                $data['departments'][$dept]['target_annual'] = (float) ($data['departments'][$dept]['target_annual'] ?? 0.0);
+                $data['departments'][$dept]['target_quarterly'] = (float) ($data['departments'][$dept]['target_quarterly'] ?? ($data['departments'][$dept]['target_annual'] / 4));
+            }
+        }
+
+        $defaultUnits = ['Brands', 'BD', 'IT'];
+        if (!isset($data['sales_units']) || !is_array($data['sales_units'])) {
+            $data['sales_units'] = [];
+        }
+        foreach ($defaultUnits as $unit) {
+            if (!isset($data['sales_units'][$unit]) || !is_array($data['sales_units'][$unit])) {
+                $data['sales_units'][$unit] = [
+                    'target_annual' => 0.0,
+                    'target_quarterly' => 0.0,
+                    'monthly_actual' => array_fill(0, 12, 0.0),
+                ];
+            } else {
+                $data['sales_units'][$unit]['target_annual'] = (float) ($data['sales_units'][$unit]['target_annual'] ?? 0.0);
+                $data['sales_units'][$unit]['target_quarterly'] = (float) ($data['sales_units'][$unit]['target_quarterly'] ?? ($data['sales_units'][$unit]['target_annual'] / 4));
+            }
+        }
+
+        $monthlyKeys = [
+            'group_monthly_pl',
+            'group_monthly_contribution_pl',
+            'group_monthly_revenue',
+            'group_monthly_hr',
+            'group_monthly_total_cost',
+            'group_monthly_net_profit',
+        ];
+        foreach ($monthlyKeys as $k) {
+            if (!isset($data[$k]) || !is_array($data[$k])) {
+                $data[$k] = array_fill(0, 12, 0.0);
+            }
+        }
+
+        if (!isset($data['pipeline']) || !is_array($data['pipeline'])) {
+            $data['pipeline'] = [
+                'items' => [],
+                'by_stage' => [],
+                'by_unit' => ['Brands' => 0.0, 'BD' => 0.0, 'IT' => 0.0],
+                'by_month' => [],
+            ];
+        }
+
+        if (!isset($data['transactions']) || !is_array($data['transactions'])) {
+            $data['transactions'] = [];
+        }
+
+        if (!isset($data['individuals']) || !is_array($data['individuals'])) {
+            $data['individuals'] = [];
+        }
+
+        if (!isset($data['ai_projects']) || !is_array($data['ai_projects'])) {
+            $data['ai_projects'] = [];
+        }
+
+        if (!isset($data['monthly_targets']) || !is_array($data['monthly_targets'])) {
+            $data['monthly_targets'] = [];
+        }
+
+        if (!isset($data['monthly_actuals']) || !is_array($data['monthly_actuals'])) {
+            $data['monthly_actuals'] = [];
+        }
 
         return $data;
     }

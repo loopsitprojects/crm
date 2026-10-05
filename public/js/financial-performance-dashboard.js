@@ -1,7 +1,43 @@
 /* Loops Financial Performance Dashboard (Dynamic CRM Integration) */
-if (typeof window.DATA !== 'undefined' && typeof DATA === 'undefined') {
-    var DATA = window.DATA;
+window.DATA = window.DATA || {};
+var DATA = window.DATA;
+
+function ensureDataDefaults() {
+  DATA = window.DATA = window.DATA || {};
+  DATA.group = DATA.group || { target_annual: 190000000, target_quarterly: 47500000, revenue: 0, contribution: 0 };
+  DATA.departments = DATA.departments || {};
+  ['Corporate', 'DM', 'Creative', 'IT'].forEach(s => {
+    DATA.departments[s] = DATA.departments[s] || {
+      target_annual: 0, target_quarterly: 0,
+      monthly_revenue: [0,0,0,0,0,0,0,0,0,0,0,0],
+      monthly_contribution: [0,0,0,0,0,0,0,0,0,0,0,0],
+      monthly_hr: [0,0,0,0,0,0,0,0,0,0,0,0],
+      monthly_dept_cost: [0,0,0,0,0,0,0,0,0,0,0,0],
+      monthly_net_profit: [0,0,0,0,0,0,0,0,0,0,0,0]
+    };
+  });
+  DATA.sales_units = DATA.sales_units || {};
+  ['Brands', 'BD', 'IT'].forEach(u => {
+    DATA.sales_units[u] = DATA.sales_units[u] || {
+      target_annual: 0, target_quarterly: 0,
+      monthly_actual: [0,0,0,0,0,0,0,0,0,0,0,0]
+    };
+  });
+  DATA.transactions = Array.isArray(DATA.transactions) ? DATA.transactions : [];
+  DATA.pipeline = DATA.pipeline || { items: [], by_stage: {}, by_unit: {}, by_month: {} };
+  DATA.individuals = Array.isArray(DATA.individuals) ? DATA.individuals : [];
+  DATA.ai_projects = Array.isArray(DATA.ai_projects) ? DATA.ai_projects : [];
+  DATA.group_monthly_pl = DATA.group_monthly_pl || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.group_monthly_contribution_pl = DATA.group_monthly_contribution_pl || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.group_monthly_revenue = DATA.group_monthly_revenue || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.group_monthly_hr = DATA.group_monthly_hr || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.group_monthly_total_cost = DATA.group_monthly_total_cost || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.group_monthly_net_profit = DATA.group_monthly_net_profit || [0,0,0,0,0,0,0,0,0,0,0,0];
+  DATA.monthly_targets = DATA.monthly_targets || {};
+  DATA.monthly_actuals = DATA.monthly_actuals || {};
 }
+ensureDataDefaults();
+
 const TEAM_MODE = true;
 
 const MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
@@ -23,13 +59,20 @@ const MOM_MONTH_SET   = new Set(['April','May','June','July','August','September
 const ALL_MONTHS_LIST = ['April','May','June','July','August','September'];
 // Period filter — controls which YTD months feed aggregate widgets (KPIs, mix, top clients, etc.)
 let ACTIVE_MONTHS = new Set(['April','May','June','July','August','September']);
-// YTD closed-won baseline (Apr–Sep, matches P&L cutoff). Aug closed-won shown separately in Pipeline tab.
-const allClosedTxnsYtd = DATA.transactions.filter(t => t.stage === 'Closed Won' && CLOSED_MONTH_SET.has(t.month));
-// Time-series baseline (Apr–Sep) — used by MoM widgets, retention, AI charts (unaffected by filter)
-const closedTxnsMoM = DATA.transactions.filter(t => t.stage === 'Closed Won' && MOM_MONTH_SET.has(t.month));
-// Filterable scoped view — respects ACTIVE_MONTHS. Reassigned by applyPeriodFilter().
-let closedTxns = allClosedTxnsYtd.filter(t => ACTIVE_MONTHS.has(t.month));
-const pipeTxns = DATA.transactions.filter(t => t.stage === 'Finalising Term' || t.stage === 'Objection Handling');
+
+let allClosedTxnsYtd = [];
+let closedTxnsMoM = [];
+let closedTxns = [];
+let pipeTxns = [];
+
+function updateDerivedTransactions() {
+  ensureDataDefaults();
+  allClosedTxnsYtd = (DATA.transactions || []).filter(t => t.stage === 'Closed Won' && CLOSED_MONTH_SET.has(t.month));
+  closedTxnsMoM = (DATA.transactions || []).filter(t => t.stage === 'Closed Won' && MOM_MONTH_SET.has(t.month));
+  closedTxns = allClosedTxnsYtd.filter(t => ACTIVE_MONTHS.has(t.month));
+  pipeTxns = (DATA.transactions || []).filter(t => t.stage === 'Finalising Term' || t.stage === 'Objection Handling');
+}
+updateDerivedTransactions();
 
 const fmtCur = v => 'LKR ' + new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(v||0);
 const fmtShort = v => {
@@ -52,7 +95,7 @@ const sumActive = arr => {
 };
 
 function renderGroupKpis(){
-  const g = DATA.group;
+  const g = DATA.group || { target_annual: 190000000, target_quarterly: 47500000, revenue: 0, contribution: 0 };
   // Scoped Group P&L — sums monthly arrays over ACTIVE_MONTHS
   const scopedRev     = sumActive(DATA.group_monthly_revenue);
   const scopedContrib = sumActive(DATA.group_monthly_contribution_pl);
@@ -60,7 +103,7 @@ function renderGroupKpis(){
   const scopedCost    = sumActive(DATA.group_monthly_total_cost);
   const scopedNp      = sumActive(DATA.group_monthly_net_profit);
   const grossMargin   = scopedRev > 0 ? scopedContrib / scopedRev : 0;
-  const yTgt = ytdTarget(g.target_annual);
+  const yTgt = ytdTarget(g.target_annual || 0);
   const yAch = yTgt > 0 ? scopedContrib / yTgt : 0;
   const yGap = yTgt - scopedContrib;
   const per  = scopeLabel();
@@ -89,7 +132,7 @@ function renderGroupKpis(){
 function renderSbuTable(){
   const tb = document.querySelector('#sbuTable tbody');
   const rows = SBU_ORDER.map(s=>{
-    const d = DATA.departments[s];
+    const d = (DATA.departments && DATA.departments[s]) || {};
     // Scoped values for this SBU
     const rev     = sumActive(d.monthly_revenue);
     const contrib = sumActive(d.monthly_contribution);
@@ -97,7 +140,7 @@ function renderSbuTable(){
     const dept    = sumActive(d.monthly_dept_cost);
     const np      = sumActive(d.monthly_net_profit);
     const projCost = rev - contrib;
-    const tgt = ytdTarget(d.target_annual);
+    const tgt = ytdTarget(d.target_annual || 0);
     const ach = tgt>0 ? contrib/tgt : null;
     const gap = tgt>0 ? tgt - contrib : null;
     const hasHr = d.hr_cost != null;
@@ -129,7 +172,7 @@ function renderSbuTable(){
       ${extraRight}
     </tr>`;
   });
-  const g = DATA.group;
+  const g = DATA.group || { target_annual: 190000000, target_quarterly: 47500000, revenue: 0, contribution: 0 };
   const gRev  = sumActive(DATA.group_monthly_revenue);
   const gCon  = sumActive(DATA.group_monthly_contribution_pl);
   const gHr   = sumActive(DATA.group_monthly_hr);
@@ -145,7 +188,7 @@ function renderSbuTable(){
       <td class="num" style="color:${gRc};font-weight:600" title="HR ${fmtCur(gHr)} ÷ Contribution ${fmtCur(gCon)}">${fmtPct(groupHrRatio)}</td>
       <td class="num" style="color:${gNp>=0?'var(--good)':'var(--bad)'}">${fmtCur(gNp)}</td>`;
   }
-  const gYtdTgt = ytdTarget(g.target_annual);
+  const gYtdTgt = ytdTarget(g.target_annual || 0);
   const gAch = gYtdTgt > 0 ? gCon / gYtdTgt : 0;
   const gGap = gYtdTgt - gCon;
   const gGapColor = gGap>0 ? 'var(--bad)' : 'var(--good)';
@@ -189,8 +232,8 @@ const chartBaseOpts = {
 
 function renderContribTargetChart(){
   const labels = ['Group', ...SBU_ORDER.map(s=>SBU_LABEL[s])];
-  const actuals = [sumActive(DATA.group_monthly_contribution_pl), ...SBU_ORDER.map(s=>sumActive(DATA.departments[s].monthly_contribution))];
-  const targets = [ytdTarget(DATA.group.target_annual), ...SBU_ORDER.map(s=>ytdTarget(DATA.departments[s].target_annual))];
+  const actuals = [sumActive(DATA.group_monthly_contribution_pl), ...SBU_ORDER.map(s=>sumActive(DATA.departments && DATA.departments[s] ? DATA.departments[s].monthly_contribution : []))];
+  const targets = [ytdTarget(DATA.group ? DATA.group.target_annual : 0), ...SBU_ORDER.map(s=>ytdTarget(DATA.departments && DATA.departments[s] ? DATA.departments[s].target_annual : 0))];
   const keys = ['Group', ...SBU_ORDER];
   new Chart(document.getElementById('chartContribTarget'),{
     type:'bar',
@@ -405,7 +448,7 @@ function renderTopProjects(tableId, txns, n, includeSbu, includeMonth){
 }
 
 function buildSbuPanel(sbu){
-  const d = DATA.departments[sbu];
+  const d = (DATA.departments && DATA.departments[sbu]) || {};
   const txns = closedTxns.filter(t=>t.department===sbu);
   // Scoped values (respect ACTIVE_MONTHS)
   const sRev  = sumActive(d.monthly_revenue);
@@ -414,8 +457,8 @@ function buildSbuPanel(sbu){
   const sDept = sumActive(d.monthly_dept_cost);
   const sNp   = sumActive(d.monthly_net_profit);
   const sProjCost = sRev - sCon;
-  const ytdTgt = ytdTarget(d.target_annual);
-  const qTgt = d.target_quarterly;
+  const ytdTgt = ytdTarget(d.target_annual || 0);
+  const qTgt = d.target_quarterly || 0;
   const ach = ytdTgt>0 ? sCon/ytdTgt : null;
   const gap = ytdTgt>0 ? ytdTgt - sCon : null;
   const margin = sRev>0 ? sCon/sRev : 0;
@@ -636,7 +679,7 @@ function renderAiVideosWidget(containerId){
   const YTD_MONTHS = new Set(['April','May','June','July']);
   const aiTotal = combined.reduce((s,t)=>s+t.amount,0);
   const aiYtd = combined.filter(t => YTD_MONTHS.has(t.month)).reduce((s,t)=>s+t.amount,0);
-  const dmContribYtd = DATA.departments.DM.contribution;
+  const dmContribYtd = (DATA.departments && DATA.departments.DM && DATA.departments.DM.contribution) || 0;
   // DM contribution & Campaign contribution per month from transactions
   const dmMonthlyContrib = months.map(m => DATA.transactions.filter(t => t.stage==='Closed Won' && t.department==='DM' && t.month===m).reduce((s,t)=>s+t.amount,0));
   const dmCampaignMonthly = months.map(m => DATA.transactions.filter(t => t.stage==='Closed Won' && t.department==='DM' && t.category==='Campaign' && t.month===m).reduce((s,t)=>s+t.amount,0));
@@ -880,15 +923,15 @@ function renderQuarterlyPerformance(containerId, entities, opts){
 
   // Default entities = Group + all SBUs
   if(!entities) entities = [
-    {key:'Group',    label:'Group',        color:COLORS.group,    quarterlyTarget: DATA.group.target_quarterly},
-    {key:'DM',       label:'Digital (DM)', color:COLORS.DM,       quarterlyTarget: DATA.departments.DM.target_quarterly},
-    {key:'Creative', label:'Creative',     color:COLORS.Creative, quarterlyTarget: DATA.departments.Creative.target_quarterly},
-    {key:'IT',       label:'IT',           color:COLORS.IT,       quarterlyTarget: DATA.departments.IT.target_quarterly},
+    {key:'Group',    label:'Group',        color:COLORS.group,    quarterlyTarget: (DATA.group && DATA.group.target_quarterly) || 0},
+    {key:'DM',       label:'Digital (DM)', color:COLORS.DM,       quarterlyTarget: (DATA.departments && DATA.departments.DM && DATA.departments.DM.target_quarterly) || 0},
+    {key:'Creative', label:'Creative',     color:COLORS.Creative, quarterlyTarget: (DATA.departments && DATA.departments.Creative && DATA.departments.Creative.target_quarterly) || 0},
+    {key:'IT',       label:'IT',           color:COLORS.IT,       quarterlyTarget: (DATA.departments && DATA.departments.IT && DATA.departments.IT.target_quarterly) || 0},
   ];
 
   // Compute actual per entity per quarter from monthly_actuals array
   function actualFor(entityKey, quarter){
-    const arr = DATA.monthly_actuals[entityKey] || [];
+    const arr = (DATA.monthly_actuals && DATA.monthly_actuals[entityKey]) || [];
     let sum = 0, monthsClosed = 0;
     quarter.months.forEach(m => {
       const idx = MONTH_NAMES.indexOf(m);
@@ -1360,13 +1403,14 @@ function renderRetainerWidgets(containerId){
 
 function renderSalesUnitPanel(){
   const per = scopeLabel();
-  const labels = Object.keys(DATA.sales_units);
+  const su = DATA.sales_units || {};
+  const labels = Object.keys(su);
   // Scoped sales-unit contribution — sum from monthly_actual over active months
   const contrib = labels.map(l => {
-    const ma = DATA.sales_units[l].monthly_actual || {};
+    const ma = (su[l] && su[l].monthly_actual) || {};
     return ALL_MONTHS_LIST.filter(m => ACTIVE_MONTHS.has(m)).reduce((s,m) => s + (ma[m] || 0), 0);
   });
-  const tgtYtd = labels.map(l=>ytdTarget(DATA.sales_units[l].target_annual));
+  const tgtYtd = labels.map(l=>ytdTarget(su[l] ? su[l].target_annual : 0));
   new Chart(document.getElementById('su_targets'),{
     type:'bar',
     data:{labels,
@@ -1390,7 +1434,7 @@ function renderSalesUnitPanel(){
   });
   // Individual contributions — scoped to active months (from individuals[i].monthly)
   const activeMArr = ALL_MONTHS_LIST.filter(m => ACTIVE_MONTHS.has(m));
-  const indivScoped = DATA.individuals.map(i => {
+  const indivScoped = (DATA.individuals || []).map(i => {
     const c = activeMArr.reduce((s,m) => s + (i.monthly && i.monthly[m] ? i.monthly[m] : 0), 0);
     return {...i, scopedContrib: c};
   }).sort((a,b) => b.scopedContrib - a.scopedContrib);
@@ -1412,10 +1456,9 @@ function renderSalesUnitPanel(){
         y:{ticks:{color:'#cfd8e8',font:{size:11}}, grid:{display:false}}
       }}
   });
-  const su = DATA.sales_units;
   document.querySelector('#su_table tbody').innerHTML = Object.entries(su).map(([k,v])=>{
-    const ytdTgt = ytdTarget(v.target_annual);
-    const sContrib = activeMArr.reduce((s,m) => s + (v.monthly_actual && v.monthly_actual[m] ? v.monthly_actual[m] : 0), 0);
+    const ytdTgt = ytdTarget(v ? v.target_annual : 0);
+    const sContrib = activeMArr.reduce((s,m) => s + (v && v.monthly_actual && v.monthly_actual[m] ? v.monthly_actual[m] : 0), 0);
     const ach = ytdTgt>0 ? sContrib/ytdTgt : 0;
     const gap = ytdTgt - sContrib;
     return `<tr>
@@ -1667,19 +1710,21 @@ function renderMonthlyAchievement(containerId, entities){
 
 // ====== Pipeline panel ======
 function renderPipelinePanel(){
-  const pipe = DATA.pipeline;
-  const total = (pipe.by_stage['Finalising Term']||0) + (pipe.by_stage['Objection Handling']||0);
-  const ft = pipe.by_stage['Finalising Term']||0;
-  const oh = pipe.by_stage['Objection Handling']||0;
-  const augClosed = DATA.transactions.filter(t=>t.stage==='Closed Won' && t.month==='September');
+  const pipe = DATA.pipeline || { by_stage: {}, by_unit: {}, items: [] };
+  const byStage = pipe.by_stage || {};
+  const byUnit = pipe.by_unit || {};
+  const total = (byStage['Finalising Term']||0) + (byStage['Objection Handling']||0);
+  const ft = byStage['Finalising Term']||0;
+  const oh = byStage['Objection Handling']||0;
+  const augClosed = (DATA.transactions || []).filter(t=>t.stage==='Closed Won' && t.month==='September');
   const augTotal = augClosed.reduce((s,t)=>s+t.amount,0);
   const kpis = [
     {label:'Total open pipeline', val:fmtCur(total), sub:pipeTxns.length+' open deals', cls:''},
     {label:'Finalising Term', val:fmtCur(ft), sub:'Close to commitment', cls:'up'},
     {label:'September closed-won', val:fmtCur(augTotal), sub:augClosed.length+' deals · post-YTD', cls:'up'},
-    {label:'Brands pipeline', val:fmtCur(pipe.by_unit['Brands']||0), sub:'Owned by Varuni team', cls:''},
-    {label:'BD pipeline', val:fmtCur(pipe.by_unit['BD']||0), sub:'New-business unit', cls:''},
-    {label:'IT pipeline', val:fmtCur(pipe.by_unit['IT']||0), sub:'IT sales unit', cls:''},
+    {label:'Brands pipeline', val:fmtCur(byUnit['Brands']||0), sub:'Owned by Varuni team', cls:''},
+    {label:'BD pipeline', val:fmtCur(byUnit['BD']||0), sub:'New-business unit', cls:''},
+    {label:'IT pipeline', val:fmtCur(byUnit['IT']||0), sub:'IT sales unit', cls:''},
   ];
   if(oh > 0) kpis.splice(2, 0, {label:'Objection Handling', val:fmtCur(oh), sub:'Earlier stage / at-risk', cls:'warn'});
   document.getElementById('pipelineKpis').innerHTML = kpis.map(k=>`
@@ -2077,6 +2122,7 @@ function setupTabs(){
 }
 
 function renderAll(){
+  updateDerivedTransactions();
   renderGroupKpis();
   renderSbuTable();
   renderContribTargetChart();
@@ -2106,22 +2152,22 @@ function renderAll(){
   ]);
 
   renderQuarterlyPerformance('group_quarterly', [
-    {key:'Group',    label:'Group',        color:COLORS.group,    quarterlyTarget: DATA.group.target_quarterly},
-    {key:'DM',       label:'Digital (DM)', color:COLORS.DM,       quarterlyTarget: DATA.departments.DM.target_quarterly},
-    {key:'Creative', label:'Creative',     color:COLORS.Creative, quarterlyTarget: DATA.departments.Creative.target_quarterly},
-    {key:'IT',       label:'IT',           color:COLORS.IT,       quarterlyTarget: DATA.departments.IT.target_quarterly},
+    {key:'Group',    label:'Group',        color:COLORS.group,    quarterlyTarget: (DATA.group && DATA.group.target_quarterly) || 0},
+    {key:'DM',       label:'Digital (DM)', color:COLORS.DM,       quarterlyTarget: (DATA.departments && DATA.departments.DM && DATA.departments.DM.target_quarterly) || 0},
+    {key:'Creative', label:'Creative',     color:COLORS.Creative, quarterlyTarget: (DATA.departments && DATA.departments.Creative && DATA.departments.Creative.target_quarterly) || 0},
+    {key:'IT',       label:'IT',           color:COLORS.IT,       quarterlyTarget: (DATA.departments && DATA.departments.IT && DATA.departments.IT.target_quarterly) || 0},
   ]);
 
   renderQuarterlyPerformance('sales_quarterly', [
-    {key:'Brands',   label:'Brands', color:COLORS.Brands,   quarterlyTarget: DATA.sales_units.Brands.target_quarterly},
-    {key:'BD',       label:'BD',     color:COLORS.BD,       quarterlyTarget: DATA.sales_units.BD.target_quarterly},
-    {key:'IT_sales', label:'IT',     color:COLORS.IT_sales, quarterlyTarget: DATA.sales_units.IT.target_quarterly},
+    {key:'Brands',   label:'Brands', color:COLORS.Brands,   quarterlyTarget: (DATA.sales_units && DATA.sales_units.Brands && DATA.sales_units.Brands.target_quarterly) || 0},
+    {key:'BD',       label:'BD',     color:COLORS.BD,       quarterlyTarget: (DATA.sales_units && DATA.sales_units.BD && DATA.sales_units.BD.target_quarterly) || 0},
+    {key:'IT_sales', label:'IT',     color:COLORS.IT_sales, quarterlyTarget: (DATA.sales_units && DATA.sales_units.IT && DATA.sales_units.IT.target_quarterly) || 0},
   ]);
 
   if(!TEAM_MODE){
     const hrEntities = [{key:'Group', label:'Group', color:COLORS.group, hrArr: DATA.group_monthly_hr || [], contribArr: DATA.group_monthly_contribution_pl || []}];
     SBU_ORDER.forEach(s => {
-      const d = DATA.departments[s];
+      const d = (DATA.departments && DATA.departments[s]) || {};
       if(d.hr_cost != null && d.monthly_hr && d.monthly_contribution){
         hrEntities.push({key:s, label:SBU_LABEL[s], color:COLORS[s], hrArr:d.monthly_hr, contribArr:d.monthly_contribution});
       }
@@ -2129,6 +2175,9 @@ function renderAll(){
     renderHRRatio('group_hr_ratio', hrEntities);
   }
 }
+
+window.renderAll = renderAll;
+window.destroyAllCharts = destroyAllCharts;
 
 // ===== Period filter =====
 function scopeLabel(){

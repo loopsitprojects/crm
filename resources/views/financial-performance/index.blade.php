@@ -619,21 +619,28 @@
     if (icon) icon.classList.add('fa-spin');
 
     fetch('{{ route('financial-performance.data') }}')
-      .then(r => r.json())
-      .then(newData => {
-        if (typeof destroyAllCharts === 'function') {
-          destroyAllCharts();
+      .then(r => {
+        if (!r.ok) {
+          throw new Error('Server returned HTTP ' + r.status);
         }
-        Object.assign(DATA, newData);
-        if (typeof renderAll === 'function') {
-          renderAll();
+        return r.json();
+      })
+      .then(newData => {
+        if (typeof window.destroyAllCharts === 'function') {
+          window.destroyAllCharts();
+        }
+        if (typeof newData === 'object' && newData !== null) {
+          Object.assign(window.DATA, newData);
+        }
+        if (typeof window.renderAll === 'function') {
+          window.renderAll();
         }
         if (icon) icon.classList.remove('fa-spin');
       })
       .catch(err => {
         console.error('Error refreshing financial data:', err);
         if (icon) icon.classList.remove('fa-spin');
-        alert('Failed to refresh live data from CRM.');
+        alert('Failed to refresh live data from CRM: ' + (err.message || ''));
       });
   }
 </script>
