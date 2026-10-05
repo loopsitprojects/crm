@@ -205,6 +205,35 @@ class User extends Authenticatable
         return $this->role === 'Management' || $this->hasRole('management');
     }
 
+    /**
+     * Check if user is authorized to view the Financial Performance Dashboard.
+     * Strictly restricted to IT Admin and Management roles only.
+     *
+     * @return bool
+     */
+    public function canViewFinancialPerformance(): bool
+    {
+        return $this->role === 'IT Admin' ||
+               $this->role === 'Management' ||
+               $this->hasRole('it_admin') ||
+               $this->isManagement();
+    }
+
+    /**
+     * Check if user is authorized to edit the invoice number.
+     * Strictly permitted for IT Admin and Finance Admin (including Super Admin).
+     *
+     * @return bool
+     */
+    public function canEditInvoiceNumber(): bool
+    {
+        return $this->hasRole('IT Admin') ||
+               $this->hasRole('Finance Admin') ||
+               $this->hasRole('Super Admin') ||
+               $this->role === 'IT Admin' ||
+               $this->role === 'Finance Admin';
+    }
+
     public function deals()
     {
         return $this->belongsToMany(Deal::class, 'deal_user');

@@ -287,6 +287,12 @@ Route::middleware(['auth'])->group(function () {
             Route::post('settings/webhook', [SettingController::class, 'updateWebhook'])->name('settings.webhook.update');
             Route::post('settings/webhook/test', [SettingController::class, 'testWorkflowWebhook'])->name('settings.webhook.test');
         });
+
+        // Financial Performance Dashboard (Strictly IT Admin & Management only)
+        Route::middleware(['role:IT Admin,Management'])->group(function () {
+            Route::get('financial-performance', [\App\Http\Controllers\FinancialPerformanceController::class, 'index'])->name('financial-performance.index');
+            Route::get('financial-performance/data', [\App\Http\Controllers\FinancialPerformanceController::class, 'data'])->name('financial-performance.data');
+        });
     });
 });
 

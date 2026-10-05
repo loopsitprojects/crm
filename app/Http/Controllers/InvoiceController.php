@@ -389,11 +389,11 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $user = auth()->user();
-        if (!$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management')) {
+        if (!$user->hasRole('Finance Admin') && !$user->hasRole('Super Admin') && !$user->hasRole('Management') && !$user->hasRole('IT Admin')) {
             abort(403, 'Unauthorized action.');
         }
 
-        $validated = $request->validate([
+        $validationRules = [
             'customer_id' => 'required|exists:customers,id',
             'brand_name' => 'required|string|max:255',
             'date' => 'required|date',
@@ -424,11 +424,23 @@ class InvoiceController extends Controller
             'special_terms' => 'nullable|string',
             'advance_payment' => 'nullable|string',
             'advance_percentage' => 'nullable|numeric',
-        ]);
+        ];
+
+        $canEditInvoiceNumber = $user->canEditInvoiceNumber();
+        if ($canEditInvoiceNumber && $request->filled('invoice_number')) {
+            $validationRules['invoice_number'] = [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('invoices', 'invoice_number')->ignore($invoice->id),
+            ];
+        }
+
+        $validated = $request->validate($validationRules);
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
-            $invoice->update([
+            $updateData = [
                 'customer_id' => $request->customer_id,
                 'brand_name' => $request->brand_name,
                 'date' => $request->date,
@@ -445,9 +457,8 @@ class InvoiceController extends Controller
                 'advance_payment' => $request->advance_payment,
                 'advance_percentage' => $request->advance_percentage,
                 'advance_received_amount' => $request->advance_received_amount,
-                'invoice_type' => $request->invoice_type,
+                'invoice_type' => $request->invoice_type ?? $invoice->invoice_type ?? 'tax_invoice',
                 'senior_manager' => $request->senior_manager,
-                'additional_information' => $request->additional_notes,
                 'sscl_applicable' => $request->has('sscl_applicable') ? 1 : 0,
                 'vat_applicable' => $request->has('vat_applicable') ? 1 : 0,
                 'proforma_percentage' => $request->proforma_percentage,
@@ -455,7 +466,22 @@ class InvoiceController extends Controller
                 'is_proforma' => ($request->proforma_invoice === 'yes') ? 1 : 0,
                 'date_of_delivery' => $request->date_of_delivery,
                 'place_of_supply' => $request->place_of_supply,
-            ]);
+            ];
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'additional_information')) {
+                $updateData['additional_information'] = $request->additional_notes;
+            }
+
+            if ($canEditInvoiceNumber && $request->filled('invoice_number')) {
+                $updateData['invoice_number'] = trim($request->invoice_number);
+            }
+
+            $oldInvoiceNumber = $invoice->invoice_number;
+            $invoice->update($updateData);
+
+            if ($invoice->wasChanged('invoice_number')) {
+                $this->logAction("Updated invoice number from {$oldInvoiceNumber} to {$invoice->invoice_number}", $invoice);
+            }
 
             // Sync items
             $invoice->items()->delete();

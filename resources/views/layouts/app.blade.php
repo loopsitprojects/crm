@@ -174,6 +174,14 @@
                         <span>Reports</span>
                     </a>
 
+                    @if(auth()->check() && auth()->user()->canViewFinancialPerformance())
+                        <a href="{{ route('financial-performance.index') }}"
+                            class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('financial-performance.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
+                            <i class="fas fa-chart-pie w-6"></i>
+                            <span>Financial Performance</span>
+                        </a>
+                    @endif
+
                     @if(auth()->check() && auth()->user()->hasAdminPrivileges())
                         <a href="{{ route('users.index') }}"
                             class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->is('users*') ? 'bg-gray-700 text-brand-pink' : '' }}">
@@ -290,6 +298,14 @@
                         <i class="fas fa-chart-bar w-6"></i>
                         <span>Reports</span>
                     </a>
+
+                    @if(auth()->check() && auth()->user()->canViewFinancialPerformance())
+                        <a href="{{ route('financial-performance.index') }}"
+                            class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition {{ request()->routeIs('financial-performance.*') ? 'bg-gray-700 text-brand-pink font-semibold' : '' }}">
+                            <i class="fas fa-chart-pie w-6"></i>
+                            <span>Financial Performance</span>
+                        </a>
+                    @endif
 
                     @if(auth()->check() && auth()->user()->hasAdminPrivileges())
                         <a href="{{ route('users.index') }}"

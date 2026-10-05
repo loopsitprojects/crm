@@ -40,6 +40,11 @@
             <i class="fas fa-edit text-brand-pink"></i> 
             Edit Invoice
             <span class="text-gray-400 text-sm font-normal ml-2">#{{ $invoice->invoice_number }}</span>
+            @if(auth()->check() && auth()->user()->canEditInvoiceNumber())
+                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-brand-purple">
+                    <i class="fas fa-pen mr-1 text-[10px]"></i> Number Editable
+                </span>
+            @endif
         </h2>
         <a href="{{ route('invoices.index') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
             Cancel
@@ -400,6 +405,45 @@
                             <i class="fas fa-info-circle text-gray-400"></i>
                         </div>
                         <div class="p-6 space-y-5">
+                            <!-- Invoice Number -->
+                            @if(auth()->check() && auth()->user()->canEditInvoiceNumber())
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase">
+                                            Invoice Number <span class="text-red-500">*</span>
+                                        </label>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-brand-purple/10 text-brand-purple border border-brand-purple/20">
+                                            <i class="fas fa-shield-alt mr-1 text-[9px]"></i> IT &amp; Finance Admin Only
+                                        </span>
+                                    </div>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-file-invoice text-brand-pink text-xs"></i>
+                                        </div>
+                                        <input type="text" name="invoice_number" id="invoice_number_input"
+                                            value="{{ old('invoice_number', $invoice->invoice_number) }}" required data-required="true"
+                                            class="w-full pl-8 rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue text-sm py-2 font-mono font-bold text-gray-900 shadow-sm"
+                                            placeholder="E.g. 26SEP_LDSL_00233">
+                                    </div>
+                                    @error('invoice_number')
+                                        <p class="text-red-500 text-xs mt-1 font-semibold">{{ $message }}</p>
+                                    @enderror
+                                    <p class="text-[11px] text-gray-400 mt-1">Authorized for IT Admin and Finance Admin.</p>
+                                </div>
+                            @else
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Invoice Number</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <i class="fas fa-file-invoice text-gray-300 text-xs"></i>
+                                        </div>
+                                        <input type="text" value="{{ $invoice->invoice_number }}" readonly
+                                            class="w-full pl-8 bg-gray-50 rounded-md border-gray-200 text-gray-500 text-sm py-2 font-mono font-bold cursor-not-allowed"
+                                            title="Fixed invoice number">
+                                    </div>
+                                </div>
+                            @endif
+
                             <!-- Reference Number -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Estimate Number</label>
