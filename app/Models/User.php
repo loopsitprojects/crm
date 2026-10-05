@@ -206,17 +206,40 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if user is an IT Admin.
+     *
+     * @return bool
+     */
+    public function isITAdmin(): bool
+    {
+        $role = str_replace('_', ' ', strtolower(trim($this->role ?? '')));
+        return $role === 'it admin';
+    }
+
+    /**
      * Check if user is authorized to view the Financial Performance Dashboard.
-     * Strictly restricted to IT Admin and Management roles only.
+     * Controlled by IT Admin settings for Finance Admin and Management roles.
+     * IT Admin always has access.
      *
      * @return bool
      */
     public function canViewFinancialPerformance(): bool
     {
-        return $this->role === 'IT Admin' ||
-               $this->role === 'Management' ||
-               $this->hasRole('it_admin') ||
-               $this->isManagement();
+        if ($this->isITAdmin()) {
+            return true;
+        }
+
+        if ($this->isFinanceAdmin()) {
+            $val = Setting::get('financial_performance_finance_admin_enabled', false);
+            return filter_var($val, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if ($this->isManagement()) {
+            $val = Setting::get('financial_performance_management_enabled', true);
+            return filter_var($val, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return false;
     }
 
     /**

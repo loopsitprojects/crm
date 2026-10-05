@@ -86,7 +86,76 @@ class FinancialPerformanceAccessTest extends TestCase
 
     public function test_finance_admin_is_strictly_blocked(): void
     {
+        // By default, setting is false
         $response = $this->actingAs($this->financeAdmin)->get(route('financial-performance.index'));
+        $response->assertForbidden();
+    }
+
+    public function test_finance_admin_can_access_when_enabled_by_it_admin(): void
+    {
+        \App\Models\Setting::set('financial_performance_finance_admin_enabled', '1', 'permissions');
+
+        $response = $this->actingAs($this->financeAdmin)->get(route('financial-performance.index'));
+        $response->assertOk();
+        $response->assertSee('Financial Performance');
+
+        // Sidebar link becomes visible
+        $this->actingAs($this->financeAdmin)
+            ->get(route('dashboard'))
+            ->assertSee(route('financial-performance.index'));
+
+        // API data endpoint also becomes accessible
+        $this->actingAs($this->financeAdmin)
+            ->getJson(route('financial-performance.data'))
+            ->assertOk();
+    }
+
+    public function test_management_can_be_disabled_by_it_admin(): void
+    {
+        // Allowed by default
+        $this->actingAs($this->management)
+            ->get(route('financial-performance.index'))
+            ->assertOk();
+
+        // IT Admin disables Management access
+        \App\Models\Setting::set('financial_performance_management_enabled', '0', 'permissions');
+
+        // Management is now blocked
+        $this->actingAs($this->management)
+            ->get(route('financial-performance.index'))
+            ->assertForbidden();
+
+        // Sidebar link disappears
+        $this->actingAs($this->management)
+            ->get(route('dashboard'))
+            ->assertDontSee(route('financial-performance.index'));
+
+        // API data endpoint is blocked
+        $this->actingAs($this->management)
+            ->getJson(route('financial-performance.data'))
+            ->assertForbidden();
+    }
+
+    public function test_it_admin_can_update_financial_performance_settings_via_post(): void
+    {
+        $response = $this->actingAs($this->itAdmin)->post(route('settings.updateFinancialPerformancePermissions'), [
+            'financial_performance_finance_admin_enabled' => '1',
+            'financial_performance_management_enabled' => '1',
+        ]);
+
+        $response->assertRedirect(route('settings.index', ['section' => 'financial-performance-settings']));
+        $response->assertSessionHas('success');
+
+        $this->assertTrue(filter_var(\App\Models\Setting::get('financial_performance_finance_admin_enabled'), FILTER_VALIDATE_BOOLEAN));
+        $this->assertTrue(filter_var(\App\Models\Setting::get('financial_performance_management_enabled'), FILTER_VALIDATE_BOOLEAN));
+    }
+
+    public function test_finance_admin_cannot_update_financial_performance_settings(): void
+    {
+        $response = $this->actingAs($this->financeAdmin)->post(route('settings.updateFinancialPerformancePermissions'), [
+            'financial_performance_finance_admin_enabled' => '1',
+        ]);
+
         $response->assertForbidden();
     }
 
@@ -108,7 +177,7 @@ class FinancialPerformanceAccessTest extends TestCase
 
     public function test_api_data_endpoint_permissions(): void
     {
-        // Blocked for Finance Admin
+        // Blocked for Finance Admin by default
         $this->actingAs($this->financeAdmin)
             ->getJson(route('financial-performance.data'))
             ->assertForbidden();
@@ -188,5 +257,30 @@ class FinancialPerformanceAccessTest extends TestCase
         $this->assertArrayHasKey('DM', $fallback['departments']);
         $this->assertArrayHasKey('Creative', $fallback['departments']);
         $this->assertArrayHasKey('IT', $fallback['departments']);
+    }
+
+    public function test_settings_page_shows_financial_performance_section_only_to_it_admin(): void
+    {
+        // IT Admin sees Financial Performance settings section and button
+        $this->actingAs($this->itAdmin)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertSee('btn-financial-performance-settings')
+            ->assertSee('section-financial-performance-settings')
+            ->assertSee('Financial Performance Dashboard Visibility');
+
+        // Finance Admin does NOT see it
+        $this->actingAs($this->financeAdmin)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertDontSee('btn-financial-performance-settings')
+            ->assertDontSee('section-financial-performance-settings');
+
+        // Management does NOT see it
+        $this->actingAs($this->management)
+            ->get(route('settings.index'))
+            ->assertOk()
+            ->assertDontSee('btn-financial-performance-settings')
+            ->assertDontSee('section-financial-performance-settings');
     }
 }

@@ -311,7 +311,7 @@
   <div class="fp-top-actions">
     <div class="status-badge">
       <span class="status-dot"></span>
-      <span><strong>Live CRM Connected</strong> &bull; Executive Financial Performance &bull; Restricted to IT Admin &amp; Management</span>
+      <span><strong>Live CRM Connected</strong> &bull; Executive Financial Performance &bull; Authorized Leadership Access</span>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button type="button" class="fp-action-btn" id="btnRefreshLive" onclick="refreshLiveDashboard()">
