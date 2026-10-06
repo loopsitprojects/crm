@@ -1,4 +1,4 @@
-var staticCacheName = "pwa-v3";
+var staticCacheName = "pwa-v4";
 var filesToCache = [
     '/login',
     '/favicon.png',

@@ -35,7 +35,7 @@ Route::get('manifest.json', function () {
         'scope' => url('/'),
         'display' => 'standalone',
         'orientation' => 'any',
-        'background_color' => '#ffffff',
+        'background_color' => '#8035ca',
         'theme_color' => '#8035ca',
         'prefer_related_applications' => false,
         'icons' => [
@@ -118,31 +118,34 @@ JS;
 // Dynamic Square PWA Icon Route
 Route::get('images/pwa-icon-{size}.png', function ($size) {
     $size = in_array((int)$size, [192, 512]) ? (int)$size : 192;
-    $logoPath = public_path('images/logo_loops.png');
+    $logoPath = public_path('images/logo_loops_light.png');
     if (!file_exists($logoPath)) {
         return response('', 404);
     }
     
     $src = imagecreatefrompng($logoPath);
-    $srcW = imagesx($src);
-    $srcH = imagesy($src);
+    // Non-transparent bounding box in logo_loops_light.png: x: 32..967 (936w), y: 48..451 (404h)
+    $cropX = 32;
+    $cropY = 48;
+    $cropW = 936;
+    $cropH = 404;
 
     $dst = imagecreatetruecolor($size, $size);
-    imagealphablending($dst, false);
-    imagesavealpha($dst, true);
-    $transparent = imagecolorallocatealpha($dst, 255, 255, 255, 127);
-    imagefill($dst, 0, 0, $transparent);
+    // Brand purple #8035ca
+    $purple = imagecolorallocate($dst, 128, 53, 202);
+    imagefill($dst, 0, 0, $purple);
 
-    $ratio = min(($size - 30) / $srcW, ($size - 30) / $srcH);
-    $newW = (int)($srcW * $ratio);
-    $newH = (int)($srcH * $ratio);
-    $posX = (int)(($size - $newW) / 2);
-    $posY = (int)(($size - $newH) / 2);
+    // Safe zone width is ~70% of canvas size (360px for 512, 135px for 192)
+    $targetW = (int)round($size * (360 / 512));
+    $targetH = (int)round($cropH * ($targetW / $cropW));
+    $posX = (int)round(($size - $targetW) / 2);
+    $posY = (int)round(($size - $targetH) / 2);
 
-    imagecopyresampled($dst, $src, $posX, $posY, 0, 0, $newW, $newH, $srcW, $srcH);
+    imagealphablending($dst, true);
+    imagecopyresampled($dst, $src, $posX, $posY, $cropX, $cropY, $targetW, $targetH, $cropW, $cropH);
 
     ob_start();
-    imagepng($dst);
+    imagepng($dst, null, 9);
     $imageData = ob_get_clean();
 
     return response($imageData, 200)
