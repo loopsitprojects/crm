@@ -11,6 +11,7 @@
             'Management' => 'Management',
             'HOD' => 'HOD',
             'Manager' => 'Manager',
+            'HR Admin' => 'HR Admin',
             'Staff' => 'Staff',
         ];
     @endphp
@@ -220,6 +221,7 @@
                                         {{ $user->role === 'Management' ? 'bg-blue-100 text-blue-800' : '' }}
                                         {{ $user->role === 'HOD' ? 'bg-green-100 text-green-800' : '' }}
                                         {{ $user->role === 'Manager' ? 'bg-gray-100 text-gray-800' : '' }}
+                                        {{ $user->role === 'HR Admin' ? 'bg-teal-100 text-teal-800' : '' }}
                                         {{ $user->role === 'Staff' ? 'bg-amber-100 text-amber-800' : '' }}">
                                     {{ $displayRole }}
                                 </span>

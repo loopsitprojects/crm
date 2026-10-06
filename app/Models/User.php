@@ -18,6 +18,7 @@ class User extends Authenticatable
         'Management',
         'HOD',
         'Manager',
+        'HR Admin',
         'Staff',
     ];
 
@@ -214,6 +215,16 @@ class User extends Authenticatable
     {
         $role = str_replace('_', ' ', strtolower(trim($this->role ?? '')));
         return $role === 'it admin';
+    }
+
+    /**
+     * Check if user is an HR Admin.
+     *
+     * @return bool
+     */
+    public function isHRAdmin(): bool
+    {
+        return $this->role === 'HR Admin' || $this->hasRole('hr_admin') || $this->hasRole('hr admin');
     }
 
     /**

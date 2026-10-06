@@ -35,11 +35,24 @@ class PettyCashController extends Controller
                       });
                 });
             } else {
-                $query->where('hod_id', $user->id)->whereIn('status', ['pending_hod', 'pending_settlement_hod']);
+                $query->where(function ($q) use ($user) {
+                    $q->where('hod_id', $user->id)
+                      ->orWhereHas('user', function ($u) use ($user) {
+                          $u->where('supervisor_id', $user->id);
+                      });
+                })->whereIn('status', ['pending_hod', 'pending_settlement_hod']);
             }
         } elseif ($scope === 'all_team') {
             if ($user->role === 'Staff') {
                 $query->where('user_id', $user->id);
+            } elseif ($user->role === 'HR Admin') {
+                $query->where(function ($q) use ($user) {
+                    $q->where('hod_id', $user->id)
+                      ->orWhereHas('user', function ($u) use ($user) {
+                          $u->where('supervisor_id', $user->id);
+                      })
+                      ->orWhere('user_id', $user->id);
+                });
             } elseif ($user->role === 'HOD') {
                 $query->where(function ($q) use ($user) {
                     $q->where('hod_id', $user->id)
@@ -71,7 +84,12 @@ class PettyCashController extends Controller
                   });
             })->count();
         } else {
-            $pendingApprovalsCount = PettyCashRequest::where('hod_id', $user->id)->whereIn('status', ['pending_hod', 'pending_settlement_hod'])->count();
+            $pendingApprovalsCount = PettyCashRequest::where(function ($q) use ($user) {
+                $q->where('hod_id', $user->id)
+                  ->orWhereHas('user', function ($u) use ($user) {
+                      $u->where('supervisor_id', $user->id);
+                  });
+            })->whereIn('status', ['pending_hod', 'pending_settlement_hod'])->count();
         }
 
         // Data for modals / dropdowns
@@ -121,6 +139,9 @@ class PettyCashController extends Controller
 
         $isIou = $request->boolean('is_iou');
         $isRequesterHod = ($user->role === 'HOD' || $user->hasRole('HOD'));
+        if ($user->role === 'HR Admin' && !$user->associated_hod && !$request->filled('hod_id')) {
+            $isRequesterHod = true;
+        }
 
         $request->validate([
             'hod_id' => $isRequesterHod ? 'nullable|exists:users,id' : 'nullable|exists:users,id',
@@ -145,6 +166,10 @@ class PettyCashController extends Controller
         }
         if (!$resolvedHod && $user->associated_hod && (int)$user->associated_hod->id !== (int)$user->id) {
             $resolvedHod = $user->associated_hod;
+        }
+
+        if ($user->role === 'HR Admin' && !$resolvedHod) {
+            $isRequesterHod = true;
         }
 
         if ($isRequesterHod) {
@@ -269,8 +294,9 @@ class PettyCashController extends Controller
     {
         $user = auth()->user();
 
-        // Ensure user is assigned HOD or Finance Admin
-        if ($user->id !== $pettyCash->hod_id && !$user->isFinanceAdmin()) {
+        // Ensure user is assigned HOD, requester's supervisor, or Finance Admin
+        $isAssignedHod = $user->id === $pettyCash->hod_id || ($pettyCash->user && $pettyCash->user->supervisor_id === $user->id);
+        if (!$isAssignedHod && !$user->isFinanceAdmin()) {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
@@ -318,7 +344,8 @@ class PettyCashController extends Controller
     {
         $user = auth()->user();
 
-        if ($user->id !== $pettyCash->hod_id && !$user->isFinanceAdmin()) {
+        $isAssignedHod = $user->id === $pettyCash->hod_id || ($pettyCash->user && $pettyCash->user->supervisor_id === $user->id);
+        if (!$isAssignedHod && !$user->isFinanceAdmin()) {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
@@ -429,7 +456,8 @@ class PettyCashController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user->hasAdminPrivileges() && $user->id !== $pettyCash->hod_id) {
+        $isAssignedHod = $user->id === $pettyCash->hod_id || ($pettyCash->user && $pettyCash->user->supervisor_id === $user->id);
+        if (!$user->hasAdminPrivileges() && !$isAssignedHod) {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 
@@ -731,8 +759,9 @@ class PettyCashController extends Controller
     {
         $user = auth()->user();
 
+        $isAssignedHod = $user->id === $pettyCash->hod_id || ($pettyCash->user && $pettyCash->user->supervisor_id === $user->id);
         // Staff or HOD or Admin can re-appeal
-        if ($user->id !== $pettyCash->user_id && $user->id !== $pettyCash->hod_id && !$user->hasAdminPrivileges()) {
+        if ($user->id !== $pettyCash->user_id && !$isAssignedHod && !$user->hasAdminPrivileges()) {
             return redirect()->back()->with('error', 'Unauthorized action.');
         }
 

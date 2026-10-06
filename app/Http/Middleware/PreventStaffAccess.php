@@ -17,7 +17,7 @@ class PreventStaffAccess
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && auth()->user()->role === 'Staff') {
+        if (auth()->check() && in_array(auth()->user()->role, ['Staff', 'HR Admin'])) {
             return redirect()->route('dashboard')->with('error', 'Access restricted. Staff members have access to the staff dashboard only.');
         }
 

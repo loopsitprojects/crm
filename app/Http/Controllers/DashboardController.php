@@ -40,7 +40,7 @@ class DashboardController extends Controller
         $userRole = $user->role;
         $userDept = $user->department;
 
-        if ($userRole === 'Staff') {
+        if ($userRole === 'Staff' || $userRole === 'HR Admin') {
             $pettyCashes = \App\Models\PettyCashRequest::with(['hod', 'items.category', 'proofs'])
                 ->where('user_id', $user->id)
                 ->orderBy('created_at', 'desc')
@@ -68,6 +68,16 @@ class DashboardController extends Controller
                     return [$deal->job_number => $label];
                 });
 
+            $teamPendingApprovalsCount = 0;
+            if ($userRole === 'HR Admin') {
+                $teamPendingApprovalsCount = \App\Models\PettyCashRequest::where(function ($q) use ($user) {
+                    $q->where('hod_id', $user->id)
+                      ->orWhereHas('user', function ($u) use ($user) {
+                          $u->where('supervisor_id', $user->id);
+                      });
+                })->whereIn('status', ['pending_hod', 'pending_settlement_hod'])->count();
+            }
+
             return view('dashboard.staff', [
                 'user' => $user,
                 'hodName' => $user->hod_name,
@@ -75,6 +85,7 @@ class DashboardController extends Controller
                 'expenseCategories' => $expenseCategories,
                 'hods' => $hods,
                 'jobs' => $jobs,
+                'teamPendingApprovalsCount' => $teamPendingApprovalsCount,
             ]);
         }
 

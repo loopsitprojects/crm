@@ -143,7 +143,7 @@
                     <span>Petty Cash</span>
                 </a>
 
-                @if(auth()->check() && auth()->user()->role !== 'Staff')
+                @if(auth()->check() && !in_array(auth()->user()->role, ['Staff', 'HR Admin']))
                     <a href="{{ route('customers.index') }}"
                         class="flex items-center px-4 py-3 rounded-md hover:bg-gray-700 transition {{ request()->routeIs('customers.*') ? 'bg-gray-700 text-brand-pink' : '' }}">
                         <i class="fas fa-users w-6"></i>
@@ -268,7 +268,7 @@
                     <span>Petty Cash</span>
                 </a>
 
-                @if(auth()->check() && auth()->user()->role !== 'Staff')
+                @if(auth()->check() && !in_array(auth()->user()->role, ['Staff', 'HR Admin']))
                     <a href="{{ route('customers.index') }}"
                         class="flex items-center px-4 py-3 rounded-lg hover:bg-gray-700 transition {{ request()->routeIs('customers.*') ? 'bg-gray-700 text-brand-pink font-semibold' : '' }}">
                         <i class="fas fa-users w-6"></i>

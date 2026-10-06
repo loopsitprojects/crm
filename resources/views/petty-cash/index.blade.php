@@ -137,7 +137,7 @@
            class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all {{ $scope === 'my_requests' ? 'bg-brand-pink text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-user-circle mr-1.5"></i> My Requests ({{ $myRequestsCount }})
         </a>
-        @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD' || $pendingApprovalsCount > 0)
+        @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD' || auth()->user()->role === 'HR Admin' || $pendingApprovalsCount > 0)
             <a href="{{ route('petty-cash.index', ['scope' => 'approvals']) }}"
                class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all relative {{ $scope === 'approvals' ? 'bg-brand-purple text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
                 <i class="fas fa-check-double mr-1.5"></i> Pending Approvals
@@ -148,7 +148,7 @@
                 @endif
             </a>
         @endif
-        @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD')
+        @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD' || auth()->user()->role === 'HR Admin')
             <a href="{{ route('petty-cash.index', ['scope' => 'all_team']) }}"
                class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all {{ $scope === 'all_team' ? 'bg-brand-blue text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
                 <i class="fas fa-users-cog mr-1.5"></i> All Team Requests
@@ -304,7 +304,10 @@
                                         </button>
                                     @endif
 
-                                    @if(in_array($pc->status, ['pending_hod', 'pending_settlement_hod']) && (auth()->user()->id === $pc->hod_id || auth()->user()->isFinanceAdmin()))
+                                    @php
+                                        $isAssignedHodForRequest = (auth()->user()->id === $pc->hod_id || ($pc->user && $pc->user->supervisor_id === auth()->user()->id));
+                                    @endphp
+                                    @if(in_array($pc->status, ['pending_hod', 'pending_settlement_hod']) && ($isAssignedHodForRequest || auth()->user()->isFinanceAdmin()))
                                         <form action="{{ route('petty-cash.hodApprove', $pc) }}" method="POST" class="inline-block">
                                             @csrf
                                             <button type="submit" class="px-2.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors inline-flex items-center whitespace-nowrap" title="{{ $pc->status === 'pending_settlement_hod' ? 'Approve Exceeded Settlement and Forward to Finance' : 'Accept Request' }}">
@@ -364,7 +367,7 @@
                                         </form>
                                     @endif
 
-                                    @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']) && (auth()->id() === $pc->user_id || auth()->id() === $pc->hod_id || auth()->user()->hasAdminPrivileges()))
+                                    @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']) && (auth()->id() === $pc->user_id || auth()->id() === $pc->hod_id || ($pc->user && $pc->user->supervisor_id === auth()->id()) || auth()->user()->hasAdminPrivileges()))
                                         <button onclick="openReappealModal({{ $pc->id }})"
                                             class="px-2.5 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors inline-flex items-center whitespace-nowrap">
                                             <i class="fas fa-redo mr-1"></i> Re-appeal
@@ -509,7 +512,10 @@
                             </button>
                         @endif
 
-                        @if(in_array($pc->status, ['pending_hod', 'pending_settlement_hod']) && (auth()->user()->id === $pc->hod_id || auth()->user()->isFinanceAdmin()))
+                        @php
+                            $isAssignedHodForRequestMob = (auth()->user()->id === $pc->hod_id || ($pc->user && $pc->user->supervisor_id === auth()->user()->id));
+                        @endphp
+                        @if(in_array($pc->status, ['pending_hod', 'pending_settlement_hod']) && ($isAssignedHodForRequestMob || auth()->user()->isFinanceAdmin()))
                             <form action="{{ route('petty-cash.hodApprove', $pc) }}" method="POST" class="inline-block">
                                 @csrf
                                 <button type="submit" class="px-2.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition-colors inline-flex items-center" title="{{ $pc->status === 'pending_settlement_hod' ? 'Approve Exceeded Settlement and Forward to Finance' : 'Accept Request' }}">
@@ -569,7 +575,7 @@
                             </form>
                         @endif
 
-                        @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']) && (auth()->id() === $pc->user_id || auth()->id() === $pc->hod_id || auth()->user()->hasAdminPrivileges()))
+                        @if(in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management']) && (auth()->id() === $pc->user_id || auth()->id() === $pc->hod_id || ($pc->user && $pc->user->supervisor_id === auth()->id()) || auth()->user()->hasAdminPrivileges()))
                             <button onclick="openReappealModal({{ $pc->id }})"
                                 class="px-2.5 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors">
                                 <i class="fas fa-redo mr-1"></i> Re-appeal
@@ -604,7 +610,7 @@
                 <div>
                     @php
                         $authAssignedHod = auth()->user()->associated_hod;
-                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'));
+                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD') || (auth()->user()->role === 'HR Admin' && !$authAssignedHod));
                         $authHodDisplayName = $authAssignedHod 
                             ? ($authAssignedHod->name . ' (' . $authAssignedHod->role . ($authAssignedHod->department ? ' - ' . $authAssignedHod->department : '') . ')')
                             : 'Not Assigned';
@@ -777,7 +783,7 @@
                 </button>
                 <button type="submit" id="newPettyCashSubmitBtn"
                     class="px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md flex items-center gap-1.5">
-                    <span>{{ (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD')) ? 'Submit to Finance' : 'Submit to HOD' }}</span>
+                    <span>{{ ((auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD') || (auth()->user()->role === 'HR Admin' && !$authAssignedHod))) ? 'Submit to Finance' : 'Submit to HOD' }}</span>
                 </button>
             </div>
         </form>
@@ -1164,7 +1170,7 @@
                 <div>
                     @php
                         $authAssignedHod = auth()->user()->associated_hod;
-                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD'));
+                        $isHodUser = (auth()->user()->role === 'HOD' || auth()->user()->hasRole('HOD') || (auth()->user()->role === 'HR Admin' && !$authAssignedHod));
                         $authHodDisplayName = $authAssignedHod 
                             ? ($authAssignedHod->name . ' (' . $authAssignedHod->role . ($authAssignedHod->department ? ' - ' . $authAssignedHod->department : '') . ')')
                             : 'Not Assigned';
@@ -1719,7 +1725,7 @@
             if (proofNotice) proofNotice.classList.remove('hidden');
             if (sectionLabel) sectionLabel.textContent = 'IOU Advance Amount & Details *';
             if (submitBtn) {
-                const submitTarget = '{{ (auth()->user()->role === "HOD" || auth()->user()->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                const submitTarget = '{{ ((auth()->user()->role === "HOD" || auth()->user()->hasRole("HOD") || (auth()->user()->role === "HR Admin" && !$authAssignedHod))) ? "Finance" : "HOD" }}';
                 submitBtn.innerHTML = `<i class="fas fa-hand-holding-usd mr-1.5"></i> Submit IOU to ${submitTarget}`;
                 submitBtn.className = 'px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-lg hover:opacity-90 shadow-md flex items-center gap-1.5';
             }
@@ -1742,7 +1748,7 @@
             if (proofNotice) proofNotice.classList.add('hidden');
             if (sectionLabel) sectionLabel.textContent = 'Expense Line Items *';
             if (submitBtn) {
-                const submitTarget = '{{ (auth()->user()->role === "HOD" || auth()->user()->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                const submitTarget = '{{ ((auth()->user()->role === "HOD" || auth()->user()->hasRole("HOD") || (auth()->user()->role === "HR Admin" && !$authAssignedHod))) ? "Finance" : "HOD" }}';
                 submitBtn.innerHTML = `<span>Submit to ${submitTarget}</span>`;
                 submitBtn.className = 'px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md flex items-center gap-1.5';
             }

@@ -60,20 +60,35 @@
                  class="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white/30 shadow-lg object-cover flex-shrink-0">
             <div>
                 <span class="inline-block px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-2 text-white">
-                    <i class="fas fa-user-tag mr-1"></i> Staff Member
+                    <i class="fas fa-user-tag mr-1"></i> {{ $user->role === 'HR Admin' ? 'HR Admin' : 'Staff Member' }}
                 </span>
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight sm:text-4xl">
                     Welcome, {{ $user->name }}
                 </h1>
                 <p class="text-white/80 text-xs sm:text-sm mt-1">
-                    Staff Portal & Department Information
+                    {{ $user->role === 'HR Admin' ? 'HR Portal & Department Information' : 'Staff Portal & Department Information' }}
                 </p>
             </div>
         </div>
         <!-- Petty Cash Action Button -->
-        <div class="relative z-10">
+        <div class="relative z-10 flex flex-col sm:flex-row gap-2.5">
+            @if($user->role === 'HR Admin')
+                <a href="{{ route('petty-cash.index', ['scope' => 'approvals']) }}"
+                    class="w-full sm:w-auto px-5 py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl shadow-md border border-white/30 transition-all flex items-center justify-center">
+                    <i class="fas fa-check-double mr-2 text-emerald-300 text-base"></i> Team Approvals
+                    @if(!empty($teamPendingApprovalsCount) && $teamPendingApprovalsCount > 0)
+                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-red-500 text-white">
+                            {{ $teamPendingApprovalsCount }}
+                        </span>
+                    @endif
+                </a>
+                <a href="{{ route('petty-cash.index', ['scope' => 'all_team']) }}"
+                    class="w-full sm:w-auto px-5 py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl shadow-md border border-white/30 transition-all flex items-center justify-center">
+                    <i class="fas fa-users-cog mr-2 text-cyan-200 text-base"></i> Team Requests
+                </a>
+            @endif
             <button onclick="handleNewRequestClick(event)"
-                class="w-full md:w-auto px-6 py-3 bg-white text-brand-purple hover:bg-gray-50 font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center">
+                class="w-full sm:w-auto px-6 py-3 bg-white text-brand-purple hover:bg-gray-50 font-bold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center">
                 <i class="fas fa-wallet mr-2 text-brand-pink text-lg"></i> Petty Cash Request
             </button>
         </div>
@@ -444,7 +459,7 @@
                 <div>
                     @php
                         $assignedHodUser = $user->associated_hod;
-                        $isHodUser = ($user->role === 'HOD' || $user->hasRole('HOD'));
+                        $isHodUser = ($user->role === 'HOD' || $user->hasRole('HOD') || ($user->role === 'HR Admin' && !$assignedHodUser));
                         $hodDisplayName = $assignedHodUser 
                             ? ($assignedHodUser->name . ' (' . $assignedHodUser->role . ($assignedHodUser->department ? ' - ' . $assignedHodUser->department : '') . ')')
                             : 'Not Assigned';
@@ -617,7 +632,7 @@
                 </button>
                 <button type="submit" id="staffNewPettyCashSubmitBtn"
                     class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5">
-                    <span>{{ ($user->role === 'HOD' || $user->hasRole('HOD')) ? 'Submit to Finance' : 'Submit to HOD' }}</span>
+                    <span>{{ (($user->role === 'HOD' || $user->hasRole('HOD') || ($user->role === 'HR Admin' && !$assignedHodUser))) ? 'Submit to Finance' : 'Submit to HOD' }}</span>
                 </button>
             </div>
         </form>
@@ -664,7 +679,7 @@
                 <div>
                     @php
                         $assignedHodUser = $user->associated_hod;
-                        $isHodUser = ($user->role === 'HOD' || $user->hasRole('HOD'));
+                        $isHodUser = ($user->role === 'HOD' || $user->hasRole('HOD') || ($user->role === 'HR Admin' && !$assignedHodUser));
                         $hodDisplayName = $assignedHodUser 
                             ? ($assignedHodUser->name . ' (' . $assignedHodUser->role . ($assignedHodUser->department ? ' - ' . $assignedHodUser->department : '') . ')')
                             : 'Not Assigned';
@@ -943,7 +958,7 @@
             if (proofNotice) proofNotice.classList.remove('hidden');
             if (sectionLabel) sectionLabel.textContent = 'IOU Advance Amount & Details *';
             if (submitBtn) {
-                const submitTarget = '{{ ($user->role === "HOD" || $user->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                const submitTarget = '{{ (($user->role === "HOD" || $user->hasRole("HOD") || ($user->role === "HR Admin" && !$assignedHodUser))) ? "Finance" : "HOD" }}';
                 submitBtn.innerHTML = `<i class="fas fa-hand-holding-usd mr-1.5"></i> Submit IOU to ${submitTarget}`;
                 submitBtn.className = 'w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5';
             }
@@ -969,7 +984,7 @@
             if (proofNotice) proofNotice.classList.add('hidden');
             if (sectionLabel) sectionLabel.textContent = 'Expense Line Items *';
             if (submitBtn) {
-                const submitTarget = '{{ ($user->role === "HOD" || $user->hasRole("HOD")) ? "Finance" : "HOD" }}';
+                const submitTarget = '{{ (($user->role === "HOD" || $user->hasRole("HOD") || ($user->role === "HR Admin" && !$assignedHodUser))) ? "Finance" : "HOD" }}';
                 submitBtn.innerHTML = `<span>Submit to ${submitTarget}</span>`;
                 submitBtn.className = 'w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-brand-pink to-brand-purple text-white font-medium rounded-lg hover:opacity-90 shadow-md text-sm flex items-center justify-center gap-1.5';
             }
