@@ -174,6 +174,10 @@
            class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_super_admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100' }}">
             Pending Finance Approval
         </a>
+        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_settlement']) }}" 
+           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_settlement' ? 'bg-brand-purple text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
+            Settlement Pending
+        </a>
         <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_management']) }}" 
            class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_management' ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
             Pending Management
