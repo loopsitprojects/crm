@@ -135,6 +135,7 @@ class PettyCashVoucherMail extends Mailable
                 : ($isRequester
                     ? "HOD Approved Your Exceeded IOU Settlement: {$ref} (Sent to Finance)"
                     : "Exceeded IOU Settlement Approved: {$ref} (Sent to Finance)"),
+            'notify_sign_voucher' => "Action Required: Please visit Finance to sign Voucher for {$typeStr} {$ref}",
             default => "Update on {$typeStr} {$ref}",
         };
 
@@ -207,6 +208,7 @@ class PettyCashVoucherMail extends Mailable
                 : ($isRequester
                     ? "Your exceeded IOU settlement for {$ref} has been APPROVED by your Head of Department ({$approverName}) and forwarded to Finance for final approval."
                     : "You have approved the exceeded IOU settlement for {$ref} ({$requesterName}). It has been forwarded to Finance for final approval."),
+            'notify_sign_voucher' => "Please visit the Finance Department to physically or digitally sign the voucher for your {$typeStr} {$ref} ({$amountStr})." . ($isIou ? " Kindly bring any relevant expenditure receipts or documentation if you are settling an IOU." : ""),
             default => "{$typeStr} {$ref} was updated.",
         };
 

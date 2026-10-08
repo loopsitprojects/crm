@@ -211,6 +211,11 @@ class PettyCashNotification extends Notification
         $requesterId = $pettyCash->user_id;
         $requesterEmail = strtolower($pettyCash->user->email ?? '');
 
+        // 0. Notification to sign voucher is exclusively for the requester
+        if ($this->action === 'notify_sign_voucher') {
+            return ($notifiableId && $notifiableId == $requesterId) || ($notifiableEmail && $requesterEmail && $notifiableEmail === $requesterEmail);
+        }
+
         // 1. Requester always receives emails for their own requests
         if (($notifiableId && $notifiableId == $requesterId) || ($notifiableEmail && $requesterEmail && $notifiableEmail === $requesterEmail)) {
             return true;
@@ -339,6 +344,9 @@ class PettyCashNotification extends Notification
                 break;
             case 'iou_settlement_hod_approved':
                 $message = "Exceeded IOU settlement {$ref} was APPROVED by HOD and awaits Finance approval.";
+                break;
+            case 'notify_sign_voucher':
+                $message = "Please visit the Finance Department to sign the voucher for {$ref}.";
                 break;
             default:
                 $message = "Petty Cash request {$ref} was updated.";

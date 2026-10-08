@@ -472,6 +472,31 @@ class PettyCashController extends Controller
         return redirect()->back()->with('success', 'Reminder email to settle the IOU has been sent to ' . ($pettyCash->user->name ?? 'Staff') . '.');
     }
 
+    /**
+     * Send email notification to requester to visit Finance to sign the petty cash voucher.
+     */
+    public function notifySignVoucher(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin or Management can perform this action.');
+        }
+
+        $requestedUser = User::find($pettyCash->user_id);
+        if (!$requestedUser) {
+            return redirect()->back()->with('error', 'Requesting staff user not found.');
+        }
+
+        $requestedUser->notify(new PettyCashNotification($pettyCash, 'notify_sign_voucher', $user));
+
+        $msg = 'Notification email sent to ' . ($requestedUser->name ?? 'Staff') . ' to visit Finance and sign the voucher (' . $pettyCash->reference_number . ').';
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $msg]);
+        }
+        return redirect()->back()->with('success', $msg);
+    }
+
     public function adminReject(Request $request, PettyCashRequest $pettyCash)
     {
         $user = auth()->user();

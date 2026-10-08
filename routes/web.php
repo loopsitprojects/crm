@@ -200,6 +200,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/petty-cash/{pettyCash}/reappeal', [PettyCashController::class, 'reappeal'])->name('petty-cash.reappeal');
     Route::get('/petty-cash/{id}/reappeal', function ($id) { return redirect()->route('petty-cash.index', ['reappeal_id' => $id]); });
     Route::post('/petty-cash/{pettyCash}/remind-iou', [PettyCashController::class, 'sendIouReminder'])->name('petty-cash.remind-iou');
+    Route::post('/petty-cash/{pettyCash}/notify-sign', [PettyCashController::class, 'notifySignVoucher'])->name('petty-cash.notify-sign');
 
     // CRM Routes (Protected from direct Staff role access)
     Route::middleware(['prevent.staff'])->group(function () {

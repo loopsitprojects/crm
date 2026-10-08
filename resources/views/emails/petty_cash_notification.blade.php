@@ -79,6 +79,10 @@
                                 <span style="background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
                                     Pending Finance Approval
                                 </span>
+                            @elseif($action === 'notify_sign_voucher')
+                                <span style="background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
+                                    Signature Required
+                                </span>
                             @elseif($pettyCash->status === 'pending_hod')
                                 <span style="background-color: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase;">
                                     Pending HOD Approval
@@ -254,7 +258,7 @@
                     <a href="{{ route('petty-cash.index', ['approve_id' => $pettyCash->id, 'scope' => 'approvals']) }}" target="_blank" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 12px 22px; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block; margin-right: 6px; margin-bottom: 8px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
                         💰 Open Finance Approval & Hand Over Cash &rarr;
                     </a>
-                    @elseif(in_array($action, ['admin_approved', 'iou_settled']) || in_array($pettyCash->status, ['approved', 'iou_issued', 'settled']))
+                    @elseif(in_array($action, ['admin_approved', 'iou_settled', 'notify_sign_voucher']) || in_array($pettyCash->status, ['approved', 'iou_issued', 'settled']))
                     <a href="{{ route('petty-cash.download-secure', $pettyCash->getSecureVoucherToken()) }}" target="_blank" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 12px 22px; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block; margin-right: 6px; margin-bottom: 8px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
                         📄 View / Download Voucher PDF &rarr;
                     </a>
@@ -264,7 +268,7 @@
                     </a>
                 </div>
 
-                @if(in_array($action, ['admin_approved', 'iou_settled']) || in_array($pettyCash->status, ['approved', 'iou_issued', 'settled']))
+                @if(in_array($action, ['admin_approved', 'iou_settled', 'notify_sign_voucher']) || in_array($pettyCash->status, ['approved', 'iou_issued', 'settled']))
                 <!-- Attachment & Download Notice -->
                 <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 14px; text-align: center; font-size: 11px; color: #64748b;">
                     📎 <strong>Voucher Access:</strong> You can download or view the official PDF voucher directly by <a href="{{ route('petty-cash.download-secure', $pettyCash->getSecureVoucherToken()) }}" target="_blank" style="color: #0284c7; font-weight: bold; text-decoration: underline;">clicking here</a> or via the attached file (<code>Petty_Cash_Voucher_{{ $pettyCash->reference_number }}.pdf</code>).

@@ -296,6 +296,15 @@
                                         class="px-2.5 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors inline-flex items-center whitespace-nowrap">
                                         <i class="fas fa-eye mr-1"></i> Details
                                     </button>
+                                    @if(auth()->user()->hasAdminPrivileges() && !in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management', 'settled']))
+                                        <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
+                                            @csrf
+                                            <button type="submit"
+                                                class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center whitespace-nowrap shadow-sm" title="Notify {{ $pc->user->name ?? 'Staff' }} to come to Finance to sign the voucher">
+                                                <i class="fas fa-bell mr-1"></i> Notify
+                                            </button>
+                                        </form>
+                                    @endif
                                     <a href="{{ route('petty-cash.download', $pc) }}?with_buttons=1" target="_blank"
                                         class="px-2.5 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center whitespace-nowrap shadow-sm" title="Download / Print Voucher">
                                         <i class="fas fa-file-pdf mr-1"></i> Voucher
@@ -504,6 +513,15 @@
                             class="px-2.5 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors inline-flex items-center">
                             <i class="fas fa-eye mr-1"></i> Details
                         </button>
+                        @if(auth()->user()->hasAdminPrivileges() && !in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management', 'settled']))
+                            <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
+                                @csrf
+                                <button type="submit"
+                                    class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center shadow-sm" title="Notify {{ $pc->user->name ?? 'Staff' }} to come to Finance to sign the voucher">
+                                    <i class="fas fa-bell mr-1"></i> Notify
+                                </button>
+                            </form>
+                        @endif
                         <a href="{{ route('petty-cash.download', $pc) }}?with_buttons=1" target="_blank"
                             class="px-2.5 py-1.5 bg-brand-blue text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center shadow-sm" title="Download / Print Voucher">
                             <i class="fas fa-file-pdf mr-1"></i> Voucher
@@ -2880,6 +2898,34 @@
             cancelButtonText: 'Cancel',
             buttonsStyling: true,
             width: '420px',
+            customClass: {
+                popup: 'rounded-2xl shadow-2xl border border-gray-100 p-5',
+                title: 'text-base font-bold text-gray-800 mt-2',
+                htmlContainer: 'text-xs text-gray-600 mt-1',
+                confirmButton: 'px-4 py-2 rounded-lg font-bold text-xs text-white shadow-md transition-all mr-2',
+                cancelButton: 'px-4 py-2 rounded-lg font-semibold text-xs text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                formElement.submit();
+            }
+        });
+        return false;
+    }
+
+    function confirmNotifySignVoucher(event, formElement, refNumber, userName) {
+        event.preventDefault();
+        Swal.fire({
+            title: 'Notify User to Sign Voucher?',
+            html: `Send an email notification to <strong>${userName}</strong> requesting them to come to the Finance Department to sign the voucher for <strong class="font-mono text-gray-900 whitespace-nowrap">${refNumber}</strong>?`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#4b5563',
+            confirmButtonText: '<i class="fas fa-bell mr-1.5"></i> Yes, Notify User',
+            cancelButtonText: 'Cancel',
+            buttonsStyling: true,
+            width: '440px',
             customClass: {
                 popup: 'rounded-2xl shadow-2xl border border-gray-100 p-5',
                 title: 'text-base font-bold text-gray-800 mt-2',

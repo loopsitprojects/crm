@@ -402,4 +402,34 @@ class PettyCashApprovalEmailNotificationTest extends TestCase
         // Management must NOT receive email notification
         Notification::assertNotSentTo($this->management, PettyCashNotification::class);
     }
+
+    public function test_finance_admin_can_notify_requester_to_sign_voucher(): void
+    {
+        $pettyCash = PettyCashRequest::create([
+            'reference_number' => 'PC-2026-0099',
+            'user_id' => $this->staff->id,
+            'hod_id' => $this->hod->id,
+            'department' => 'Creative',
+            'total_amount' => 5000,
+            'status' => 'pending_super_admin',
+        ]);
+
+        Notification::fake();
+
+        // Finance Admin triggers notify sign voucher
+        $response = $this->actingAs($this->financeAdmin)->post(route('petty-cash.notify-sign', $pettyCash));
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        // Only the requesting staff member should receive the email notification
+        Notification::assertSentTo($this->staff, PettyCashNotification::class, function ($notification) {
+            return in_array('mail', $notification->via($this->staff)) &&
+                   in_array('database', $notification->via($this->staff)) &&
+                   $notification->action === 'notify_sign_voucher';
+        });
+
+        // Neither HOD nor Management should receive this notification
+        Notification::assertNotSentTo($this->hod, PettyCashNotification::class);
+        Notification::assertNotSentTo($this->management, PettyCashNotification::class);
+    }
 }
