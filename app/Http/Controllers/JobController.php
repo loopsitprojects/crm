@@ -38,6 +38,12 @@ class JobController extends Controller
         }
 
         // Filters
+        // 0. Job Number Search
+        $searchJob = trim($request->input('job_number') ?? $request->input('search', ''));
+        if (!empty($searchJob)) {
+            $query->where('job_number', 'like', '%' . $searchJob . '%');
+        }
+
         // 1. Date Range (created_at)
         if ($request->has('start_date') && $request->start_date) {
             $query->whereDate('created_at', '>=', $request->start_date);

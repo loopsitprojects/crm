@@ -213,4 +213,51 @@ class DealJobNumberCreationTest extends TestCase
             ['Rejected'],
         ];
     }
+
+    public function test_jobs_index_filters_by_job_number(): void
+    {
+        $admin = User::factory()->create(['role' => 'Finance Admin']);
+        $customer = Customer::create([
+            'name' => 'Acme Corp',
+            'email' => 'acme@test.com',
+            'phone' => '1234567890',
+            'status' => 'active'
+        ]);
+
+        $deal1 = Deal::create([
+            'title' => 'Project Alpha',
+            'customer_id' => $customer->id,
+            'user_id' => $admin->id,
+            'revenue' => 50000,
+            'pipeline' => 'Sales Pipeline',
+            'stage' => 'Closed Won',
+            'job_number' => 'LOOPS/2026/0651',
+            'close_date' => now()->toDateString(),
+        ]);
+
+        $deal2 = Deal::create([
+            'title' => 'Project Beta',
+            'customer_id' => $customer->id,
+            'user_id' => $admin->id,
+            'revenue' => 70000,
+            'pipeline' => 'Sales Pipeline',
+            'stage' => 'Closed Won',
+            'job_number' => 'LOOPS/2026/0652',
+            'close_date' => now()->toDateString(),
+        ]);
+
+        // Search for partial job number 0652
+        $response = $this->actingAs($admin)->get(route('jobs.index', ['job_number' => '0652']));
+        $response->assertStatus(200);
+        $response->assertSee('LOOPS/2026/0652');
+        $response->assertSee('Project Beta');
+        $response->assertDontSee('LOOPS/2026/0651');
+
+        // Search for full job number LOOPS/2026/0651
+        $response2 = $this->actingAs($admin)->get(route('jobs.index', ['job_number' => 'LOOPS/2026/0651']));
+        $response2->assertStatus(200);
+        $response2->assertSee('LOOPS/2026/0651');
+        $response2->assertSee('Project Alpha');
+        $response2->assertDontSee('LOOPS/2026/0652');
+    }
 }

@@ -54,6 +54,19 @@
         <!-- Filter Bar -->
         <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <form action="{{ route('jobs.index') }}" method="GET" class="filter-form flex flex-wrap gap-4 items-end">
+                <!-- Job Number Search -->
+                <div class="flex flex-col space-y-1">
+                    <label for="job_number" class="text-xs font-bold text-gray-700">Job Number</label>
+                    <div class="relative">
+                        <input type="text" name="job_number" id="job_number" value="{{ request('job_number') }}"
+                            placeholder="Search Job # (e.g. 0653)"
+                            class="pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm h-[38px] w-48 sm:w-56 bg-white">
+                        <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+                            <i class="fas fa-search text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Date Range -->
                 <div class="flex flex-col space-y-1">
                     <label for="start_date" class="text-xs font-bold text-gray-700">From Date</label>
