@@ -60,10 +60,16 @@
                     <div class="relative">
                         <input type="text" name="job_number" id="job_number" value="{{ request('job_number') }}"
                             placeholder="Search Job # (e.g. 0653)"
-                            class="pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm h-[38px] w-48 sm:w-56 bg-white">
+                            autocomplete="off"
+                            class="pl-8 pr-7 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-purple text-sm h-[38px] w-48 sm:w-56 bg-white">
                         <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
                             <i class="fas fa-search text-xs"></i>
                         </div>
+                        <button type="button" id="clear_job_number" 
+                            class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors {{ request('job_number') ? '' : 'hidden' }}"
+                            title="Clear search">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -142,7 +148,10 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($jobs as $job)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="job-row hover:bg-gray-50 transition-colors"
+                            data-job-number="{{ strtolower($job->job_number ?? '') }}"
+                            data-deal-title="{{ strtolower($job->title ?? '') }}"
+                            data-customer="{{ strtolower($job->customer->name ?? '') }}">
                             <td x-show="isColumnVisible('job_id')" class="px-6 py-4 white-space-nowrap">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-brand-purple text-white">
                                     {{ $job->job_number }}
@@ -186,12 +195,18 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
+                        <tr id="empty-state-row">
                             <td colspan="6" class="px-6 py-4 text-center text-gray-500 text-sm">
                                 No jobs found. Jobs are created when a deal reaches the "Pitched" stage.
                             </td>
                         </tr>
                     @endforelse
+                    <tr id="no-live-search-row" style="display: none;">
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500 text-sm">
+                            <i class="fas fa-search text-gray-300 text-2xl mb-2 block"></i>
+                            <span>No jobs found matching your search.</span>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -270,6 +285,89 @@
                         plugins: ['remove_button'],
                         placeholder: 'All Users',
                         create: false
+                    });
+                }
+
+                // Real-time on-text Job Number Search (no Enter or Filter button click needed)
+                const jobInput = document.getElementById('job_number');
+                const clearBtn = document.getElementById('clear_job_number');
+                const rows = document.querySelectorAll('.job-row');
+                const noResultsRow = document.getElementById('no-live-search-row');
+
+                function filterJobsLive() {
+                    if (!jobInput) return;
+                    const query = jobInput.value.trim().toLowerCase();
+                    const cleanQuery = query.replace(/[^a-z0-9]/gi, '');
+
+                    // Toggle clear button
+                    if (clearBtn) {
+                        if (query.length > 0) {
+                            clearBtn.classList.remove('hidden');
+                        } else {
+                            clearBtn.classList.add('hidden');
+                        }
+                    }
+
+                    if (rows.length === 0) return;
+
+                    let visibleCount = 0;
+                    rows.forEach(function (row) {
+                        if (!query) {
+                            row.style.display = '';
+                            visibleCount++;
+                            return;
+                        }
+
+                        const jn = (row.getAttribute('data-job-number') || '').toLowerCase();
+                        const cleanJn = jn.replace(/[^a-z0-9]/gi, '');
+                        const title = (row.getAttribute('data-deal-title') || '').toLowerCase();
+                        const customer = (row.getAttribute('data-customer') || '').toLowerCase();
+
+                        const isMatch = jn.includes(query) ||
+                                        (cleanQuery.length > 0 && cleanJn.includes(cleanQuery)) ||
+                                        title.includes(query) ||
+                                        customer.includes(query);
+
+                        if (isMatch) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+
+                    if (noResultsRow) {
+                        noResultsRow.style.display = (visibleCount === 0 && query !== '') ? '' : 'none';
+                    }
+                }
+
+                if (jobInput) {
+                    // Instant filter on every keystroke / text change
+                    jobInput.addEventListener('input', filterJobsLive);
+
+                    // Prevent accidental form submission on Enter so page does not reload
+                    jobInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            filterJobsLive();
+                        } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            jobInput.value = '';
+                            filterJobsLive();
+                        }
+                    });
+
+                    // Trigger initially if value is pre-populated
+                    if (jobInput.value.trim() !== '') {
+                        filterJobsLive();
+                    }
+                }
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function () {
+                        jobInput.value = '';
+                        filterJobsLive();
+                        jobInput.focus();
                     });
                 }
             });
