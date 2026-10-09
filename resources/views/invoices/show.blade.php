@@ -57,7 +57,6 @@
     .quill-content {
         word-break: normal;
         overflow-wrap: break-word;
-        white-space: pre-wrap;
         letter-spacing: 0.02em;
         word-spacing: 0.1em;
     }
@@ -65,9 +64,11 @@
         margin-bottom: 0.25rem;
         word-break: normal;
         overflow-wrap: break-word;
-        white-space: pre-wrap;
         letter-spacing: 0.02em;
         word-spacing: 0.1em;
+    }
+    .quill-content p:empty {
+        display: none;
     }
     /* Reset margins for first and last children to keep table cells neat */
     .quill-content > *:first-child { margin-top: 0; }
@@ -180,11 +181,11 @@
 
             <!-- Items Table Headers -->
             <div class="flex font-bold text-[13px] text-center invoice-table-header">
-                <div class="p-2 w-[8%] border-l border-r border-b border-black">Ref</div>
-                <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4">Description of Goods or Services</div>
-                <div class="p-2 w-[12%] border-r border-b border-black">Quantity</div>
-                <div class="p-2 w-[18%] border-r border-b border-black">Unit Price</div>
-                <div class="p-2 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }})</div>
+                <div class="py-1.5 px-2 w-[8%] border-l border-r border-b border-black flex items-center justify-center">Ref</div>
+                <div class="py-1.5 px-3 w-[42%] border-r border-b border-black text-left flex items-center">Description of Goods or Services</div>
+                <div class="py-1.5 px-2 w-[12%] border-r border-b border-black flex items-center justify-center">Quantity</div>
+                <div class="py-1.5 px-3 w-[18%] border-r border-b border-black flex items-center justify-center">Unit Price</div>
+                <div class="py-1.5 px-3 w-[20%] border-r border-b border-black leading-tight flex items-center justify-center">Amount Excluding<br>VAT ({{ $invoice->currency ?: ($invoice->estimate->deal->currency ?? ($invoice->estimate->currency ?? 'LKR')) }})</div>
             </div>
 
             <!-- Item Rows - Dynamic -->
@@ -195,22 +196,24 @@
                     if($item->type === 'item') {
                         $totalExcludingVat += $itemAmountNoVat;
                     }
+                    $itemDesc = trim($item->description ?? '');
+                    $itemDesc = preg_replace('/^(<p>\s*(<br\s*\/?>|&nbsp;|\s*)*\s*<\/p>\s*)+/i', '', $itemDesc);
+                    $itemDesc = preg_replace('/(<p>\s*(<br\s*\/?>|&nbsp;|\s*)*\s*<\/p>\s*)+$/i', '', $itemDesc);
+                    if (!preg_match('/<[a-z][\s\S]*>/i', $itemDesc)) {
+                        $itemDesc = nl2br(e($itemDesc));
+                    }
                 @endphp
 
-                <div class="flex text-[13px] min-h-[45px] invoice-item-row">
-                    <div class="p-2 w-[8%] border-l border-r border-b border-black text-center flex items-center justify-center">{{ $i + 1 }}</div>
-                    <div class="p-2 w-[42%] border-r border-b border-black text-left pl-4 py-2 overflow-hidden" style="word-break: break-word; overflow-wrap: break-word;">
-                        <div class="quill-content w-full" style="word-break: break-word; overflow-wrap: break-word;">
-                            {!! $item->description !!}
-                        </div>
-                    </div>
-                    <div class="p-2 w-[12%] border-r border-b border-black text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
+                <div class="flex text-[13px] min-h-[34px] invoice-item-row">
+                    <div class="py-1.5 px-2 w-[8%] border-l border-r border-b border-black text-center flex items-center justify-center">{{ $i + 1 }}</div>
+                    <div class="py-1.5 px-3 w-[42%] border-r border-b border-black text-left overflow-hidden flex items-center" style="word-break: break-word; overflow-wrap: break-word;"><div class="quill-content w-full" style="word-break: break-word; overflow-wrap: break-word;">{!! $itemDesc !!}</div></div>
+                    <div class="py-1.5 px-2 w-[12%] border-r border-b border-black text-center flex items-center justify-center">{{ number_format($item->quantity, 0) }}</div>
                     @php
                         $displayUnitPrice = $item->quantity != 0 ? ($item->amount + $item->sscl_amount) / $item->quantity : $item->unit_price;
                         $amountIncludingVat = $displayUnitPrice * $item->quantity;
                     @endphp
-                    <div class="p-2 w-[18%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($displayUnitPrice, 2) }}</div>
-                    <div class="p-2 w-[20%] border-r border-b border-black text-right pr-3 flex items-center justify-end">{{ number_format($amountIncludingVat, 2) }}</div>
+                    <div class="py-1.5 px-3 w-[18%] border-r border-b border-black text-right flex items-center justify-end">{{ number_format($displayUnitPrice, 2) }}</div>
+                    <div class="py-1.5 px-3 w-[20%] border-r border-b border-black text-right flex items-center justify-end">{{ number_format($amountIncludingVat, 2) }}</div>
                 </div>
             @endforeach
 
