@@ -291,9 +291,12 @@
                     <div class="flex items-center gap-2">
                         <label for="filter_department" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Dept:</label>
                         <div class="min-w-[130px]">
+                            @php
+                                $selectedDepts = (array)(request('filter_department') ?? request('department') ?? []);
+                            @endphp
                             <select name="filter_department[]" id="filter_department" multiple>
                                 @foreach($filterableDepartments as $dept)
-                                    <option value="{{ $dept }}" {{ is_array(request('filter_department')) && in_array($dept, request('filter_department')) ? 'selected' : (request('filter_department') == $dept ? 'selected' : '') }}>
+                                    <option value="{{ $dept }}" {{ in_array($dept, $selectedDepts) ? 'selected' : '' }}>
                                         {{ $dept }}
                                     </option>
                                 @endforeach
@@ -305,7 +308,7 @@
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
                         </button>
-                        @if(request('start_date') || request('close_date') || request('created_date_type') || request('expected_close_date_type') || request('filter_user') || request('filter_department') || request('created_from') || request('created_to') || request('expected_close_from') || request('expected_close_to'))
+                        @if(request('start_date') || request('close_date') || request('created_date_type') || request('expected_close_date_type') || request('filter_user') || request('filter_department') || request('department') || request('created_from') || request('created_to') || request('expected_close_from') || request('expected_close_to'))
                             <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                                 Reset
                             </a>

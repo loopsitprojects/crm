@@ -67,8 +67,21 @@ class DealController extends Controller
 
         // Build filterable departments based on role
         if ($user->hasAdminPrivileges()) {
-            // Finance Admin & Management can see all departments
-            $filterableDepartments = \App\Models\User::distinct()->pluck('department')->filter()->sort()->values();
+            // Finance Admin & Management can see all departments across users, estimate items, and splits
+            $userDepts = \App\Models\User::distinct()->pluck('department');
+            $itemDepts = \App\Models\EstimateItem::distinct()->pluck('department');
+            $filterableDepartments = $userDepts->concat($itemDepts)->concat(['Tech', 'Digital', 'Creative', 'PM', 'AM', 'BD'])
+                ->filter()
+                ->map(function ($d) {
+                    $d = trim($d);
+                    if (strcasecmp($d, 'am') === 0) return 'AM';
+                    if (strcasecmp($d, 'bd') === 0) return 'BD';
+                    if (strcasecmp($d, 'pm') === 0) return 'PM';
+                    return ucfirst(strtolower($d));
+                })
+                ->unique()
+                ->sort()
+                ->values();
         } else {
             // HOD & Manager can only see their own department
             $filterableDepartments = $userDept ? collect([$userDept]) : collect();
@@ -181,12 +194,48 @@ class DealController extends Controller
             }
         }
 
-        // Department filter — filter deals by owner's department
-        if ($request->has('filter_department')) {
-            $filterDepts = array_filter((array)$request->input('filter_department'));
+        // Department filter — check owner's department, department_split JSON, or estimate items
+        $rawDepts = $request->input('filter_department') ?? $request->input('department');
+        if (!empty($rawDepts)) {
+            $filterDepts = array_values(array_filter((array)$rawDepts));
             if (!empty($filterDepts)) {
-                $query->whereHas('owner', function ($q) use ($filterDepts) {
-                    $q->whereIn('department', $filterDepts);
+                $query->where(function ($dq) use ($filterDepts) {
+                    // 1. Owner's department
+                    $dq->whereHas('owner', function ($oq) use ($filterDepts) {
+                        $oq->where(function ($sub) use ($filterDepts) {
+                            foreach ($filterDepts as $dept) {
+                                $sub->orWhere('department', $dept)
+                                    ->orWhere('department', strtolower($dept))
+                                    ->orWhere('department', ucfirst(strtolower($dept)));
+                            }
+                        });
+                    });
+
+                    // 2. Department split JSON
+                    foreach ($filterDepts as $dept) {
+                        $titleDept = ucfirst(strtolower($dept));
+                        $lowerDept = strtolower($dept);
+                        $dq->orWhereJsonContains('department_split', [['department' => $dept]])
+                           ->orWhereJsonContains('department_split', ['department' => $dept])
+                           ->orWhereJsonContains('department_split', [['department' => $titleDept]])
+                           ->orWhereJsonContains('department_split', ['department' => $titleDept])
+                           ->orWhereJsonContains('department_split', [['department' => $lowerDept]])
+                           ->orWhereJsonContains('department_split', ['department' => $lowerDept])
+                           ->orWhere('department_split', 'like', '%"department":"' . $dept . '"%')
+                           ->orWhere('department_split', 'like', '%"department":"' . $titleDept . '"%')
+                           ->orWhere('department_split', 'like', '%"department":"' . $lowerDept . '"%');
+                    }
+
+                    // 3. Estimate items department
+                    $dq->orWhereHas('estimates.items', function ($iq) use ($filterDepts) {
+                        $iq->where(function ($sub) use ($filterDepts) {
+                            foreach ($filterDepts as $dept) {
+                                $sub->orWhere('department', $dept)
+                                    ->orWhere('department', strtolower($dept))
+                                    ->orWhere('department', ucfirst(strtolower($dept)));
+                            }
+                        });
+                    });
                 });
             }
         }
@@ -201,9 +250,32 @@ class DealController extends Controller
                       $tm->where('users.id', $user->id);
                   });
                 
-                // Department split check (all users in department)
+                // Department check for all deals belonging to user's department
                 if ($userDept) {
-                    $q->orWhereJsonContains('department_split', [['department' => $userDept]]);
+                    $titleDept = ucfirst(strtolower($userDept));
+                    $lowerDept = strtolower($userDept);
+
+                    $q->orWhere(function ($deptQuery) use ($userDept, $titleDept, $lowerDept) {
+                        $deptQuery->whereHas('owner', function ($oq) use ($userDept, $titleDept, $lowerDept) {
+                            $oq->where('department', $userDept)
+                               ->orWhere('department', $titleDept)
+                               ->orWhere('department', $lowerDept);
+                        })
+                        ->orWhereJsonContains('department_split', [['department' => $userDept]])
+                        ->orWhereJsonContains('department_split', ['department' => $userDept])
+                        ->orWhereJsonContains('department_split', [['department' => $titleDept]])
+                        ->orWhereJsonContains('department_split', ['department' => $titleDept])
+                        ->orWhereJsonContains('department_split', [['department' => $lowerDept]])
+                        ->orWhereJsonContains('department_split', ['department' => $lowerDept])
+                        ->orWhere('department_split', 'like', '%"department":"' . $userDept . '"%')
+                        ->orWhere('department_split', 'like', '%"department":"' . $titleDept . '"%')
+                        ->orWhere('department_split', 'like', '%"department":"' . $lowerDept . '"%')
+                        ->orWhereHas('estimates.items', function ($iq) use ($userDept, $titleDept, $lowerDept) {
+                            $iq->where('department', $userDept)
+                               ->orWhere('department', $titleDept)
+                               ->orWhere('department', $lowerDept);
+                        });
+                    });
                 }
 
                 // HOD specific: subordinates
@@ -239,30 +311,38 @@ class DealController extends Controller
         });
 
         // 3. Apply restricted visibility and split logic
-        $activeDeptForMetrics = $request->input('department') ?: (in_array($userRole, ['HOD', 'Manager']) ? $userDept : null);
+        $rawDeptsInput = $request->input('filter_department') ?? $request->input('department');
+        $filterDeptsList = array_values(array_filter((array)$rawDeptsInput));
+        $activeDeptsForMetrics = !empty($filterDeptsList) 
+            ? array_map(fn($d) => trim(strtolower($d)), $filterDeptsList) 
+            : (in_array($userRole, ['HOD', 'Manager']) && $userDept ? [trim(strtolower($userDept))] : []);
 
-        $allDeals->each(function($deal) use ($user, $activeDeptForMetrics) {
+        $allDeals->each(function($deal) use ($user, $activeDeptsForMetrics) {
             $deptRevenue = 0;
             $deptContribution = 0;
             $deptInvoiced = 0;
             $deptPaid = 0;
 
-            if ($activeDeptForMetrics) {
+            if (!empty($activeDeptsForMetrics)) {
                 $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                $hasMatchingSplit = false;
+
                 if (is_array($splits) && !empty($splits)) {
                     foreach ($splits as $split) {
                         $splitDept = trim(strtolower($split['department'] ?? ''));
-                        $targetDept = trim(strtolower($activeDeptForMetrics));
                         
-                        if ($splitDept === $targetDept) {
+                        if (in_array($splitDept, $activeDeptsForMetrics)) {
+                            $hasMatchingSplit = true;
                             $revPercent = (float)($split['revenue_percentage'] ?? 0);
                             $conPercent = (float)($split['contribution_percentage'] ?? 0);
                             
+                            $splitRev = 0;
                             if ($revPercent > 0) {
-                                $deptRevenue += ($deal->revenue * ($revPercent / 100));
+                                $splitRev = ($deal->revenue * ($revPercent / 100));
                             } else {
-                                $deptRevenue += (float)($split['revenue_amount'] ?? 0);
+                                $splitRev = (float)($split['revenue_amount'] ?? 0);
                             }
+                            $deptRevenue += $splitRev;
                             
                             if ($conPercent > 0) {
                                 $deptContribution += ($deal->contribution * ($conPercent / 100));
@@ -285,9 +365,57 @@ class DealController extends Controller
                             }
                             
                             if ($deal->revenue > 0) {
-                                $ratio = $deptRevenue / $deal->revenue;
+                                $ratio = $splitRev / $deal->revenue;
                                 $deptInvoiced += ($totalInvoiced * $ratio);
                                 $deptPaid += ($totalPaid * $ratio);
+                            }
+                        }
+                    }
+                }
+
+                if (!$hasMatchingSplit) {
+                    $itemDeptRevenue = 0;
+                    foreach ($deal->estimates as $estimate) {
+                        foreach ($estimate->items as $item) {
+                            if (in_array(trim(strtolower($item->department ?? '')), $activeDeptsForMetrics)) {
+                                $itemDeptRevenue += (float)$item->amount;
+                            }
+                        }
+                    }
+
+                    if ($itemDeptRevenue > 0) {
+                        $deptRevenue = $itemDeptRevenue;
+                        $dealRev = (float)$deal->revenue;
+                        $dealRatio = $dealRev > 0 ? min(1, $deptRevenue / $dealRev) : 1;
+                        $deptContribution = $deal->contribution > 0 ? ($deal->contribution * $dealRatio) : $deptRevenue;
+
+                        $totalInvoiced = 0;
+                        $totalPaid = 0;
+                        foreach ($deal->estimates as $estimate) {
+                            foreach ($estimate->invoices as $invoice) {
+                                if (!$invoice->is_proforma) {
+                                    $totalInvoiced += $invoice->total_amount;
+                                    if ($invoice->status === 'paid') {
+                                        $totalPaid += $invoice->total_amount;
+                                    }
+                                }
+                            }
+                        }
+                        if ($dealRev > 0) {
+                            $deptInvoiced = $totalInvoiced * $dealRatio;
+                            $deptPaid = $totalPaid * $dealRatio;
+                        }
+                    } elseif ($deal->owner && in_array(trim(strtolower($deal->owner->department ?? '')), $activeDeptsForMetrics)) {
+                        $deptRevenue = $deal->revenue;
+                        $deptContribution = $deal->contribution;
+                        foreach ($deal->estimates as $estimate) {
+                            foreach ($estimate->invoices as $invoice) {
+                                if (!$invoice->is_proforma) {
+                                    $deptInvoiced += $invoice->total_amount;
+                                    if ($invoice->status === 'paid') {
+                                        $deptPaid += $invoice->total_amount;
+                                    }
+                                }
                             }
                         }
                     }
@@ -302,7 +430,7 @@ class DealController extends Controller
 
             if (!$isOwnerCircle) {
                 // For those outside the owner's immediate team, show the department's share if a filter is active
-                if ($activeDeptForMetrics || !$user->hasAdminPrivileges()) {
+                if (!empty($activeDeptsForMetrics) || !$user->hasAdminPrivileges()) {
                     $deal->dept_share_revenue = $deptRevenue;
                     $deal->dept_share_contribution = $deptContribution;
                     $deal->dept_share_invoiced = $deptInvoiced;
