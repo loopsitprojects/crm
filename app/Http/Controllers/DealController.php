@@ -90,6 +90,24 @@ class DealController extends Controller
         // Group all deals by stage for display
         $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.tempInvoice', 'estimates.items'])->orderBy('updated_at', 'desc');
 
+        // Search Filter (Title, Job Number, Customer, Owner)
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('job_number', 'like', "%{$search}%")
+                  ->orWhere('customer_name', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('company_name', 'like', "%{$search}%")
+                         ->orWhere('brand', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('owner', function ($oq) use ($search) {
+                      $oq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
         if ($request->filled('start_date')) {
             $startDateVal = $request->input('start_date');
             if (preg_match('/^\d{4}-\d{2}$/', $startDateVal)) {

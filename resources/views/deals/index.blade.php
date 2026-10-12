@@ -301,12 +301,31 @@
                         </div>
                     </div>
 
+                    <!-- Search Input -->
+                    <div class="flex items-center gap-2">
+                        <label for="deal_search" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Search:</label>
+                        <div class="relative">
+                            <input type="text" name="search" id="deal_search" value="{{ request('search') }}"
+                                placeholder="Search deals, job #, brand..."
+                                autocomplete="off"
+                                class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 pl-7 pr-6 border w-44 sm:w-56 bg-white">
+                            <div class="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none text-gray-400">
+                                <i class="fas fa-search text-[10px]"></i>
+                            </div>
+                            <button type="button" id="clear_deal_search"
+                                class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 hover:text-gray-600 transition-colors {{ request('search') ? '' : 'hidden' }}"
+                                title="Clear search">
+                                <i class="fas fa-times text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-1.5">
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
                         </button>
                         @php
-                            $hasActiveFilters = request('created_date_type') || request('expected_close_date_type') || 
+                            $hasActiveFilters = request('search') || request('created_date_type') || request('expected_close_date_type') || 
                                 (is_array(request('filter_user')) ? !empty(array_filter(request('filter_user'))) : request('filter_user')) || 
                                 (is_array(request('filter_department')) ? !empty(array_filter(request('filter_department'))) : request('filter_department')) || 
                                 (is_array(request('department')) ? !empty(array_filter(request('department'))) : request('department')) || 
@@ -344,6 +363,80 @@
                         }
                         initFilterDropdowns();
                         document.addEventListener('DOMContentLoaded', initFilterDropdowns);
+
+                        // Real-time live search across Kanban cards
+                        const dealSearchInput = document.getElementById('deal_search');
+                        const clearDealSearchBtn = document.getElementById('clear_deal_search');
+
+                        function filterDealsLive() {
+                            if (!dealSearchInput) return;
+                            const query = dealSearchInput.value.trim().toLowerCase();
+                            const cleanQuery = query.replace(/[^a-z0-9]/gi, '');
+
+                            if (clearDealSearchBtn) {
+                                if (query.length > 0) {
+                                    clearDealSearchBtn.classList.remove('hidden');
+                                } else {
+                                    clearDealSearchBtn.classList.add('hidden');
+                                }
+                            }
+
+                            document.querySelectorAll('.deal-card').forEach(card => {
+                                const title = (card.getAttribute('data-deal-title') || '').toLowerCase();
+                                const jn = (card.getAttribute('data-deal-job-number') || '').toLowerCase();
+                                const cleanJn = jn.replace(/[^a-z0-9]/gi, '');
+                                const customer = (card.getAttribute('data-deal-customer') || '').toLowerCase();
+                                const owner = (card.getAttribute('data-deal-owner') || '').toLowerCase();
+                                const fullText = (card.textContent || '').toLowerCase();
+
+                                const isMatch = !query || 
+                                                title.includes(query) || 
+                                                jn.includes(query) || 
+                                                (cleanQuery.length > 0 && cleanJn.includes(cleanQuery)) ||
+                                                customer.includes(query) || 
+                                                owner.includes(query) ||
+                                                fullText.includes(query);
+
+                                card.style.display = isMatch ? '' : 'none';
+                            });
+
+                            // Update stage counts
+                            document.querySelectorAll('.kanban-col').forEach(col => {
+                                const visibleCount = col.querySelectorAll('.deal-card:not([style*="display: none"])').length;
+                                const colWrapper = col.closest('.w-80');
+                                if (colWrapper) {
+                                    const badge = colWrapper.querySelector('.stage-count-badge');
+                                    if (badge) badge.textContent = visibleCount;
+                                }
+                            });
+                        }
+
+                        if (dealSearchInput) {
+                            dealSearchInput.addEventListener('input', filterDealsLive);
+                            dealSearchInput.addEventListener('keydown', function(e) {
+                                if (e.key === 'Escape') {
+                                    dealSearchInput.value = '';
+                                    filterDealsLive();
+                                }
+                            });
+                        }
+
+                        if (clearDealSearchBtn) {
+                            clearDealSearchBtn.addEventListener('click', function() {
+                                dealSearchInput.value = '';
+                                filterDealsLive();
+                                dealSearchInput.focus();
+                                if (new URLSearchParams(window.location.search).has('search')) {
+                                    dealSearchInput.closest('form').submit();
+                                }
+                            });
+                        }
+
+                        document.addEventListener('DOMContentLoaded', function() {
+                            if (dealSearchInput && dealSearchInput.value) {
+                                filterDealsLive();
+                            }
+                        });
                     })();
                 </script>
             </div>
@@ -364,7 +457,7 @@
                             <div class="p-3 bg-gray-200 rounded-t-lg border-b border-gray-300 flex justify-between items-center">
                                 <h3 class="font-bold text-gray-700 text-sm">{{ $stage }}</h3>
                                 <div class="flex flex-col items-end">
-                                    <span class="bg-gray-300 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
+                                    <span class="stage-count-badge bg-gray-300 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded-full mb-1">
                                         {{ $dealsByStage->get($stage, collect())->count() }}
                                     </span>
                                     <div class="text-[10px] font-black text-gray-500 whitespace-nowrap">
@@ -383,8 +476,12 @@
                                         $tempInvoice = $estimate ? $estimate->tempInvoice : null;
                                         $taxInvoice = $dealEstimates->flatMap->invoices->where('is_proforma', 0)->first();
                                     @endphp
-                                    <div class="bg-white p-3 rounded shadow-sm mb-3 @if($canEdit) cursor-move kanban-item @else cursor-default @endif hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
-                                        data-id="{{ $deal->id }}">
+                                    <div class="deal-card bg-white p-3 rounded shadow-sm mb-3 @if($canEdit) cursor-move kanban-item @else cursor-default @endif hover:shadow-md transition-shadow border-l-4 @if($stage === 'Rejected') border-red-500 @elseif($stage === 'Closed Won') border-green-500 @else border-brand-blue @endif"
+                                        data-id="{{ $deal->id }}"
+                                        data-deal-title="{{ strtolower($deal->title) }}"
+                                        data-deal-job-number="{{ strtolower($deal->job_number ?? '') }}"
+                                        data-deal-customer="{{ strtolower($deal->customer_name ?? $deal->customer->name ?? '') }}"
+                                        data-deal-owner="{{ strtolower($deal->owner->name ?? '') }}">
                                         <div class="flex justify-between items-start mb-1">
                                             <h4 class="font-bold text-gray-800 text-sm line-clamp-1 flex-1">{{ $deal->title }}</h4>
                                                 <div class="flex items-center gap-1.5 ml-2">
