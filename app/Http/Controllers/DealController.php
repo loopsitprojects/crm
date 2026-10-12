@@ -99,7 +99,6 @@ class DealController extends Controller
                   ->orWhere('customer_name', 'like', "%{$search}%")
                   ->orWhereHas('customer', function ($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('company_name', 'like', "%{$search}%")
                          ->orWhere('brand', 'like', "%{$search}%");
                   })
                   ->orWhereHas('owner', function ($oq) use ($search) {

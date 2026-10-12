@@ -18,7 +18,6 @@ class DealSearchFilterTest extends TestCase
 
         $customer1 = Customer::create([
             'name' => 'Acme Corporation',
-            'company_name' => 'Acme Global',
             'brand' => 'Acme',
             'email' => 'acme@example.com',
             'phone' => '1234567890',
@@ -27,7 +26,6 @@ class DealSearchFilterTest extends TestCase
 
         $customer2 = Customer::create([
             'name' => 'Wayne Enterprises',
-            'company_name' => 'Wayne Industries',
             'brand' => 'Wayne',
             'email' => 'wayne@example.com',
             'phone' => '9876543210',

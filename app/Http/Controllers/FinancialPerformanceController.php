@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Services\FinancialPerformanceService;
+use App\Traits\LogsActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FinancialPerformanceController extends Controller
 {
+    use LogsActivity;
+
     protected FinancialPerformanceService $service;
 
     public function __construct(FinancialPerformanceService $service)
@@ -36,6 +39,8 @@ class FinancialPerformanceController extends Controller
     public function index(Request $request): View
     {
         $this->authorizeAccess();
+
+        $this->logAction('Accessed Financial Performance tab');
 
         $dashboardData = $this->service->getDashboardData();
 

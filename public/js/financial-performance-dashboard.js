@@ -54,9 +54,9 @@ const COLORS = {
 const SBU_ORDER = ['Corporate','DM','Creative','IT'];
 const SBU_LABEL = {Corporate:'Corporate',DM:'Digital (DM)',Creative:'Creative',IT:'IT'};
 
-const CLOSED_MONTH_SET = new Set(['April','May','June','July','August','September']);
-const MOM_MONTH_SET   = new Set(['April','May','June','July','August','September']);
-const ALL_MONTHS_LIST = ['April','May','June','July','August','September'];
+const CLOSED_MONTH_SET = new Set(MONTH_NAMES);
+const MOM_MONTH_SET   = new Set(MONTH_NAMES);
+const ALL_MONTHS_LIST = [...MONTH_NAMES];
 // Period filter — controls which YTD months feed aggregate widgets (KPIs, mix, top clients, etc.)
 let ACTIVE_MONTHS = new Set(['April','May','June','July','August','September']);
 
@@ -2183,7 +2183,14 @@ window.destroyAllCharts = destroyAllCharts;
 function scopeLabel(){
   const list = ALL_MONTHS_LIST.filter(m => ACTIVE_MONTHS.has(m));
   if(list.length === 0) return '—';
-  if(list.length === 4 && ['April','May','June','July'].every(m => ACTIVE_MONTHS.has(m))) return 'Apr–Sep (YTD)';
+  if(list.length === 6 && ['April','May','June','July','August','September'].every(m => ACTIVE_MONTHS.has(m))) return 'Apr–Sep (YTD)';
+  if(list.length === 12) return 'Full Year';
+  if(list.length === 3) {
+    if(['April','May','June'].every(m => ACTIVE_MONTHS.has(m))) return 'Q1 (Apr–Jun)';
+    if(['July','August','September'].every(m => ACTIVE_MONTHS.has(m))) return 'Q2 (Jul–Sep)';
+    if(['October','November','December'].every(m => ACTIVE_MONTHS.has(m))) return 'Q3 (Oct–Dec)';
+    if(['January','February','March'].every(m => ACTIVE_MONTHS.has(m))) return 'Q4 (Jan–Mar)';
+  }
   if(list.length === 1) return list[0];
   return list[0].slice(0,3) + '–' + list[list.length-1].slice(0,3);
 }

@@ -359,6 +359,8 @@
   <button class="filter-btn active" data-months="April,May,June,July,August,September">All YTD (Apr–Sep)</button>
   <button class="filter-btn" data-months="April,May,June">Q1 (Apr–Jun)</button>
   <button class="filter-btn" data-months="July,August,September">Q2 (Jul–Sep)</button>
+  <button class="filter-btn" data-months="October,November,December">Q3 (Oct–Dec)</button>
+  <button class="filter-btn" data-months="January,February,March">Q4 (Jan–Mar)</button>
   <span style="width:1px;height:20px;background:var(--line);margin:0 6px"></span>
   <button class="filter-btn" data-months="April">Apr</button>
   <button class="filter-btn" data-months="May">May</button>
@@ -366,6 +368,12 @@
   <button class="filter-btn" data-months="July">Jul</button>
   <button class="filter-btn" data-months="August">Aug</button>
   <button class="filter-btn" data-months="September">Sep</button>
+  <button class="filter-btn" data-months="October">Oct</button>
+  <button class="filter-btn" data-months="November">Nov</button>
+  <button class="filter-btn" data-months="December">Dec</button>
+  <button class="filter-btn" data-months="January">Jan</button>
+  <button class="filter-btn" data-months="February">Feb</button>
+  <button class="filter-btn" data-months="March">Mar</button>
   <span class="filter-scope" id="filterScope">Showing: Apr–Sep (YTD)</span>
 </div>
 

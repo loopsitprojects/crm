@@ -78,6 +78,7 @@ class UserController extends Controller
 
         if ($request->password) {
             $user->password = Hash::make($request->password);
+            $this->logAction("Reset password for user: {$user->name}", $user);
         }
 
         $user->save();

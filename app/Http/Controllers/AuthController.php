@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Setting;
 use App\Models\User;
+use App\Traits\LogsActivity;
 
 class AuthController extends Controller
 {
+    use LogsActivity;
     public function showLogin()
     {
         $mode = (int) Setting::get('maintenance_mode', 0);
@@ -113,6 +115,8 @@ class AuthController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
+        $this->logAction('Reset password', $user);
+
         return redirect()->back()->with('success', 'Your password has been updated successfully!');
     }
 
@@ -204,6 +208,8 @@ class AuthController extends Controller
 
         // Delete token record
         \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        $this->logAction('Reset password', $user, [], $user->id);
 
         return redirect()->route('login')->with('success', 'Your password has been reset successfully! You can now log in with your new password.');
     }

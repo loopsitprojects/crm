@@ -283,4 +283,19 @@ class FinancialPerformanceAccessTest extends TestCase
             ->assertDontSee('btn-financial-performance-settings')
             ->assertDontSee('section-financial-performance-settings');
     }
+
+    public function test_dashboard_renders_all_quarter_filters(): void
+    {
+        $response = $this->actingAs($this->itAdmin)
+            ->get(route('financial-performance.index'));
+
+        $response->assertOk();
+        $response->assertSee('All YTD (Apr–Sep)');
+        $response->assertSee('Q1 (Apr–Jun)');
+        $response->assertSee('Q2 (Jul–Sep)');
+        $response->assertSee('Q3 (Oct–Dec)');
+        $response->assertSee('Q4 (Jan–Mar)');
+        $response->assertSee('data-months="October,November,December"', false);
+        $response->assertSee('data-months="January,February,March"', false);
+    }
 }
