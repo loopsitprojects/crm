@@ -588,7 +588,7 @@ class DealController extends Controller
         ]);
 
         $customer = \App\Models\Customer::find($validated['customer_id']);
-        $validated['customer_name'] = $customer->name;
+        $validated['customer_name'] = $customer?->name;
 
         $stageProbs = [
             'Planned to Meet' => 10,
@@ -604,61 +604,79 @@ class DealController extends Controller
         $validated['winning_percentage'] = $stageProbs[$validated['stage']] ?? 0;
         $validated['user_id'] = auth()->id();
 
-        $deal = Deal::create($validated);
+        $allocations = [];
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $deal = Deal::create($validated);
 
-        // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
-        $jobIdStages = Deal::JOB_STAGES;
-        if (in_array($deal->stage, $jobIdStages) && is_null($deal->job_number)) {
-            $year = date('Y');
-            $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
-            $deal->update([
-                'job_number' => "LOOPS/{$year}/{$idPad}"
-            ]);
+            // Auto-generate Job Number if stage is 'Working on pitch' or subsequent stages and job_number is not set
+            $jobIdStages = Deal::JOB_STAGES;
+            if (in_array($deal->stage, $jobIdStages) && is_null($deal->job_number)) {
+                $year = date('Y');
+                $idPad = str_pad($deal->id, 4, '0', STR_PAD_LEFT);
+                $deal->update([
+                    'job_number' => "LOOPS/{$year}/{$idPad}"
+                ]);
+            }
+
+            // Handle department allocations
+            if ($request->has('department_allocations')) {
+                $allocations = collect($request->department_allocations)->map(function($alloc) {
+                    if (isset($alloc['department'])) {
+                        $alloc['department'] = trim($alloc['department']);
+                    }
+                    return $alloc;
+                })->toArray();
+                $deal->department_split = json_encode($allocations);
+                $deal->save();
+            }
+
+            if ($request->has('team_members')) {
+                $deal->teamMembers()->sync($request->team_members);
+            }
+
+            $this->logAction("Created deal: {$deal->title}", $deal);
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to create deal: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create deal: ' . $e->getMessage())->withInput();
         }
 
-        // Handle department allocations
-        if ($request->has('department_allocations')) {
-            $allocations = collect($request->department_allocations)->map(function($alloc) {
-                if (isset($alloc['department'])) {
-                    $alloc['department'] = trim($alloc['department']);
-                }
-                return $alloc;
-            })->toArray();
-            $deal->department_split = json_encode($allocations);
-            $deal->save();
-
-            // Notify users in these departments
-            foreach ($allocations as $alloc) {
-                $dept = $alloc['department'] ?? null;
-                if ($dept) {
-                    $deptUsers = \App\Models\User::where('department', $dept)->get();
-                    foreach ($deptUsers as $deptUser) {
-                        if ($deptUser->id !== auth()->id()) {
-                            $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+        // Send notifications outside transaction
+        try {
+            if (!empty($allocations)) {
+                foreach ($allocations as $alloc) {
+                    $dept = $alloc['department'] ?? null;
+                    if ($dept) {
+                        $deptUsers = \App\Models\User::where('department', $dept)->get();
+                        foreach ($deptUsers as $deptUser) {
+                            if ($deptUser->id !== auth()->id()) {
+                                $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if ($request->has('team_members')) {
-            $deal->teamMembers()->sync($request->team_members);
-            
-            $usersToNotify = \App\Models\User::whereIn('id', $request->team_members)->get();
-            foreach ($usersToNotify as $userToNotify) {
-                if ($userToNotify->id !== auth()->id()) {
-                    $userToNotify->notify(new \App\Notifications\DealAssignedNotification($deal, 'Team Member', auth()->user()));
+            if ($request->has('team_members')) {
+                $usersToNotify = \App\Models\User::whereIn('id', $request->team_members)->get();
+                foreach ($usersToNotify as $userToNotify) {
+                    if ($userToNotify->id !== auth()->id()) {
+                        $userToNotify->notify(new \App\Notifications\DealAssignedNotification($deal, 'Team Member', auth()->user()));
+                    }
                 }
             }
-        }
 
-        $this->logAction("Created deal: {$deal->title}", $deal);
-
-        if ($deal->senior_manager) {
-            $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
-            if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
-                $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+            if ($deal->senior_manager) {
+                $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
+                if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
+                    $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+                }
             }
+        } catch (\Throwable $ne) {
+            \Illuminate\Support\Facades\Log::warning('Deal creation notification warning: ' . $ne->getMessage());
         }
 
         return back()->with('success', 'Deal created successfully.');
@@ -720,55 +738,71 @@ class DealController extends Controller
 
         $oldStage = $deal->stage;
         $oldSeniorManager = $deal->senior_manager;
-        $deal->update($validated);
 
-        $this->approveDealEstimates($deal);
+        $newDepartments = [];
+        $newTeamMembers = [];
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $deal->update($validated);
+            $this->approveDealEstimates($deal);
 
-        // Handle department allocations
-        $oldDepartments = [];
-        if ($deal->department_split) {
-            $oldSplits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
-            $oldDepartments = collect($oldSplits)->pluck('department')->filter()->toArray();
+            // Handle department allocations
+            $oldDepartments = [];
+            if ($deal->department_split) {
+                $oldSplits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
+                $oldDepartments = collect($oldSplits)->pluck('department')->filter()->toArray();
+            }
+
+            if ($request->has('department_allocations')) {
+                $allocations = collect($request->department_allocations)->map(function($alloc) {
+                    if (isset($alloc['department'])) {
+                        $alloc['department'] = trim($alloc['department']);
+                    }
+                    return $alloc;
+                })->toArray();
+
+                $newDepartments = collect($allocations)->pluck('department')->filter()->diff($oldDepartments)->toArray();
+
+                $deal->department_split = json_encode($allocations);
+                $deal->save();
+            } elseif ($request->has('department_allocations_cleared')) {
+                $deal->department_split = null;
+                $deal->save();
+            }
+
+            if ($request->has('team_members')) {
+                $existingTeamMembers = $deal->teamMembers->pluck('id')->toArray();
+                $newTeamMembers = array_diff($request->team_members, $existingTeamMembers);
+
+                $teamData = [];
+                foreach ($request->team_members as $userId) {
+                    $costAllocation = $request->input("cost_allocation.{$userId}", 0);
+                    $teamData[$userId] = ['cost_allocation' => $costAllocation];
+                }
+                $deal->teamMembers()->sync($teamData);
+            }
+
+            $this->logAction("Updated deal: {$deal->title}", $deal);
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to update deal: ' . $e->getMessage());
+            return back()->with('error', 'Failed to update deal: ' . $e->getMessage())->withInput();
         }
 
-        if ($request->has('department_allocations')) {
-            $allocations = collect($request->department_allocations)->map(function($alloc) {
-                if (isset($alloc['department'])) {
-                    $alloc['department'] = trim($alloc['department']);
-                }
-                return $alloc;
-            })->toArray();
-
-            $newDepartments = collect($allocations)->pluck('department')->filter()->diff($oldDepartments)->toArray();
-
-            $deal->department_split = json_encode($allocations);
-            $deal->save();
-
-            // Notify only newly added departments
-            foreach ($newDepartments as $dept) {
-                $deptUsers = \App\Models\User::where('department', $dept)->get();
-                foreach ($deptUsers as $deptUser) {
-                    if ($deptUser->id !== auth()->id()) {
-                        $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+        // Send notifications outside transaction
+        try {
+            if (!empty($newDepartments)) {
+                foreach ($newDepartments as $dept) {
+                    $deptUsers = \App\Models\User::where('department', $dept)->get();
+                    foreach ($deptUsers as $deptUser) {
+                        if ($deptUser->id !== auth()->id()) {
+                            $deptUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Project Split (Department: ' . $dept . ')', auth()->user()));
+                        }
                     }
                 }
             }
-        } elseif ($request->has('department_allocations_cleared')) {
-            // Handle clearing if no allocations are sent but field was modified
-            $deal->department_split = null;
-            $deal->save();
-        }
-
-        if ($request->has('team_members')) {
-            $existingTeamMembers = $deal->teamMembers->pluck('id')->toArray();
-            $newTeamMembers = array_diff($request->team_members, $existingTeamMembers);
-
-            $teamData = [];
-            foreach ($request->team_members as $userId) {
-                $costAllocation = $request->input("cost_allocation.{$userId}", 0);
-                $teamData[$userId] = ['cost_allocation' => $costAllocation];
-            }
-            $deal->teamMembers()->sync($teamData);
 
             if (!empty($newTeamMembers)) {
                 $usersToNotify = \App\Models\User::whereIn('id', $newTeamMembers)->get();
@@ -778,21 +812,21 @@ class DealController extends Controller
                     }
                 }
             }
-        }
 
-        if ($deal->senior_manager && $deal->senior_manager !== $oldSeniorManager) {
-            $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
-            if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
-                $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+            if ($deal->senior_manager && $deal->senior_manager !== $oldSeniorManager) {
+                $seniorManagerUser = \App\Models\User::where('name', $deal->senior_manager)->first();
+                if ($seniorManagerUser && $seniorManagerUser->id !== auth()->id()) {
+                    $seniorManagerUser->notify(new \App\Notifications\DealAssignedNotification($deal, 'Deal Owner', auth()->user()));
+                }
             }
-        }
 
-        $this->logAction("Updated deal: {$deal->title}", $deal);
-        
-        if ($deal->stage !== $oldStage) {
-            $this->notifyStakeholders($deal, new \App\Notifications\DealStageChangedNotification($deal, $oldStage, $deal->stage, auth()->user()));
-        } else {
-            $this->notifyStakeholders($deal);
+            if ($deal->stage !== $oldStage) {
+                $this->notifyStakeholders($deal, new \App\Notifications\DealStageChangedNotification($deal, $oldStage, $deal->stage, auth()->user()));
+            } else {
+                $this->notifyStakeholders($deal);
+            }
+        } catch (\Throwable $ne) {
+            \Illuminate\Support\Facades\Log::warning('Deal update notification warning: ' . $ne->getMessage());
         }
 
         return back()->with('success', 'Deal updated successfully.');

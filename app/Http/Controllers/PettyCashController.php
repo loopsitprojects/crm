@@ -200,78 +200,88 @@ class PettyCashController extends Controller
 
         $jobNumberString = $this->parseJobNumbers($request);
 
-        $pettyCash = PettyCashRequest::create([
-            'reference_number' => PettyCashRequest::generateReferenceNumber(),
-            'user_id' => $user->id,
-            'hod_id' => $hodId,
-            'department' => $user->department ?: 'General',
-            'job_number' => $jobNumberString,
-            'extra_notes' => $request->extra_notes,
-            'total_amount' => $totalAmount,
-            'approved_amount' => $totalAmount,
-            'is_iou' => $isIou,
-            'status' => $status,
-        ]);
-
-        // Save Items
-        foreach ($request->items as $itemData) {
-            $attendees = [];
-            if (!empty($itemData['attendees']) && is_array($itemData['attendees'])) {
-                $attendees = array_values(array_slice(array_filter(array_map('trim', $itemData['attendees']), fn($n) => $n !== ''), 0, 5));
-            }
-
-            PettyCashItem::create([
-                'petty_cash_request_id' => $pettyCash->id,
-                'expense_category_id' => !empty($itemData['expense_category_id']) ? $itemData['expense_category_id'] : null,
-                'amount' => $itemData['amount'],
-                'description' => $itemData['description'] ?? null,
-                'attendees' => !empty($attendees) ? $attendees : null,
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $pettyCash = PettyCashRequest::create([
+                'reference_number' => PettyCashRequest::generateReferenceNumber(),
+                'user_id' => $user->id,
+                'hod_id' => $hodId,
+                'department' => $user->department ?: 'General',
+                'job_number' => $jobNumberString,
+                'extra_notes' => $request->extra_notes,
+                'total_amount' => $totalAmount,
+                'approved_amount' => $totalAmount,
+                'is_iou' => $isIou,
+                'status' => $status,
             ]);
-        }
 
-        // Handle Proof File Uploads
-        if ($request->hasFile('proofs')) {
-            foreach ($request->file('proofs') as $file) {
-                $this->saveProofFile($file, $pettyCash->id);
-            }
-        }
+            // Save Items
+            foreach ($request->items as $itemData) {
+                $attendees = [];
+                if (!empty($itemData['attendees']) && is_array($itemData['attendees'])) {
+                    $attendees = array_values(array_slice(array_filter(array_map('trim', $itemData['attendees']), fn($n) => $n !== ''), 0, 5));
+                }
 
-        // If request is pending finance directly (e.g. HOD without assigned HOD)
-        if ($status === 'pending_super_admin') {
-            $superAdmins = PettyCashNotification::getSuperAdminRecipients($user->id);
-            if ($superAdmins->isNotEmpty()) {
-                Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
-            }
-
-            if ($user) {
-                $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+                PettyCashItem::create([
+                    'petty_cash_request_id' => $pettyCash->id,
+                    'expense_category_id' => !empty($itemData['expense_category_id']) ? $itemData['expense_category_id'] : null,
+                    'amount' => $itemData['amount'],
+                    'description' => $itemData['description'] ?? null,
+                    'attendees' => !empty($attendees) ? $attendees : null,
+                ]);
             }
 
-            $msg = 'Petty Cash request submitted successfully and routed directly to Finance for approval (no HOD assigned).';
+            // Handle Proof File Uploads
+            if ($request->hasFile('proofs')) {
+                foreach ($request->file('proofs') as $file) {
+                    $this->saveProofFile($file, $pettyCash->id);
+                }
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to submit petty cash request: ' . $e->getMessage());
+
             if ($request->ajax() || $request->wantsJson()) {
-                session()->flash('success', $msg);
-                return response()->json(['success' => true, 'message' => $msg]);
+                return response()->json(['success' => false, 'message' => 'Failed to submit request: ' . $e->getMessage()], 500);
             }
-            return redirect()->back()->with('success', $msg);
+            return redirect()->back()->with('error', 'Failed to submit petty cash request: ' . $e->getMessage())->withInput();
         }
 
-        // Request is pending_hod (for staff, or HOD with assigned HOD)
-        $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? ($request->filled('hod_id') ? User::find($request->hod_id) : null));
-        if ($hod && $hod->id !== $user->id) {
-            $hod->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        // Send notifications outside transaction
+        try {
+            if ($status === 'pending_super_admin') {
+                $superAdmins = PettyCashNotification::getSuperAdminRecipients($user->id);
+                if ($superAdmins->isNotEmpty()) {
+                    Notification::send($superAdmins, new PettyCashNotification($pettyCash, 'submitted', $user));
+                }
+
+                if ($user) {
+                    $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+                }
+            } else {
+                $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? ($request->filled('hod_id') ? User::find($request->hod_id) : null));
+                if ($hod && $hod->id !== $user->id) {
+                    $hod->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+                }
+
+                if ($user) {
+                    $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+                }
+            }
+        } catch (\Throwable $ne) {
+            \Illuminate\Support\Facades\Log::warning('Petty cash notification warning: ' . $ne->getMessage());
         }
 
-        // Always notify requesting user
-        if ($user) {
-            $user->notify(new PettyCashNotification($pettyCash, 'submitted', $user));
+        if ($status === 'pending_super_admin') {
+            $msg = 'Petty Cash request submitted successfully and routed directly to Finance for approval (no HOD assigned).';
+        } else {
+            $hod = $resolvedHod ?? ($pettyCash->associated_hod ?? ($request->filled('hod_id') ? User::find($request->hod_id) : null));
+            $msg = ($isRequesterHod && $hod)
+                ? 'Petty Cash request submitted successfully and sent to your assigned HOD (' . $hod->name . ') for approval.'
+                : 'Petty Cash request submitted successfully and sent to HOD for approval.';
         }
-
-        // Note: Finance Admins are only notified when Finance approval is needed (i.e. status is pending_super_admin)
-
-
-        $msg = ($isRequesterHod && $hod)
-            ? 'Petty Cash request submitted successfully and sent to your assigned HOD (' . $hod->name . ') for approval.'
-            : 'Petty Cash request submitted successfully and sent to HOD for approval.';
 
         if ($request->ajax() || $request->wantsJson()) {
             session()->flash('success', $msg);
@@ -979,20 +989,27 @@ class PettyCashController extends Controller
 
         $destinationPath = public_path('uploads/petty_cash_proofs');
         if (!file_exists($destinationPath)) {
-            @mkdir($destinationPath, 0777, true);
+            @mkdir($destinationPath, 0755, true);
         }
-        $file->move($destinationPath, $filename);
+
+        try {
+            $file->move($destinationPath, $filename);
+        } catch (\Throwable $fe) {
+            \Illuminate\Support\Facades\Log::error('Proof file move failed: ' . $fe->getMessage());
+            throw new \RuntimeException('Failed to save uploaded proof file: ' . $origName);
+        }
+
         $filePath = 'uploads/petty_cash_proofs/' . $filename;
 
         // Mirror to alternative paths for shared hosting / LiteSpeed deployments
         $alt1 = base_path('public/uploads/petty_cash_proofs');
         if ($destinationPath !== $alt1 && !file_exists($alt1 . '/' . $filename)) {
-            @mkdir($alt1, 0777, true);
+            @mkdir($alt1, 0755, true);
             @copy($destinationPath . '/' . $filename, $alt1 . '/' . $filename);
         }
         $alt2 = base_path('uploads/petty_cash_proofs');
         if ($destinationPath !== $alt2 && !file_exists($alt2 . '/' . $filename)) {
-            @mkdir($alt2, 0777, true);
+            @mkdir($alt2, 0755, true);
             @copy($destinationPath . '/' . $filename, $alt2 . '/' . $filename);
         }
 

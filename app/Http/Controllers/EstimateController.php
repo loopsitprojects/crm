@@ -180,142 +180,165 @@ class EstimateController extends Controller
 
         $poPath = null;
         if ($request->hasFile('po_document')) {
-            $file = $request->file('po_document');
-            $poPath = $file->move(public_path('uploads/pos'), time() . '_' . $file->getClientOriginalName());
-            $poPath = 'uploads/pos/' . basename($poPath);
+            try {
+                $file = $request->file('po_document');
+                $uploadDir = public_path('uploads/pos');
+                if (!file_exists($uploadDir)) {
+                    @mkdir($uploadDir, 0755, true);
+                }
+                $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $filename = time() . '_' . uniqid() . '_' . $safeName;
+                $file->move($uploadDir, $filename);
+                $poPath = 'uploads/pos/' . $filename;
+            } catch (\Throwable $fe) {
+                \Illuminate\Support\Facades\Log::error('PO document upload failed: ' . $fe->getMessage());
+                return back()->with('error', 'Failed to upload PO document. Please check file permissions or size.')->withInput();
+            }
         }
 
-        $estimate = Estimate::create([
-            'customer_id' => $request->customer_id,
-            'user_id' => auth()->id(),
-            'reference_number' => $referenceNumber,
-            'brand_name' => $request->brand_name,
-            'date' => $request->date,
-            'status' => 'draft',
-            'total_amount' => 0,
-            'attention_to' => $request->attention_to,
-            'address_line_1' => $request->address_line_1,
-            'address_line_2' => $request->address_line_2,
-            'address_line_3' => $request->address_line_3,
-            'designation' => $request->designation,
-            'currency' => $request->currency,
-            'heading' => $request->heading,
-            'terms' => is_array($request->terms) ? implode(', ', $request->terms) : $request->terms,
-            'special_terms' => $request->special_terms,
-            'advance_payment' => $request->advance_payment,
-            'advance_percentage' => $request->advance_percentage,
-            'senior_manager' => $request->senior_manager,
-            'additional_notes' => $request->additional_notes,
-            'sscl_applicable' => $request->has('sscl_applicable'),
-            'vat_applicable' => $request->has('vat_applicable'),
-            'deal_id' => $request->deal_id,
-            'proforma_invoice' => $request->proforma_invoice ?? 'yes',
-            'invoice_type' => $request->invoice_type ?? 'tax_invoice',
-            'third_party_cost' => $request->third_party_cost ?? 'no',
-            'proforma_percentage' => $request->proforma_percentage,
-            'proforma_tax' => $request->proforma_tax ?? 'with_tax',
-            'advance_received_amount' => $request->advance_received_amount ?? 0,
-            'po_applicable' => $request->po_applicable ?? 'no',
-            'po_number' => $request->po_number,
-            'po_file_path' => $poPath,
-            'date_of_delivery' => $request->date_of_delivery,
-            'place_of_supply' => $request->place_of_supply,
-        ]);
-
-        $grandTotal = 0;
-
-        $positionCounter = 0;
-        foreach ($request->items as $item) {
-            $quantity = $item['quantity'];
-            $unitPrice = $item['unit_price'];
-
-            // Calculate the taxFactor to back out the base unit price
-            $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641) / 100;
-            $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
-            
-            $ssclApplicable = $request->has('sscl_applicable');
-            $vatApplicable = $request->has('vat_applicable');
-
-            // The unit price in the request is now the base unit price directly
-            $baseUnitPrice = round($unitPrice, 2);
-            $amount = round($quantity * $baseUnitPrice, 2);
-
-            // Tax Calculation (Backend Fallback/Verification)
-            $sscl = 0;
-            $vat = 0;
-            if ($ssclApplicable) {
-                $sscl = round($amount * $ssclRate, 2);
-            }
-            if ($vatApplicable) {
-                $vat = round(($amount + $sscl) * $vatRate, 2);
-            }
-            $totalWithVat = round($amount + $vat + $sscl, 2);
-
-            $estimate->items()->create([
-                'description' => $item['description'],
-                'quantity' => $quantity,
-                'unit_price' => $baseUnitPrice,
-                'amount' => $amount,
-                'vat_amount' => $vat,
-                'sscl_amount' => $sscl,
-                'total_with_vat' => $totalWithVat,
-                // Use backend counter instead of JS timestamp to prevent INT(11) overflow
-                'position' => $positionCounter++,
-                'item_heading' => $item['item_heading'] ?? null,
-                'locations' => $item['locations'] ?? null,
-                'days' => $item['days'] ?? null,
-                'department' => $item['department'] ?? null,
-                'revenue_category' => $item['revenue_category'] ?? null,
-                'type' => $item['type'] ?? 'item',
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $estimate = Estimate::create([
+                'customer_id' => $request->customer_id,
+                'user_id' => auth()->id(),
+                'reference_number' => $referenceNumber,
+                'brand_name' => $request->brand_name,
+                'date' => $request->date,
+                'status' => 'draft',
+                'total_amount' => 0,
+                'attention_to' => $request->attention_to,
+                'address_line_1' => $request->address_line_1,
+                'address_line_2' => $request->address_line_2,
+                'address_line_3' => $request->address_line_3,
+                'designation' => $request->designation,
+                'currency' => $request->currency,
+                'heading' => $request->heading,
+                'terms' => is_array($request->terms) ? implode(', ', $request->terms) : $request->terms,
+                'special_terms' => $request->special_terms,
+                'advance_payment' => $request->advance_payment,
+                'advance_percentage' => $request->advance_percentage,
+                'senior_manager' => $request->senior_manager,
+                'additional_notes' => $request->additional_notes,
+                'sscl_applicable' => $request->has('sscl_applicable'),
+                'vat_applicable' => $request->has('vat_applicable'),
+                'deal_id' => $request->deal_id,
+                'proforma_invoice' => $request->proforma_invoice ?? 'yes',
+                'invoice_type' => $request->invoice_type ?? 'tax_invoice',
+                'third_party_cost' => $request->third_party_cost ?? 'no',
+                'proforma_percentage' => $request->proforma_percentage,
+                'proforma_tax' => $request->proforma_tax ?? 'with_tax',
+                'advance_received_amount' => $request->advance_received_amount ?? 0,
+                'po_applicable' => $request->po_applicable ?? 'no',
+                'po_number' => $request->po_number,
+                'po_file_path' => $poPath,
+                'date_of_delivery' => $request->date_of_delivery,
+                'place_of_supply' => $request->place_of_supply,
             ]);
 
-            $grandTotal += $totalWithVat;
-        }
+            $grandTotal = 0;
 
-        $estimate->update(['total_amount' => round($grandTotal, 2)]);
+            $positionCounter = 0;
+            foreach ($request->items as $item) {
+                $quantity = $item['quantity'];
+                $unitPrice = $item['unit_price'];
 
+                // Calculate the taxFactor to back out the base unit price
+                $ssclRate = \App\Models\Setting::get('sscl_rate', 2.5641) / 100;
+                $vatRate = \App\Models\Setting::get('vat_rate', 15) / 100;
+                
+                $ssclApplicable = $request->has('sscl_applicable');
+                $vatApplicable = $request->has('vat_applicable');
 
-        // Handle Third Party Costs (Move before Sync)
-        $thirdPartyTotal = 0;
-        if ($request->third_party_cost === 'yes' && $request->has('third_party_costs')) {
-            foreach ($request->third_party_costs as $costData) {
-                $filePath = null;
-                if (isset($costData['file']) && $costData['file'] instanceof \Illuminate\Http\UploadedFile) {
-                    $filePath = $costData['file']->store('third_party_costs', 'public');
+                // The unit price in the request is now the base unit price directly
+                $baseUnitPrice = round($unitPrice, 2);
+                $amount = round($quantity * $baseUnitPrice, 2);
+
+                // Tax Calculation (Backend Fallback/Verification)
+                $sscl = 0;
+                $vat = 0;
+                if ($ssclApplicable) {
+                    $sscl = round($amount * $ssclRate, 2);
                 }
+                if ($vatApplicable) {
+                    $vat = round(($amount + $sscl) * $vatRate, 2);
+                }
+                $totalWithVat = round($amount + $vat + $sscl, 2);
 
-                $estimate->thirdPartyCosts()->create([
-                    'supplier' => $costData['supplier'],
-                    'cost' => $costData['cost'],
-                    'department' => $costData['department'] ?? null,
-                    'file_path' => $filePath,
+                $estimate->items()->create([
+                    'description' => $item['description'],
+                    'quantity' => $quantity,
+                    'unit_price' => $baseUnitPrice,
+                    'amount' => $amount,
+                    'vat_amount' => $vat,
+                    'sscl_amount' => $sscl,
+                    'total_with_vat' => $totalWithVat,
+                    'position' => $positionCounter++,
+                    'item_heading' => $item['item_heading'] ?? null,
+                    'locations' => $item['locations'] ?? null,
+                    'days' => $item['days'] ?? null,
+                    'department' => $item['department'] ?? null,
+                    'revenue_category' => $item['revenue_category'] ?? null,
+                    'type' => $item['type'] ?? 'item',
                 ]);
-                
-                $thirdPartyTotal += (float)$costData['cost'];
+
+                $grandTotal += $totalWithVat;
             }
+
+            $estimate->update(['total_amount' => round($grandTotal, 2)]);
+
+            // Handle Third Party Costs (Move before Sync)
+            $thirdPartyTotal = 0;
+            if ($request->third_party_cost === 'yes' && $request->has('third_party_costs')) {
+                foreach ($request->third_party_costs as $costData) {
+                    $filePath = null;
+                    if (isset($costData['file']) && $costData['file'] instanceof \Illuminate\Http\UploadedFile) {
+                        $filePath = $costData['file']->store('third_party_costs', 'public');
+                    }
+
+                    $estimate->thirdPartyCosts()->create([
+                        'supplier' => $costData['supplier'],
+                        'cost' => $costData['cost'],
+                        'department' => $costData['department'] ?? null,
+                        'file_path' => $filePath,
+                    ]);
+                    
+                    $thirdPartyTotal += (float)$costData['cost'];
+                }
+            }
+
+            // Sync with Deal if exists
+            if ($estimate->deal_id) {
+                $deal = \App\Models\Deal::find($estimate->deal_id);
+                if ($deal) {
+                    // Pre-tax total (excluding VAT and SSCL)
+                    $preTaxTotal = $estimate->items->sum(function($item) {
+                        return (float)$item->amount;
+                    });
+                    
+                    $deal->update([
+                        'revenue' => $preTaxTotal,
+                        'contribution' => $preTaxTotal - $thirdPartyTotal
+                    ]);
+                }
+            }
+
+            $this->syncProformaInvoice($estimate);
+
+            $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
+
+            \Illuminate\Support\Facades\DB::commit();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to create estimate: ' . $e->getMessage());
+            return back()->with('error', 'Failed to create estimate: ' . $e->getMessage())->withInput();
         }
 
-        // Sync with Deal if exists
-        if ($estimate->deal_id) {
-            $deal = \App\Models\Deal::find($estimate->deal_id);
-            if ($deal) {
-                // Pre-tax total (excluding VAT and SSCL)
-                $preTaxTotal = $estimate->items->sum(function($item) {
-                    return (float)$item->amount;
-                });
-                
-                $deal->update([
-                    'revenue' => $preTaxTotal,
-                    'contribution' => $preTaxTotal - $thirdPartyTotal
-                ]);
+        try {
+            if ($estimate->deal) {
+                $this->notifyStakeholders($estimate->deal, new EstimateCreatedNotification($estimate, $estimate->deal, auth()->user()));
             }
-        }
-
-        $this->syncProformaInvoice($estimate);
-
-        $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
-        if ($estimate->deal) {
-            $this->notifyStakeholders($estimate->deal, new EstimateCreatedNotification($estimate, $estimate->deal, auth()->user()));
+        } catch (\Throwable $ne) {
+            \Illuminate\Support\Facades\Log::warning('Estimate notification error: ' . $ne->getMessage());
         }
 
         return redirect()->route('estimates.index')->with('success', 'Estimate created successfully.');
@@ -658,16 +681,29 @@ class EstimateController extends Controller
 
         $poPath = $estimate->po_file_path;
         if ($request->hasFile('po_document')) {
-            // Delete old file if exists
-            if ($poPath && file_exists(public_path($poPath))) {
-                unlink(public_path($poPath));
+            try {
+                $file = $request->file('po_document');
+                $uploadDir = public_path('uploads/pos');
+                if (!file_exists($uploadDir)) {
+                    @mkdir($uploadDir, 0755, true);
+                }
+                $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $filename = time() . '_' . uniqid() . '_' . $safeName;
+                $file->move($uploadDir, $filename);
+
+                if ($poPath && file_exists(public_path($poPath))) {
+                    @unlink(public_path($poPath));
+                }
+                $poPath = 'uploads/pos/' . $filename;
+            } catch (\Throwable $fe) {
+                \Illuminate\Support\Facades\Log::error('PO document update upload failed: ' . $fe->getMessage());
+                return back()->with('error', 'Failed to upload replacement PO document.')->withInput();
             }
-            $file = $request->file('po_document');
-            $poPath = $file->move(public_path('uploads/pos'), time() . '_' . $file->getClientOriginalName());
-            $poPath = 'uploads/pos/' . basename($poPath);
         }
 
-        $estimate->update([
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $estimate->update([
             'customer_id' => $request->customer_id,
             'brand_name' => $request->brand_name,
             'date' => $request->date,
@@ -834,12 +870,24 @@ class EstimateController extends Controller
         $this->syncTaxInvoices($estimate);
 
         $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
+
+        \Illuminate\Support\Facades\DB::commit();
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\DB::rollBack();
+        \Illuminate\Support\Facades\Log::error('Failed to update estimate: ' . $e->getMessage());
+        return back()->with('error', 'Failed to update estimate: ' . $e->getMessage())->withInput();
+    }
+
+    try {
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal);
         }
-
-        return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');
+    } catch (\Throwable $ne) {
+        \Illuminate\Support\Facades\Log::warning('Estimate update notification error: ' . $ne->getMessage());
     }
+
+    return redirect()->route('estimates.show', $estimate->id)->with('success', 'Estimate updated successfully.');
+}
 
     /**
      * Remove the specified resource from storage.

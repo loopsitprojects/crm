@@ -15,14 +15,14 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\PettyCashController;
 
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('login', [AuthController::class, 'login'])->name('login.post');
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:15,1')->name('login.post');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 // Password Reset Routes (Email OTP)
 Route::get('forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
-Route::post('forgot-password', [AuthController::class, 'sendOtp'])->name('password.email');
+Route::post('forgot-password', [AuthController::class, 'sendOtp'])->middleware('throttle:6,1')->name('password.email');
 Route::get('reset-password/otp', [AuthController::class, 'showOtpForm'])->name('password.otp');
-Route::post('reset-password/otp', [AuthController::class, 'resetPasswordWithOtp'])->name('password.update-otp');
+Route::post('reset-password/otp', [AuthController::class, 'resetPasswordWithOtp'])->middleware('throttle:10,1')->name('password.update-otp');
 
 // Dynamic PWA Manifest & Service Worker Routes for Hostinger / LiteSpeed
 Route::get('manifest.json', function () {
