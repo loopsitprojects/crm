@@ -65,19 +65,28 @@
             display: none;
         }
 
+        /* Prevent multi-select flashing (FOUC) while page is loading / before TomSelect initializes */
+        .filter-form select[multiple] {
+            display: none !important;
+        }
+
         /* Compact styles for Tom Select inside the filter form */
         .filter-form .ts-wrapper {
-            width: auto !important;
+            width: 100% !important;
             display: inline-block !important;
             vertical-align: middle !important;
         }
         .filter-form .ts-wrapper .ts-control {
-            padding: 0.25rem 0.5rem !important; /* py-1 px-2 */
+            padding: 0.25rem 1.5rem 0.25rem 0.5rem !important; /* py-1 px-2 with space for dropdown arrow */
             min-height: 28px !important;
             font-size: 0.75rem !important; /* text-xs */
             border-radius: 0.375rem !important; /* rounded-md */
             line-height: 1.25rem !important;
             align-items: center !important;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e") !important;
+            background-position: right 0.25rem center !important;
+            background-repeat: no-repeat !important;
+            background-size: 1.1em 1.1em !important;
         }
         .filter-form .ts-wrapper .ts-control input {
             font-size: 0.75rem !important;
@@ -218,18 +227,6 @@
                 <!-- Filter Form -->
                 <form action="{{ route('deals.index') }}" method="GET" class="filter-form flex flex-wrap items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
                     <div class="flex items-center gap-2">
-                        <label for="start_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Start Month:</label>
-                        <input type="month" name="start_date" id="start_date" value="{{ request('start_date') ? (strlen(request('start_date')) > 7 ? substr(request('start_date'), 0, 7) : request('start_date')) : '' }}"
-                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <label for="close_date" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Close Month:</label>
-                        <input type="month" name="close_date" id="close_date" value="{{ request('close_date') ? (strlen(request('close_date')) > 7 ? substr(request('close_date'), 0, 7) : request('close_date')) : '' }}"
-                            class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
-                    </div>
-
-                    <div class="flex items-center gap-2">
                         <label for="created_date_type" class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Deals Created Date:</label>
                         <select name="created_date_type" id="created_date_type" onchange="toggleCustomDateFields(this.value)"
                             class="rounded-md border-gray-300 shadow-sm focus:border-brand-purple focus:ring-brand-purple text-xs py-1 px-2 border">
@@ -308,13 +305,47 @@
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
                         </button>
-                        @if(request('start_date') || request('close_date') || request('created_date_type') || request('expected_close_date_type') || request('filter_user') || request('filter_department') || request('department') || request('created_from') || request('created_to') || request('expected_close_from') || request('expected_close_to'))
+                        @php
+                            $hasActiveFilters = request('created_date_type') || request('expected_close_date_type') || 
+                                (is_array(request('filter_user')) ? !empty(array_filter(request('filter_user'))) : request('filter_user')) || 
+                                (is_array(request('filter_department')) ? !empty(array_filter(request('filter_department'))) : request('filter_department')) || 
+                                (is_array(request('department')) ? !empty(array_filter(request('department'))) : request('department')) || 
+                                request('created_from') || request('created_to') || 
+                                request('expected_close_from') || request('expected_close_to') ||
+                                request('start_date') || request('close_date');
+                        @endphp
+                        @if($hasActiveFilters)
                             <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                                 Reset
                             </a>
                         @endif
                     </div>
                 </form>
+
+                <script>
+                    (function() {
+                        function initFilterDropdowns() {
+                            if (typeof TomSelect !== 'undefined') {
+                                if (document.getElementById('filter_user') && !document.getElementById('filter_user').tomselect) {
+                                    new TomSelect('#filter_user', {
+                                        plugins: ['remove_button'],
+                                        placeholder: 'All Users',
+                                        create: false
+                                    });
+                                }
+                                if (document.getElementById('filter_department') && !document.getElementById('filter_department').tomselect) {
+                                    new TomSelect('#filter_department', {
+                                        plugins: ['remove_button'],
+                                        placeholder: 'All Departments',
+                                        create: false
+                                    });
+                                }
+                            }
+                        }
+                        initFilterDropdowns();
+                        document.addEventListener('DOMContentLoaded', initFilterDropdowns);
+                    })();
+                </script>
             </div>
 
             <button onclick="document.getElementById('createDealModal').classList.remove('hidden')"
@@ -1080,14 +1111,14 @@
 
         document.addEventListener('DOMContentLoaded', function () {
             // Initialize TomSelect for User and Department filters
-            if (document.getElementById('filter_user')) {
+            if (document.getElementById('filter_user') && !document.getElementById('filter_user').tomselect) {
                 new TomSelect('#filter_user', {
                     plugins: ['remove_button'],
                     placeholder: 'All Users',
                     create: false
                 });
             }
-            if (document.getElementById('filter_department')) {
+            if (document.getElementById('filter_department') && !document.getElementById('filter_department').tomselect) {
                 new TomSelect('#filter_department', {
                     plugins: ['remove_button'],
                     placeholder: 'All Departments',
