@@ -203,8 +203,10 @@ class DealController extends Controller
             }
         }
 
-        // User filter
-        if ($request->has('filter_user')) {
+        // Own deals only filter
+        if ($request->boolean('own_deals_only') || $request->input('own_deals_only') == '1' || $request->input('my_deals_only') == '1') {
+            $query->where('user_id', $user->id);
+        } elseif ($request->has('filter_user')) {
             $filterUsers = array_filter((array)$request->input('filter_user'));
             if (!empty($filterUsers)) {
                 $query->whereIn('user_id', $filterUsers);

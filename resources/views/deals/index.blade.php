@@ -320,6 +320,16 @@
                         </div>
                     </div>
 
+                    <!-- Own Deals Only Checkbox -->
+                    <div class="flex items-center">
+                        <label for="own_deals_only" class="inline-flex items-center gap-1.5 cursor-pointer select-none" title="Filter to show only your own deals">
+                            <input type="checkbox" name="own_deals_only" id="own_deals_only" value="1"
+                                {{ request('own_deals_only') == '1' || request('my_deals_only') == '1' ? 'checked' : '' }}
+                                class="rounded border-gray-300 text-brand-purple focus:ring-brand-purple h-4 w-4">
+                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Own Deals Only</span>
+                        </label>
+                    </div>
+
                     <div class="flex items-center gap-1.5">
                         <button type="submit" class="px-3 py-1 bg-brand-purple text-white text-xs font-bold rounded-lg hover:bg-brand-blue transition-colors shadow-sm">
                             Filter
@@ -331,7 +341,8 @@
                                 (is_array(request('department')) ? !empty(array_filter(request('department'))) : request('department')) || 
                                 request('created_from') || request('created_to') || 
                                 request('expected_close_from') || request('expected_close_to') ||
-                                request('start_date') || request('close_date');
+                                request('start_date') || request('close_date') ||
+                                request('own_deals_only') || request('my_deals_only');
                         @endphp
                         @if($hasActiveFilters)
                             <a href="{{ route('deals.index') }}" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
@@ -346,10 +357,18 @@
                         function initFilterDropdowns() {
                             if (typeof TomSelect !== 'undefined') {
                                 if (document.getElementById('filter_user') && !document.getElementById('filter_user').tomselect) {
-                                    new TomSelect('#filter_user', {
+                                    const userTomSelect = new TomSelect('#filter_user', {
                                         plugins: ['remove_button'],
                                         placeholder: 'All Users',
                                         create: false
+                                    });
+                                    userTomSelect.on('change', function(vals) {
+                                        if (vals && (Array.isArray(vals) ? vals.length > 0 : vals !== '')) {
+                                            const ownBox = document.getElementById('own_deals_only');
+                                            if (ownBox && ownBox.checked) {
+                                                ownBox.checked = false;
+                                            }
+                                        }
                                     });
                                 }
                                 if (document.getElementById('filter_department') && !document.getElementById('filter_department').tomselect) {
@@ -359,6 +378,19 @@
                                         create: false
                                     });
                                 }
+                            }
+
+                            const ownDealsCheckbox = document.getElementById('own_deals_only');
+                            if (ownDealsCheckbox && !ownDealsCheckbox.dataset.listenerAttached) {
+                                ownDealsCheckbox.dataset.listenerAttached = 'true';
+                                ownDealsCheckbox.addEventListener('change', function() {
+                                    if (this.checked) {
+                                        const userSelect = document.getElementById('filter_user');
+                                        if (userSelect && userSelect.tomselect) {
+                                            userSelect.tomselect.clear();
+                                        }
+                                    }
+                                });
                             }
                         }
                         initFilterDropdowns();
@@ -1209,10 +1241,18 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Initialize TomSelect for User and Department filters
             if (document.getElementById('filter_user') && !document.getElementById('filter_user').tomselect) {
-                new TomSelect('#filter_user', {
+                const fallbackUserTs = new TomSelect('#filter_user', {
                     plugins: ['remove_button'],
                     placeholder: 'All Users',
                     create: false
+                });
+                fallbackUserTs.on('change', function(vals) {
+                    if (vals && (Array.isArray(vals) ? vals.length > 0 : vals !== '')) {
+                        const ownBox = document.getElementById('own_deals_only');
+                        if (ownBox && ownBox.checked) {
+                            ownBox.checked = false;
+                        }
+                    }
                 });
             }
             if (document.getElementById('filter_department') && !document.getElementById('filter_department').tomselect) {
