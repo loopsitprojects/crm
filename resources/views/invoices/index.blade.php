@@ -217,6 +217,14 @@
                                         </button>
                                     </form>
                                 @endif
+                                @if(auth()->user()->isITAdmin())
+                                    <button type="button"
+                                        onclick="openRevertInvoiceModal('{{ route('invoices.revert', $invoice) }}', '{{ $invoice->invoice_number }}', '{{ $invoice->estimate ? $invoice->estimate->reference_number : '' }}')"
+                                        class="text-amber-600 hover:text-amber-800 transition-colors"
+                                        title="Revert Invoice (IT Admin only)">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                @endif
                             </td>
                         </tr>
                     @empty

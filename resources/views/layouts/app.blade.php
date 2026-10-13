@@ -533,6 +533,109 @@
         }
     </script>
 
+    @if(auth()->check() && auth()->user()->isITAdmin())
+    <script>
+        function openRevertInvoiceModal(url, invoiceNum, estimateRef) {
+            const refText = estimateRef ? ` (Estimate: <span class="font-semibold text-brand-purple">${estimateRef}</span>)` : '';
+            Swal.fire({
+                title: '<div class="text-lg font-bold text-gray-800 flex items-center justify-center gap-2"><i class="fas fa-undo-alt text-amber-500"></i> Revert Invoice</div>',
+                html: `
+                    <div class="text-left text-sm text-gray-700 mt-2 space-y-4">
+                        <p class="leading-relaxed">
+                            Select the target state to revert Invoice <strong class="text-gray-900 font-bold">#${invoiceNum}</strong>${refText}:
+                        </p>
+                        <div class="space-y-3">
+                            <label class="flex items-start p-3.5 bg-amber-50/70 border-2 border-amber-300 rounded-xl cursor-pointer hover:bg-amber-100/60 transition-colors">
+                                <input type="radio" name="swal_target_state" value="ready_to_invoice" checked class="mt-1 text-amber-600 focus:ring-amber-500">
+                                <div class="ml-3">
+                                    <span class="block text-sm font-bold text-gray-900">
+                                        <i class="fas fa-file-invoice mr-1.5 text-amber-600"></i> Ready to Invoice State
+                                    </span>
+                                    <span class="block text-xs text-gray-600 mt-0.5 leading-normal">
+                                        Restores estimate to <strong>Ready to Invoice</strong> and regenerates the Temporary Invoice (<span class="font-mono text-gray-700">TEMP_XXXXX</span>) for Finance to process.
+                                    </span>
+                                </div>
+                            </label>
+                            <label class="flex items-start p-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                                <input type="radio" name="swal_target_state" value="draft" class="mt-1 text-amber-600 focus:ring-amber-500">
+                                <div class="ml-3">
+                                    <span class="block text-sm font-bold text-gray-900">
+                                        <i class="fas fa-file-signature mr-1.5 text-blue-600"></i> Estimate State (Draft / Pending)
+                                    </span>
+                                    <span class="block text-xs text-gray-600 mt-0.5 leading-normal">
+                                        Restores estimate to <strong>Draft / Pending</strong> state, removes temporary invoices, and unlocks estimate for editing.
+                                    </span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2.5">
+                            <i class="fas fa-exclamation-triangle text-red-500 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <strong class="font-semibold">IT Admin Master Action:</strong> This will delete the current final invoice record (#${invoiceNum}) and reset the estimate lifecycle.
+                            </div>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-undo mr-1.5"></i> Yes, Revert Invoice',
+                confirmButtonColor: '#d97706',
+                cancelButtonText: 'Cancel',
+                cancelButtonColor: '#6b7280',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const selected = document.querySelector('input[name="swal_target_state"]:checked');
+                    return selected ? selected.value : 'ready_to_invoice';
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const targetState = result.value;
+                    Swal.fire({
+                        title: 'Reverting Invoice...',
+                        text: 'Please wait while the invoice is being reverted.',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            target_state: targetState
+                        })
+                    })
+                    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (ok && data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Invoice Reverted',
+                                text: data.message,
+                                timer: 1800,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.href = data.redirect || window.location.href;
+                            });
+                        } else {
+                            Swal.fire('Error', data.message || 'Failed to revert invoice.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error reverting invoice:', error);
+                        Swal.fire('Error', 'An unexpected error occurred while reverting invoice.', 'error');
+                    });
+                }
+            });
+        }
+    </script>
+    @endif
+
     <!-- Change Password Modal (Accessible to All Logged In Users) -->
     <div id="changePasswordModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm {{ (isset($errors) && ($errors->has('current_password') || $errors->has('password'))) ? '' : 'hidden' }} overflow-y-auto h-full w-full z-50 p-4 flex items-center justify-center">
         <div class="relative my-auto p-6 border w-full max-w-md shadow-2xl rounded-2xl bg-white">

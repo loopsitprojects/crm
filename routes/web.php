@@ -240,6 +240,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('invoices/proforma', [InvoiceController::class, 'proforma'])->name('invoices.proforma');
         Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
         Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
+        Route::post('invoices/{invoice}/revert', [InvoiceController::class, 'revert'])->middleware('role:IT Admin')->name('invoices.revert');
+        Route::post('estimates/{estimate}/revert-invoice', [InvoiceController::class, 'revertEstimateInvoice'])->middleware('role:IT Admin')->name('estimates.revertInvoice');
         Route::resource('invoices', InvoiceController::class);
         Route::resource('temp-invoices', \App\Http\Controllers\TempInvoiceController::class)->only(['edit', 'update']);
         Route::post('temp-invoices/{tempInvoice}/revert', [InvoiceController::class, 'revertToPending'])->name('temp-invoices.revert');

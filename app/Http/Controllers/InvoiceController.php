@@ -160,7 +160,7 @@ class InvoiceController extends Controller
 
     public function invoiced(Request $request)
     {
-        $query = Estimate::with(['customer', 'deal', 'thirdPartyCosts' => function($q) {
+        $query = Estimate::with(['customer', 'deal', 'invoices', 'thirdPartyCosts' => function($q) {
             $q->whereNotNull('file_path')->where('file_path', '!=', '');
         }])->whereIn('status', ['invoiced', 'approved']);
 
@@ -703,6 +703,258 @@ class InvoiceController extends Controller
             \Illuminate\Support\Facades\DB::rollBack();
             \Illuminate\Support\Facades\Log::error('Failed to revert estimate to pending: ' . $e->getMessage());
             return back()->with('error', 'Failed to revert estimate to pending: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Revert an invoice back to 'ready_to_invoice' or 'estimate' (draft) state.
+     * Accessible ONLY by IT Admins.
+     */
+    public function revert(Request $request, Invoice $invoice)
+    {
+        $user = auth()->user();
+        if (!$user || !$user->isITAdmin()) {
+            abort(403, 'Unauthorized. Only IT Admins are authorized to revert invoices.');
+        }
+
+        $request->validate([
+            'target_state' => 'required|in:ready_to_invoice,draft,estimate',
+        ]);
+
+        $targetState = $request->input('target_state');
+        if ($targetState === 'estimate') {
+            $targetState = 'draft';
+        }
+
+        $invoiceNumber = $invoice->invoice_number;
+        $estimate = $invoice->estimate;
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            if ($targetState === 'ready_to_invoice') {
+                if ($estimate) {
+                    $oldStatus = $estimate->status;
+                    $estimate->update(['status' => 'ready_to_invoice']);
+
+                    // Ensure TempInvoice exists for this estimate
+                    $existingTemp = TempInvoice::where('quotation_id', $estimate->id)->first();
+                    if (!$existingTemp) {
+                        $latestTemp = TempInvoice::orderBy('id', 'desc')->first();
+                        $sequence = 1;
+                        if ($latestTemp && preg_match('/TEMP_(\d+)$/', $latestTemp->temp_invoice_number, $matches)) {
+                            $sequence = intval($matches[1]) + 1;
+                        }
+                        $tempInvoiceNumber = 'TEMP_' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
+                        $tempInvoice = TempInvoice::create([
+                            'quotation_id' => $estimate->id,
+                            'customer_id' => $invoice->customer_id ?? $estimate->customer_id,
+                            'temp_invoice_number' => $tempInvoiceNumber,
+                            'date' => $invoice->date ?? now()->format('Y-m-d'),
+                            'due_date' => $invoice->due_date ?? now()->addMonth()->format('Y-m-d'),
+                            'total_amount' => $invoice->total_amount ?? ($estimate->total_amount - ($estimate->advance_received_amount ?? 0)),
+                            'status' => 'unpaid',
+                            'is_proforma' => $invoice->is_proforma ? 1 : 0,
+                            'date_of_delivery' => $invoice->date_of_delivery ?? ($estimate->date_of_delivery ?? null),
+                            'place_of_supply' => $invoice->place_of_supply ?? ($estimate->place_of_supply ?? null),
+                        ]);
+
+                        $sourceItems = $invoice->items()->count() > 0 ? $invoice->items : $estimate->items;
+                        foreach ($sourceItems as $item) {
+                            $tempInvoice->items()->create([
+                                'description' => $item->description,
+                                'type' => $item->type ?? 'item',
+                                'quantity' => $item->quantity,
+                                'unit_price' => $item->unit_price,
+                                'amount' => $item->amount,
+                                'sscl_amount' => $item->sscl_amount,
+                                'vat_amount' => $item->vat_amount,
+                                'total_with_vat' => $item->total_with_vat,
+                                'department' => $item->department,
+                                'revenue_category' => $item->revenue_category,
+                            ]);
+                        }
+                    }
+
+                    if ($estimate->deal) {
+                        $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'ready_to_invoice', $user));
+                    }
+                }
+
+                // Delete the current invoice record and its items
+                $invoice->items()->delete();
+                $invoice->delete();
+
+                $this->logAction("Reverted invoice {$invoiceNumber} to Ready to Invoice state", $estimate);
+
+                \Illuminate\Support\Facades\DB::commit();
+
+                $msg = "Invoice {$invoiceNumber} was successfully reverted to Ready to Invoice state.";
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $msg,
+                        'redirect' => route('invoices.ready'),
+                    ]);
+                }
+
+                return redirect()->route('invoices.ready')->with('success', $msg);
+            } else { // 'draft' (Estimate State)
+                if ($estimate) {
+                    $oldStatus = $estimate->status;
+                    $estimate->update(['status' => 'draft']);
+
+                    // Remove any associated TempInvoice
+                    TempInvoice::where('quotation_id', $estimate->id)->each(function ($temp) {
+                        $temp->items()->delete();
+                        $temp->delete();
+                    });
+
+                    if ($estimate->deal) {
+                        $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'draft', $user));
+                    }
+                }
+
+                // Delete the current invoice record and its items
+                $invoice->items()->delete();
+                $invoice->delete();
+
+                $this->logAction("Reverted invoice {$invoiceNumber} to Estimate (Draft) state", $estimate);
+
+                \Illuminate\Support\Facades\DB::commit();
+
+                $msg = "Invoice {$invoiceNumber} was successfully reverted to Estimate state.";
+                if ($request->wantsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $msg,
+                        'redirect' => route('estimates.index'),
+                    ]);
+                }
+
+                return redirect()->route('estimates.index')->with('success', $msg);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to revert invoice: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to revert invoice: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to revert invoice: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Revert an invoiced estimate back to 'ready_to_invoice' or 'estimate' (draft) state.
+     * Accessible ONLY by IT Admins.
+     */
+    public function revertEstimateInvoice(Request $request, Estimate $estimate)
+    {
+        $user = auth()->user();
+        if (!$user || !$user->isITAdmin()) {
+            abort(403, 'Unauthorized. Only IT Admins are authorized to revert invoices.');
+        }
+
+        $request->validate([
+            'target_state' => 'required|in:ready_to_invoice,draft,estimate',
+        ]);
+
+        // If estimate has linked invoice records, revert the invoice
+        $invoice = $estimate->invoices()->latest()->first();
+        if ($invoice) {
+            return $this->revert($request, $invoice);
+        }
+
+        $targetState = $request->input('target_state');
+        if ($targetState === 'estimate') {
+            $targetState = 'draft';
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $oldStatus = $estimate->status;
+            $estimate->update(['status' => $targetState]);
+
+            if ($targetState === 'ready_to_invoice') {
+                $existingTemp = TempInvoice::where('quotation_id', $estimate->id)->first();
+                if (!$existingTemp) {
+                    $latestTemp = TempInvoice::orderBy('id', 'desc')->first();
+                    $sequence = 1;
+                    if ($latestTemp && preg_match('/TEMP_(\d+)$/', $latestTemp->temp_invoice_number, $matches)) {
+                        $sequence = intval($matches[1]) + 1;
+                    }
+                    $tempInvoiceNumber = 'TEMP_' . str_pad($sequence, 5, '0', STR_PAD_LEFT);
+
+                    $tempInvoice = TempInvoice::create([
+                        'quotation_id' => $estimate->id,
+                        'customer_id' => $estimate->customer_id,
+                        'temp_invoice_number' => $tempInvoiceNumber,
+                        'date' => $estimate->date ?? now()->format('Y-m-d'),
+                        'due_date' => now()->addMonth()->format('Y-m-d'),
+                        'total_amount' => $estimate->total_amount - ($estimate->advance_received_amount ?? 0),
+                        'status' => 'unpaid',
+                        'is_proforma' => 0,
+                        'date_of_delivery' => $estimate->date_of_delivery ?? null,
+                        'place_of_supply' => $estimate->place_of_supply ?? null,
+                    ]);
+
+                    foreach ($estimate->items as $item) {
+                        $tempInvoice->items()->create([
+                            'description' => $item->description,
+                            'type' => $item->type ?? 'item',
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'amount' => $item->amount,
+                            'sscl_amount' => $item->sscl_amount,
+                            'vat_amount' => $item->vat_amount,
+                            'total_with_vat' => $item->total_with_vat,
+                            'department' => $item->department,
+                            'revenue_category' => $item->revenue_category,
+                        ]);
+                    }
+                }
+            } else {
+                TempInvoice::where('quotation_id', $estimate->id)->each(function ($temp) {
+                    $temp->items()->delete();
+                    $temp->delete();
+                });
+            }
+
+            if ($estimate->deal) {
+                $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, $targetState, $user));
+            }
+
+            $this->logAction("Reverted estimate {$estimate->reference_number} to " . ($targetState === 'draft' ? 'Estimate' : 'Ready to Invoice') . " state", $estimate);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            $msg = "Estimate {$estimate->reference_number} was successfully reverted to " . ($targetState === 'draft' ? 'Estimate' : 'Ready to Invoice') . " state.";
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $msg,
+                    'redirect' => $targetState === 'draft' ? route('estimates.index') : route('invoices.ready'),
+                ]);
+            }
+
+            return redirect()->route($targetState === 'draft' ? 'estimates.index' : 'invoices.ready')->with('success', $msg);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Failed to revert estimate: ' . $e->getMessage());
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to revert estimate: ' . $e->getMessage(),
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to revert estimate: ' . $e->getMessage());
         }
     }
 }

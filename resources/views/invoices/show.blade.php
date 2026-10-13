@@ -92,6 +92,13 @@
                     <i class="fas fa-copy mr-1.5"></i> Duplicate to Estimate
                 </button>
             </form>
+            @if(auth()->user()->isITAdmin())
+                <button type="button"
+                    onclick="openRevertInvoiceModal('{{ route('invoices.revert', $invoice) }}', '{{ $invoice->invoice_number }}', '{{ $invoice->estimate ? $invoice->estimate->reference_number : '' }}')"
+                    class="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 text-sm ml-2 inline-flex items-center shadow-sm">
+                    <i class="fas fa-undo mr-1.5"></i> Revert Invoice
+                </button>
+            @endif
         </div>
     </div>
 @endsection

@@ -46,9 +46,18 @@
                 </span>
             @endif
         </h2>
-        <a href="{{ route('invoices.index') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
-            Cancel
-        </a>
+        <div class="flex items-center gap-3">
+            @if(auth()->check() && auth()->user()->isITAdmin())
+                <button type="button"
+                    onclick="openRevertInvoiceModal('{{ route('invoices.revert', $invoice) }}', '{{ $invoice->invoice_number }}', '{{ $invoice->estimate ? $invoice->estimate->reference_number : '' }}')"
+                    class="px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-xs font-semibold inline-flex items-center shadow-sm">
+                    <i class="fas fa-undo mr-1.5"></i> Revert Invoice
+                </button>
+            @endif
+            <a href="{{ route('invoices.index') }}" class="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+                Cancel
+            </a>
+        </div>
     </div>
 @endsection
 
