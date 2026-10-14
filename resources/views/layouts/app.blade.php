@@ -457,17 +457,62 @@
             <!-- Page Content -->
             <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
                 @if(session('success'))
-                    <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"
-                        role="alert">
-                        <strong class="font-bold">Success!</strong>
-                        <span class="block sm:inline">{{ session('success') }}</span>
+                    <div class="mb-4 bg-emerald-50 border-l-4 border-emerald-500 text-emerald-800 p-4 rounded-r-xl shadow-xs flex items-center justify-between" role="alert">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-check-circle text-emerald-500 text-lg"></i>
+                            <div>
+                                <strong class="font-bold">Success!</strong>
+                                <span class="block sm:inline ml-1 text-sm">{{ session('success') }}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.closest('[role=alert]').remove()" class="text-emerald-500 hover:text-emerald-700 p-1 cursor-pointer">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
                     </div>
                 @endif
 
                 @if(session('error'))
-                    <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                        <strong class="font-bold">Error!</strong>
-                        <span class="block sm:inline">{{ session('error') }}</span>
+                    <div class="mb-4 bg-rose-50 border-l-4 border-rose-500 text-rose-800 p-4 rounded-r-xl shadow-xs flex items-center justify-between" role="alert">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-exclamation-circle text-rose-500 text-lg"></i>
+                            <div>
+                                <strong class="font-bold">Error!</strong>
+                                <span class="block sm:inline ml-1 text-sm">{{ session('error') }}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.closest('[role=alert]').remove()" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('warning'))
+                    <div class="mb-4 bg-amber-50 border-l-4 border-amber-500 text-amber-800 p-4 rounded-r-xl shadow-xs flex items-center justify-between" role="alert">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-exclamation-triangle text-amber-500 text-lg"></i>
+                            <div>
+                                <strong class="font-bold">Notice:</strong>
+                                <span class="block sm:inline ml-1 text-sm">{{ session('warning') }}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.closest('[role=alert]').remove()" class="text-amber-500 hover:text-amber-700 p-1 cursor-pointer">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('info'))
+                    <div class="mb-4 bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-xl shadow-xs flex items-center justify-between" role="alert">
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-info-circle text-blue-500 text-lg"></i>
+                            <div>
+                                <strong class="font-bold">Info:</strong>
+                                <span class="block sm:inline ml-1 text-sm">{{ session('info') }}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.closest('[role=alert]').remove()" class="text-blue-500 hover:text-blue-700 p-1 cursor-pointer">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
                     </div>
                 @endif
 
@@ -498,6 +543,40 @@
         // Clear dark mode preference if previously set
         localStorage.removeItem('staff_dark_mode');
         document.body.classList.remove('dark');
+
+        // Global Toast Notification Helper
+        window.showToast = function(message, type = 'success') {
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 6000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+                Toast.fire({
+                    icon: type,
+                    title: message
+                });
+            } else {
+                alert(message);
+            }
+        };
+
+        // Auto-trigger Toast on Session Flash Messages
+        @if(session('error'))
+            window.showToast({!! json_encode(session('error')) !!}, 'error');
+        @elseif(session('warning'))
+            window.showToast({!! json_encode(session('warning')) !!}, 'warning');
+        @elseif(session('success'))
+            window.showToast({!! json_encode(session('success')) !!}, 'success');
+        @elseif(session('info'))
+            window.showToast({!! json_encode(session('info')) !!}, 'info');
+        @endif
 
         // Global handler to disable submit buttons and show loading spinner on form submission
         document.addEventListener('DOMContentLoaded', function() {
