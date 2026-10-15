@@ -239,6 +239,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('invoices/rejected', [InvoiceController::class, 'rejected'])->name('invoices.rejected');
         Route::get('invoices/proforma', [InvoiceController::class, 'proforma'])->name('invoices.proforma');
         Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.updateStatus');
+        Route::get('invoices/{invoice}/payments', [InvoiceController::class, 'getPayments'])->name('invoices.payments.index');
+        Route::post('invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoices.payments.store');
+        Route::delete('invoices/{invoice}/payments/{payment}', [InvoiceController::class, 'destroyPayment'])->name('invoices.payments.destroy');
         Route::post('invoices/{invoice}/duplicate', [InvoiceController::class, 'duplicate'])->name('invoices.duplicate');
         Route::post('invoices/{invoice}/revert', [InvoiceController::class, 'revert'])->middleware('role:IT Admin')->name('invoices.revert');
         Route::post('estimates/{estimate}/revert-invoice', [InvoiceController::class, 'revertEstimateInvoice'])->middleware('role:IT Admin')->name('estimates.revertInvoice');
@@ -264,6 +267,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('settings/tax', [SettingController::class, 'updateTax'])->name('settings.updateTax');
             Route::post('settings/department-targets', [SettingController::class, 'updateDepartmentTargets'])->name('settings.updateDepartmentTargets');
             Route::post('settings/user-targets', [SettingController::class, 'updateUserTargets'])->name('settings.updateUserTargets');
+            Route::post('settings/targets/periods', [SettingController::class, 'storeTargetPeriod'])->name('settings.storeTargetPeriod');
+            Route::delete('settings/targets/periods', [SettingController::class, 'destroyTargetPeriod'])->name('settings.destroyTargetPeriod');
+            Route::post('settings/targets/delete-period', [SettingController::class, 'deleteTargetPeriod'])->name('settings.deleteTargetPeriod');
+            Route::post('settings/targets/delete-single', [SettingController::class, 'deleteSingleTarget'])->name('settings.deleteSingleTarget');
             Route::post('settings/maintenance', [SettingController::class, 'updateMaintenance'])->name('settings.updateMaintenance');
             Route::post('settings/notifications', [SettingController::class, 'updateNotifications'])->name('settings.updateNotifications');
             

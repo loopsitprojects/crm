@@ -25,7 +25,7 @@
                         id="btn-terms">
                         <i class="fas fa-file-contract mr-2 text-brand-pink"></i> Standard Terms
                     </button>
-                    <button onclick="showSection('targets')"
+                    <button onclick="navigateToTargets()"
                         class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
                         id="btn-targets">
                         <i class="fas fa-bullseye mr-2 text-red-500"></i> Targets
@@ -302,60 +302,662 @@
                 
                 <!-- Targets Section -->
                 <section id="section-targets" class="settings-section hidden space-y-6">
-                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                            <h3 class="text-lg font-bold text-gray-800">Department Targets (LKR)</h3>
-                        </div>
-                        <div class="p-6">
-                            <form action="{{ route('settings.updateDepartmentTargets') }}" method="POST">
-                                @csrf
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    @php
-                                        $departments = \App\Models\User::getDepartmentList();
-                                    @endphp
-                                    @foreach($departments as $dept)
-                                        <div>
-                                            <label class="block text-sm font-medium text-gray-700 mb-1">{{ $dept }}</label>
-                                            <input type="number" step="0.01" name="targets[{{ $dept }}]"
-                                                value="{{ isset($departmentTargets[$dept]) ? $departmentTargets[$dept]->target_amount : 0 }}"
-                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm">
-                                        </div>
-                                    @endforeach
+                    @php
+                        $monthsList = [
+                            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                        ];
+                        $currentMonthName = $monthsList[$selectedMonth] ?? 'Month';
+                        $departments = \App\Models\User::getDepartmentList();
+                        
+                        $totalDeptTargetMonth = $totalDeptTargetMonth ?? 0;
+                        $totalUserTargetMonth = $totalUserTargetMonth ?? 0;
+                        $configuredMonthsForYear = $configuredPeriods->where('year', $selectedYear)->pluck('month')->toArray();
+                    @endphp
+
+                    <!-- Month & Year Period Control Card -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-5 sm:p-6 mb-6">
+                        <!-- Top Bar: Title & Primary Actions -->
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                            <!-- Left: Title, Badges & Description -->
+                            <div class="flex items-center gap-3.5 min-w-0">
+                                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-500 via-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20 shrink-0">
+                                    <i class="fas fa-bullseye text-lg"></i>
                                 </div>
-                                <div class="mt-6 flex justify-end">
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h3 class="text-base sm:text-lg font-bold text-gray-900 tracking-tight whitespace-nowrap">Month-by-Month Targets</h3>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-brand-purple whitespace-nowrap">
+                                            <i class="fas fa-calendar-alt mr-1 text-[10px]"></i> {{ $currentMonthName }} {{ $selectedYear }}
+                                        </span>
+                                        @if($isCurrentPeriodConfigured)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                                                <i class="fas fa-check-circle mr-1 text-[8px]"></i> Period Active
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 whitespace-nowrap">
+                                                <i class="fas fa-info-circle mr-1 text-[8px]"></i> Not Added
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">Configure target amounts for each month of the financial/calendar year</p>
+                                </div>
+                            </div>
+
+                            <!-- Right: Primary Actions -->
+                            <div class="flex items-center gap-2.5 shrink-0 self-start lg:self-center">
+                                <button type="button" onclick="openAddPeriodModal({{ $selectedYear }}, {{ $selectedMonth }})"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 rounded-xl shadow-sm transition-all whitespace-nowrap"
+                                    title="Add a new target period">
+                                    <i class="fas fa-plus text-[10px]"></i> Add Period
+                                </button>
+
+                                @if($isCurrentPeriodConfigured)
+                                    <button type="button" onclick="openDestroyPeriodModal({{ $selectedYear }}, {{ $selectedMonth }}, '{{ $currentMonthName }} {{ $selectedYear }}')"
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-xl border border-red-200 transition-all whitespace-nowrap"
+                                        title="Delete {{ $currentMonthName }} {{ $selectedYear }} period and all its targets">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Delete Period
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Bottom Bar: Period Selectors & Active Periods Quick Switch -->
+                        <div class="pt-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <!-- Year & Month Dropdown Selectors -->
+                                <div class="inline-flex items-center gap-2 bg-gray-50/90 px-3 py-1.5 rounded-xl border border-gray-200 shrink-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Year:</label>
+                                        <select id="target-year-select" onchange="changeTargetPeriod()" autocomplete="off"
+                                            class="rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple py-1 px-2 bg-white border">
+                                            @for($y = date('Y') - 1; $y <= date('Y') + 3; $y++)
+                                                <option value="{{ $y }}" {{ $selectedYear == $y ? 'selected' : '' }}>{{ $y }}</option>
+                                            @endfor
+                                        </select>
+                                    </div>
+
+                                    <div class="flex items-center gap-1.5">
+                                        <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider ml-1">Month:</label>
+                                        <select id="target-month-select" onchange="changeTargetPeriod()" autocomplete="off"
+                                            class="rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple py-1 px-2 bg-white border">
+                                            @foreach($monthsList as $mNum => $mName)
+                                                <option value="{{ $mNum }}" {{ $selectedMonth == $mNum ? 'selected' : '' }}>
+                                                    {{ $mName }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <span class="hidden sm:inline-block w-px h-6 bg-gray-200"></span>
+
+                                <!-- Active Target Periods Pills -->
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-1 flex items-center gap-1">
+                                        <i class="fas fa-layer-group text-brand-purple text-[10px]"></i> Active Target Periods ({{ $configuredPeriods->count() }}):
+                                    </span>
+
+                                    @forelse($configuredPeriods as $p)
+                                        @php $isPActive = ($selectedYear == $p->year && $selectedMonth == $p->month); @endphp
+                                        <div class="inline-flex items-center rounded-xl border text-xs font-bold transition-all shadow-xs {{ $isPActive ? 'bg-brand-purple text-white border-brand-purple shadow-sm ring-2 ring-purple-300 ring-offset-1' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-purple-50 hover:text-brand-purple hover:border-purple-200' }}">
+                                            <a href="{{ route('settings.index', ['section' => 'targets', 'year' => $p->year, 'month' => $p->month]) }}"
+                                                class="py-1.5 px-3 flex items-center gap-1.5 whitespace-nowrap">
+                                                <i class="fas fa-calendar-alt text-[10px] {{ $isPActive ? 'text-white' : 'text-purple-500' }}"></i>
+                                                <span>{{ $p->month_name }} {{ $p->year }}</span>
+                                            </a>
+                                            <button type="button"
+                                                onclick="openDestroyPeriodModal({{ $p->year }}, {{ $p->month }}, '{{ $p->month_name }} {{ $p->year }}')"
+                                                class="px-2 py-1.5 hover:bg-red-500 hover:text-white rounded-r-xl border-l transition-colors {{ $isPActive ? 'border-purple-400 text-purple-200' : 'border-gray-200 text-gray-400' }}"
+                                                title="Delete {{ $p->month_name }} {{ $p->year }} period">
+                                                <i class="fas fa-times text-[10px]"></i>
+                                            </button>
+                                        </div>
+                                    @empty
+                                        <span class="text-xs text-gray-400 italic">No periods added yet</span>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            <!-- Target Total Badge -->
+                            <div class="shrink-0 text-left lg:text-right pt-2 lg:pt-0 border-t lg:border-t-0 border-gray-100">
+                                <span class="text-xs text-gray-500">Total Dept Target:</span>
+                                <span class="text-sm font-bold text-gray-800 ml-1">LKR {{ number_format($totalDeptTargetMonth, 2) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($isCurrentPeriodConfigured)
+                        <!-- Department Targets Card -->
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 bg-gray-50/50">
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-800">Department Targets (LKR)</h3>
+                                    <p class="text-xs text-gray-500">Targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" onclick="openDeletePeriodModal('department')"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md font-semibold transition-colors border border-transparent hover:border-red-200"
+                                        title="Clear all department targets for {{ $currentMonthName }} {{ $selectedYear }}">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Clear Dept Targets
+                                    </button>
+                                    <div class="text-right">
+                                        <span class="text-xs text-gray-500">Total:</span>
+                                        <span class="text-sm font-bold text-brand-pink ml-1">LKR {{ number_format($totalDeptTargetMonth, 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <form action="{{ route('settings.updateDepartmentTargets') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                    <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        @foreach($departments as $dept)
+                                            @php
+                                                $isMonthCustom = isset($departmentTargets[$dept]);
+                                                $val = $isMonthCustom 
+                                                    ? $departmentTargets[$dept]->target_amount 
+                                                    : (isset($defaultDepartmentTargets[$dept]) ? $defaultDepartmentTargets[$dept]->target_amount : 0);
+                                            @endphp
+                                            <div class="p-3 bg-gray-50/70 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                                                <div class="flex items-center justify-between mb-1">
+                                                    <label class="block text-sm font-semibold text-gray-700">{{ $dept }}</label>
+                                                    <div class="flex items-center gap-1.5">
+                                                        @if($isMonthCustom)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
+                                                                <i class="fas fa-check mr-0.5 text-[8px]"></i> {{ substr($currentMonthName, 0, 3) }} Set
+                                                            </span>
+                                                        @else
+                                                            <span class="text-[10px] text-gray-400 italic">Default</span>
+                                                        @endif
+                                                        <button type="button" 
+                                                            onclick="openDeleteSingleModal('department', '{{ $dept }}', '{{ $dept }}', '{{ $val }}')"
+                                                            class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
+                                                            title="Delete/Clear target for {{ $dept }}">
+                                                            <i class="fas fa-trash-alt text-[11px]"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="relative rounded-md shadow-sm">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                        <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
+                                                    </div>
+                                                    <input type="number" step="0.01" name="targets[{{ $dept }}]"
+                                                        value="{{ $val }}"
+                                                        class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-purple focus:ring-brand-purple sm:text-sm font-semibold text-gray-800">
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
+                                            <input type="checkbox" name="apply_to_all_months" value="1" 
+                                                class="rounded border-gray-300 text-brand-pink focus:ring-brand-pink mr-2">
+                                            <span>Apply these department targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                        </label>
+                                        <button type="submit"
+                                            class="w-full sm:w-auto px-5 py-2 bg-brand-pink text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
+                                            <i class="fas fa-save mr-1.5"></i> Save Department Targets
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- User Targets Card -->
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden mt-8">
+                            <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2 bg-gray-50/50">
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-800">User Targets (LKR)</h3>
+                                    <p class="text-xs text-gray-500">Individual targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" onclick="openDeletePeriodModal('user')"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md font-semibold transition-colors border border-transparent hover:border-red-200"
+                                        title="Clear all user targets for {{ $currentMonthName }} {{ $selectedYear }}">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Clear User Targets
+                                    </button>
+                                    <div class="text-right">
+                                        <span class="text-xs text-gray-500">Total:</span>
+                                        <span class="text-sm font-bold text-brand-blue ml-1">LKR {{ number_format($totalUserTargetMonth, 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-6">
+                                <form action="{{ route('settings.updateUserTargets') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                    <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        @foreach($users as $user)
+                                            @php
+                                                $isMonthCustom = isset($userTargets[$user->id]);
+                                                $val = $isMonthCustom 
+                                                    ? $userTargets[$user->id]->target_amount 
+                                                    : (isset($defaultUserTargets[$user->id]) ? $defaultUserTargets[$user->id]->target_amount : 0);
+                                            @endphp
+                                            <div class="bg-gray-50/80 p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <div>
+                                                        <span class="block text-sm font-bold text-gray-800 leading-tight">{{ $user->name }}</span>
+                                                        <span class="text-[11px] font-semibold text-brand-blue">{{ $user->department ?? 'No Dept' }}</span>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5">
+                                                        @if($isMonthCustom)
+                                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
+                                                                <i class="fas fa-check mr-0.5 text-[8px]"></i> {{ substr($currentMonthName, 0, 3) }} Set
+                                                            </span>
+                                                        @else
+                                                            <span class="text-[10px] text-gray-400 italic">Default</span>
+                                                        @endif
+                                                        <button type="button" 
+                                                            onclick="openDeleteSingleModal('user', '{{ $user->id }}', '{{ addslashes($user->name) }}', '{{ $val }}')"
+                                                            class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
+                                                            title="Delete/Clear target for {{ $user->name }}">
+                                                            <i class="fas fa-trash-alt text-[11px]"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="relative rounded-md shadow-sm mt-2">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                        <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
+                                                    </div>
+                                                    <input type="number" step="0.01" name="targets[{{ $user->id }}]"
+                                                        value="{{ $val }}"
+                                                        class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-blue focus:ring-brand-blue sm:text-sm font-semibold text-gray-800">
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
+                                            <input type="checkbox" name="apply_to_all_months" value="1" 
+                                                class="rounded border-gray-300 text-brand-blue focus:ring-brand-blue mr-2">
+                                            <span>Apply these user targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                        </label>
+                                        <button type="submit"
+                                            class="w-full sm:w-auto px-5 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
+                                            <i class="fas fa-save mr-1.5"></i> Save User Targets
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    @else
+                        <!-- Unconfigured Period Notice / Empty State -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 p-8 sm:p-12 text-center max-w-xl mx-auto my-8">
+                            <div class="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto mb-4 shadow-xs">
+                                <i class="fas fa-calendar-plus text-2xl"></i>
+                            </div>
+                            <h3 class="text-base sm:text-lg font-bold text-gray-800 mb-1.5">
+                                {{ $currentMonthName }} {{ $selectedYear }} is not added as an active period
+                            </h3>
+                            <p class="text-xs sm:text-sm text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
+                                Targets cannot be configured because {{ $currentMonthName }} {{ $selectedYear }} has not been added to target periods yet.
+                            </p>
+                            <div class="flex flex-wrap items-center justify-center gap-3">
+                                <button type="button" onclick="openAddPeriodModal({{ $selectedYear }}, {{ $selectedMonth }})"
+                                    class="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2">
+                                    <i class="fas fa-plus"></i> Add {{ $currentMonthName }} {{ $selectedYear }} Period
+                                </button>
+                                @if($configuredPeriods->isNotEmpty())
+                                    @php $activeP = $configuredPeriods->last(); @endphp
+                                    <a href="{{ route('settings.index', ['section' => 'targets', 'year' => $activeP->year, 'month' => $activeP->month]) }}"
+                                        class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl transition-colors flex items-center gap-1.5">
+                                        <i class="fas fa-calendar-check text-purple-600 text-[11px]"></i> Switch to {{ $activeP->month_name }} {{ $activeP->year }}
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Delete Single Target Modal -->
+                    <div id="deleteSingleTargetModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative mx-auto border w-full max-w-md shadow-2xl rounded-2xl bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                            <div class="px-6 py-4 bg-red-50/70 border-b border-red-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                                        <i class="fas fa-trash-alt text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Delete / Reset Target</h3>
+                                        <p class="text-xs text-gray-500" id="single-target-modal-subtitle">Delete target</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeDeleteSingleModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                                    <i class="fas fa-times text-base"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.deleteSingleTarget') }}" method="POST" class="p-6">
+                                @csrf
+                                <input type="hidden" name="type" id="del_single_type" value="department">
+                                <input type="hidden" name="department" id="del_single_department" value="">
+                                <input type="hidden" name="user_id" id="del_single_user_id" value="">
+                                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-200/80 mb-4 text-xs">
+                                    <div class="flex justify-between py-1 border-b border-gray-200">
+                                        <span class="text-gray-500 font-medium">Target Name:</span>
+                                        <span class="font-bold text-gray-800" id="del_single_name_display">-</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-gray-200">
+                                        <span class="text-gray-500 font-medium">Active Period:</span>
+                                        <span class="font-bold text-purple-700">{{ $currentMonthName }} {{ $selectedYear }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-1">
+                                        <span class="text-gray-500 font-medium">Current Amount:</span>
+                                        <span class="font-bold text-brand-pink" id="del_single_amount_display">LKR 0.00</span>
+                                    </div>
+                                </div>
+
+                                <label class="block text-xs font-bold text-gray-700 mb-2 uppercase tracking-wider">Choose deletion scope:</label>
+                                <div class="space-y-2 mb-6">
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                        <input type="radio" name="scope" value="month" checked class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                        <div class="ml-3">
+                                            <span class="block text-xs font-bold text-gray-800">Clear for {{ $currentMonthName }} {{ $selectedYear }} only</span>
+                                            <span class="block text-[11px] text-gray-500">Sets this target to 0.00 for this month. Other months remain untouched.</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                        <input type="radio" name="scope" value="year" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                        <div class="ml-3">
+                                            <span class="block text-xs font-bold text-gray-800">Clear for all 12 months of {{ $selectedYear }}</span>
+                                            <span class="block text-[11px] text-gray-500">Sets target to 0.00 across Jan–Dec {{ $selectedYear }}.</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                        <input type="radio" name="scope" value="all" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                        <div class="ml-3">
+                                            <span class="block text-xs font-bold text-red-700">Delete target completely</span>
+                                            <span class="block text-[11px] text-gray-500">Removes this target permanently from the database (including default fallback).</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                    <button type="button" onclick="closeDeleteSingleModal()"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                        Cancel
+                                    </button>
                                     <button type="submit"
-                                        class="px-4 py-2 bg-brand-pink text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
-                                        Save Department Targets
+                                        class="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-all shadow-sm flex items-center gap-1.5">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Confirm Delete
                                     </button>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-md overflow-hidden mt-8">
-                        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                            <h3 class="text-lg font-bold text-gray-800">User Targets (LKR)</h3>
-                        </div>
-                        <div class="p-6">
-                            <form action="{{ route('settings.updateUserTargets') }}" method="POST">
-                                @csrf
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    @foreach($users as $user)
-                                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                                            <label class="block text-sm font-medium text-gray-800 mb-1">
-                                                {{ $user->name }}
-                                                <span class="text-xs text-brand-blue block">{{ $user->department ?? 'No Dept' }}</span>
-                                            </label>
-                                            <input type="number" step="0.01" name="targets[{{ $user->id }}]"
-                                                value="{{ isset($userTargets[$user->id]) ? $userTargets[$user->id]->target_amount : 0 }}"
-                                                class="w-full rounded-md border-gray-300 focus:border-brand-blue focus:ring-brand-blue sm:text-sm mt-2">
-                                        </div>
-                                    @endforeach
+                    <!-- Delete Period Targets Modal -->
+                    <div id="deletePeriodTargetsModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative mx-auto border w-full max-w-md shadow-2xl rounded-2xl bg-white overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                            <div class="px-6 py-4 bg-red-50/70 border-b border-red-100 flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center text-red-600">
+                                        <i class="fas fa-calendar-times text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Clear Period Targets</h3>
+                                        <p class="text-xs text-gray-500" id="period-modal-subtitle">Reset target amounts</p>
+                                    </div>
                                 </div>
-                                <div class="mt-6 flex justify-end">
+                                <button type="button" onclick="closeDeletePeriodModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                                    <i class="fas fa-times text-base"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.deleteTargetPeriod') }}" method="POST" class="p-6">
+                                @csrf
+                                <input type="hidden" name="type" id="del_period_type" value="all">
+                                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                <div class="p-3 bg-red-50/80 rounded-xl border border-red-200 text-red-800 text-xs mb-4 flex items-start gap-2">
+                                    <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-bold">Warning:</span> This will reset target numbers for the selected scope.
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4 mb-5">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Targets to clear:</label>
+                                        <div class="grid grid-cols-3 gap-2">
+                                            <label class="flex items-center justify-center p-2.5 border rounded-lg text-xs font-semibold cursor-pointer text-center bg-gray-50 border-gray-200 hover:bg-gray-100 has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50 has-[:checked]:text-brand-purple">
+                                                <input type="radio" name="target_category" value="all" id="period_cat_all" checked onchange="document.getElementById('del_period_type').value = 'all'" class="sr-only">
+                                                <span>All Targets</span>
+                                            </label>
+                                            <label class="flex items-center justify-center p-2.5 border rounded-lg text-xs font-semibold cursor-pointer text-center bg-gray-50 border-gray-200 hover:bg-gray-100 has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50 has-[:checked]:text-brand-purple">
+                                                <input type="radio" name="target_category" value="department" id="period_cat_dept" onchange="document.getElementById('del_period_type').value = 'department'" class="sr-only">
+                                                <span>Departments</span>
+                                            </label>
+                                            <label class="flex items-center justify-center p-2.5 border rounded-lg text-xs font-semibold cursor-pointer text-center bg-gray-50 border-gray-200 hover:bg-gray-100 has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50 has-[:checked]:text-brand-purple">
+                                                <input type="radio" name="target_category" value="user" id="period_cat_user" onchange="document.getElementById('del_period_type').value = 'user'" class="sr-only">
+                                                <span>Users</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Period scope:</label>
+                                        <div class="space-y-2">
+                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                                <input type="radio" name="scope" value="month" checked class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                                <div class="ml-3">
+                                                    <span class="block text-xs font-bold text-gray-800">Clear for {{ $currentMonthName }} {{ $selectedYear }} only</span>
+                                                    <span class="block text-[11px] text-gray-500">Resets targets to 0.00 for {{ $currentMonthName }} {{ $selectedYear }}.</span>
+                                                </div>
+                                            </label>
+
+                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                                <input type="radio" name="scope" value="year" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                                <div class="ml-3">
+                                                    <span class="block text-xs font-bold text-gray-800">Clear for all 12 months of {{ $selectedYear }}</span>
+                                                    <span class="block text-[11px] text-gray-500">Resets targets to 0.00 across Jan–Dec {{ $selectedYear }}.</span>
+                                                </div>
+                                            </label>
+
+                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
+                                                <input type="radio" name="scope" value="all" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                                <div class="ml-3">
+                                                    <span class="block text-xs font-bold text-red-700">Delete all target records completely</span>
+                                                    <span class="block text-[11px] text-gray-500">Permanently removes targets from the database.</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                    <button type="button" onclick="closeDeletePeriodModal()"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                        Cancel
+                                    </button>
                                     <button type="submit"
-                                        class="px-4 py-2 bg-brand-blue text-white rounded-md hover:bg-brand-purple text-sm font-medium transition-all">
-                                        Save User Targets
+                                        class="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700 transition-all shadow-sm flex items-center gap-1.5">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Confirm Delete
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Add Target Period Modal -->
+                    <div id="addPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple">
+                                        <i class="fas fa-calendar-plus text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Add Target Period</h3>
+                                        <p class="text-xs text-gray-500">Configure target months for department and user quotas</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeAddPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-sm"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.storeTargetPeriod') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="copy_year" id="add_period_copy_year" value="">
+                                <input type="hidden" name="copy_month" id="add_period_copy_month" value="">
+
+                                <div class="space-y-4 mb-5">
+                                    <!-- Year and Month Grid -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Year:</label>
+                                            <select name="year" id="add_period_year" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple">
+                                                @for($y = (int)date('Y') - 2; $y <= (int)date('Y') + 4; $y++)
+                                                    <option value="{{ $y }}" {{ $y == $selectedYear ? 'selected' : '' }}>{{ $y }}</option>
+                                                @endfor
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Month:</label>
+                                            <select name="month" id="add_period_month" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple">
+                                                <option value="all">🌟 All 12 Months (Full Year)</option>
+                                                @foreach([
+                                                    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                                                    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                                                    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                                                ] as $mNum => $mName)
+                                                    <option value="{{ $mNum }}" {{ $mNum == $selectedMonth ? 'selected' : '' }}>{{ $mName }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Prefill Options -->
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
+                                        <div class="space-y-2">
+                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                <input type="radio" name="prefill" value="default" checked onchange="toggleCopyPeriodSelect('default')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
+                                                <div class="ml-3">
+                                                    <span class="block text-xs font-bold text-gray-800">Use Standard Defaults</span>
+                                                    <span class="block text-[11px] text-gray-500">Auto-fill departments and users with standard target numbers.</span>
+                                                </div>
+                                            </label>
+
+                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                <input type="radio" name="prefill" value="zero" onchange="toggleCopyPeriodSelect('zero')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
+                                                <div class="ml-3">
+                                                    <span class="block text-xs font-bold text-gray-800">Start with Zero (0.00)</span>
+                                                    <span class="block text-[11px] text-gray-500">Initialize with blank/zero targets to enter amounts manually.</span>
+                                                </div>
+                                            </label>
+
+                                            @if($configuredPeriods->isNotEmpty())
+                                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                    <input type="radio" name="prefill" value="copy" onchange="toggleCopyPeriodSelect('copy')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
+                                                    <div class="ml-3 w-full">
+                                                        <span class="block text-xs font-bold text-gray-800">Copy from Existing Period</span>
+                                                        <span class="block text-[11px] text-gray-500">Duplicate exact department and user numbers from an existing month.</span>
+                                                        <div id="copy_period_container" class="mt-2.5 hidden">
+                                                            <select onchange="handleCopyPeriodChange(this)" class="w-full text-xs font-medium rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple">
+                                                                <option value="">-- Choose period to copy from --</option>
+                                                                @foreach($configuredPeriods as $cp)
+                                                                    <option value="{{ $cp->year }}_{{ $cp->month }}">{{ $cp->month_name }} {{ $cp->year }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                    <button type="button" onclick="closeAddPeriodModal()"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                        <i class="fas fa-plus text-[10px]"></i> Add Period
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Delete/Destroy Target Period Modal -->
+                    <div id="destroyPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600">
+                                        <i class="fas fa-calendar-times text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Delete Target Period</h3>
+                                        <p class="text-xs text-gray-500">Remove period and associated target data</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeDestroyPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-sm"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.destroyTargetPeriod') }}" method="POST">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="year" id="destroy_period_year" value="{{ $selectedYear }}">
+                                <input type="hidden" name="month" id="destroy_period_month" value="{{ $selectedMonth }}">
+
+                                <div class="p-3 bg-red-50/80 rounded-xl border border-red-200 text-red-800 text-xs mb-4 flex items-start gap-2">
+                                    <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                                    <div>
+                                        <span class="font-bold">Permanent Action:</span> Deleting a period removes it from the active periods list and removes all saved department and user targets for that period.
+                                    </div>
+                                </div>
+
+                                <div class="mb-5 space-y-2.5">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Choose deletion scope:</label>
+                                    
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
+                                        <input type="radio" name="destroy_scope" id="destroy_scope_month" value="single" checked data-month="{{ $selectedMonth }}" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                        <div class="ml-3">
+                                            <span class="block text-xs font-bold text-gray-800">
+                                                Delete <span id="destroy_period_single_label">{{ $currentMonthName }} {{ $selectedYear }}</span> only
+                                            </span>
+                                            <span class="block text-[11px] text-gray-500">Deletes this single monthly period and its targets.</span>
+                                        </div>
+                                    </label>
+
+                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
+                                        <input type="radio" name="destroy_scope" id="destroy_scope_all" value="all" data-month="all" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                        <div class="ml-3">
+                                            <span class="block text-xs font-bold text-red-700">
+                                                Delete all periods in <span id="destroy_period_year_label">{{ $selectedYear }}</span>
+                                            </span>
+                                            <span class="block text-[11px] text-gray-500">Deletes all monthly periods and all targets for the entire year.</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                    <button type="button" onclick="closeDestroyPeriodModal()"
+                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button type="submit"
+                                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                        <i class="fas fa-trash-alt text-[10px]"></i> Delete Period
                                     </button>
                                 </div>
                             </form>
@@ -1187,13 +1789,169 @@
             // Hide all sections
             document.querySelectorAll('.settings-section').forEach(s => s.classList.add('hidden'));
             // Show selected section
-            document.getElementById('section-' + id).classList.remove('hidden');
+            const sectionEl = document.getElementById('section-' + id);
+            if (sectionEl) {
+                sectionEl.classList.remove('hidden');
+            }
 
             // Update buttons
             document.querySelectorAll('.section-btn').forEach(btn => {
                 btn.classList.remove('ring-2', 'ring-brand-blue', 'bg-blue-50');
             });
-            document.getElementById('btn-' + id).classList.add('ring-2', 'ring-brand-blue', 'bg-blue-50');
+            const btnEl = document.getElementById('btn-' + id);
+            if (btnEl) {
+                btnEl.classList.add('ring-2', 'ring-brand-blue', 'bg-blue-50');
+            }
+
+            // Persist active section in URL without reloading
+            const url = new URL(window.location);
+            url.searchParams.set('section', id);
+            if (id !== 'targets') {
+                url.searchParams.delete('year');
+                url.searchParams.delete('month');
+            }
+            window.history.replaceState({}, '', url);
+
+            if (id === 'targets') {
+                syncTargetSelectors();
+            }
+        }
+
+        function navigateToTargets() {
+            const url = new URL(window.location);
+            if (url.searchParams.has('year') || url.searchParams.has('month')) {
+                url.searchParams.delete('year');
+                url.searchParams.delete('month');
+                url.searchParams.set('section', 'targets');
+                window.location.href = url.toString();
+                return;
+            }
+            showSection('targets');
+            syncTargetSelectors();
+        }
+
+        function syncTargetSelectors() {
+            const yearSelect = document.getElementById('target-year-select');
+            const monthSelect = document.getElementById('target-month-select');
+            if (yearSelect) yearSelect.value = '{{ $selectedYear }}';
+            if (monthSelect) monthSelect.value = '{{ $selectedMonth }}';
+        }
+
+        function changeTargetPeriod() {
+            const yearEl = document.getElementById('target-year-select');
+            const monthEl = document.getElementById('target-month-select');
+            if (yearEl && monthEl) {
+                window.location.href = "{{ route('settings.index') }}?section=targets&year=" + yearEl.value + "&month=" + monthEl.value;
+            }
+        }
+
+        function openDeleteSingleModal(type, idOrName, displayName, currentAmount) {
+            document.getElementById('del_single_type').value = type;
+            if (type === 'department') {
+                document.getElementById('del_single_department').value = idOrName;
+                document.getElementById('del_single_user_id').value = '';
+            } else {
+                document.getElementById('del_single_department').value = '';
+                document.getElementById('del_single_user_id').value = idOrName;
+            }
+            document.getElementById('del_single_name_display').textContent = displayName + ' (' + (type === 'department' ? 'Department' : 'User') + ')';
+            const num = parseFloat(currentAmount) || 0;
+            document.getElementById('del_single_amount_display').textContent = 'LKR ' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('single-target-modal-subtitle').textContent = 'Delete target for ' + displayName;
+            document.getElementById('deleteSingleTargetModal').classList.remove('hidden');
+        }
+
+        function closeDeleteSingleModal() {
+            document.getElementById('deleteSingleTargetModal').classList.add('hidden');
+        }
+
+        function openDeletePeriodModal(category) {
+            document.getElementById('del_period_type').value = category;
+            if (category === 'all') {
+                document.getElementById('period_cat_all').checked = true;
+            } else if (category === 'department') {
+                document.getElementById('period_cat_dept').checked = true;
+            } else if (category === 'user') {
+                document.getElementById('period_cat_user').checked = true;
+            }
+            document.getElementById('deletePeriodTargetsModal').classList.remove('hidden');
+        }
+
+        function closeDeletePeriodModal() {
+            document.getElementById('deletePeriodTargetsModal').classList.add('hidden');
+        }
+
+        function openAddPeriodModal(year, month) {
+            if (year) {
+                const yEl = document.getElementById('add_period_year');
+                if (yEl) yEl.value = year;
+            }
+            if (month !== undefined && month !== null) {
+                const mEl = document.getElementById('add_period_month');
+                if (mEl) mEl.value = month;
+            }
+            document.getElementById('addPeriodModal').classList.remove('hidden');
+        }
+
+        function closeAddPeriodModal() {
+            document.getElementById('addPeriodModal').classList.add('hidden');
+        }
+
+        function toggleCopyPeriodSelect(prefillVal) {
+            const container = document.getElementById('copy_period_container');
+            if (container) {
+                if (prefillVal === 'copy') {
+                    container.classList.remove('hidden');
+                } else {
+                    container.classList.add('hidden');
+                    const yInput = document.getElementById('add_period_copy_year');
+                    const mInput = document.getElementById('add_period_copy_month');
+                    if (yInput) yInput.value = '';
+                    if (mInput) mInput.value = '';
+                }
+            }
+        }
+
+        function handleCopyPeriodChange(selectEl) {
+            const val = selectEl.value;
+            if (val && val.includes('_')) {
+                const parts = val.split('_');
+                document.getElementById('add_period_copy_year').value = parts[0];
+                document.getElementById('add_period_copy_month').value = parts[1];
+            } else {
+                document.getElementById('add_period_copy_year').value = '';
+                document.getElementById('add_period_copy_month').value = '';
+            }
+        }
+
+        function openDestroyPeriodModal(year, month, label) {
+            document.getElementById('destroy_period_year').value = year;
+            document.getElementById('destroy_period_month').value = month;
+            const singleLabelEl = document.getElementById('destroy_period_single_label');
+            if (singleLabelEl) singleLabelEl.textContent = label;
+            const yearLabelEl = document.getElementById('destroy_period_year_label');
+            if (yearLabelEl) yearLabelEl.textContent = year;
+            const singleRadio = document.getElementById('destroy_scope_month');
+            if (singleRadio) {
+                singleRadio.checked = true;
+                singleRadio.dataset.month = month;
+            }
+            document.getElementById('destroyPeriodModal').classList.remove('hidden');
+        }
+
+        function closeDestroyPeriodModal() {
+            document.getElementById('destroyPeriodModal').classList.add('hidden');
+        }
+
+        function handleDestroyScopeChange(radioEl) {
+            const scope = radioEl.value;
+            const singleRadio = document.getElementById('destroy_scope_month');
+            const singleMonth = singleRadio ? singleRadio.dataset.month : radioEl.dataset.month;
+            if (scope === 'all') {
+                document.getElementById('destroy_period_month').value = 'all';
+            } else {
+                document.getElementById('destroy_period_month').value = singleMonth;
+            }
         }
 
 
@@ -1240,6 +1998,7 @@
             } else {
                 showSection('general');
             }
+            syncTargetSelectors();
         });
 
         // Update color displays on change

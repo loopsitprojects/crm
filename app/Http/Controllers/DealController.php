@@ -88,7 +88,7 @@ class DealController extends Controller
         }
 
         // Group all deals by stage for display
-        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices', 'estimates.tempInvoice', 'estimates.items'])->orderBy('updated_at', 'desc');
+        $query = Deal::with(['customer', 'owner', 'teamMembers', 'estimates.invoices.payments', 'estimates.tempInvoice', 'estimates.items'])->orderBy('updated_at', 'desc');
 
         // Search Filter (Title, Job Number, Customer, Owner)
         if ($request->filled('search')) {
@@ -341,6 +341,8 @@ class DealController extends Controller
             $deptContribution = 0;
             $deptInvoiced = 0;
             $deptPaid = 0;
+            $deptPaidByCurrency = [];
+            $dealPaidByCurrency = $this->getDealInvoicePaidByCurrency($deal);
 
             if (!empty($activeDeptsForMetrics)) {
                 $splits = is_string($deal->department_split) ? json_decode($deal->department_split, true) : $deal->department_split;
@@ -376,8 +378,12 @@ class DealController extends Controller
                                 foreach ($estimate->invoices as $invoice) {
                                     if (!$invoice->is_proforma) {
                                         $totalInvoiced += $invoice->total_amount;
-                                        if ($invoice->status === 'paid') {
-                                            $totalPaid += $invoice->total_amount;
+                                        if ($invoice->payments->isNotEmpty()) {
+                                            $totalPaid += (float) $invoice->total_paid_amount;
+                                        } elseif ($invoice->status === 'paid') {
+                                            $totalPaid += (float) $invoice->total_amount;
+                                        } elseif ($invoice->status === 'partial') {
+                                            $totalPaid += (float) $invoice->total_paid_amount;
                                         }
                                     }
                                 }
@@ -387,6 +393,9 @@ class DealController extends Controller
                                 $ratio = $splitRev / $deal->revenue;
                                 $deptInvoiced += ($totalInvoiced * $ratio);
                                 $deptPaid += ($totalPaid * $ratio);
+                                foreach ($dealPaidByCurrency as $c => $amt) {
+                                    $deptPaidByCurrency[$c] = ($deptPaidByCurrency[$c] ?? 0.0) + ($amt * $ratio);
+                                }
                             }
                         }
                     }
@@ -414,8 +423,12 @@ class DealController extends Controller
                             foreach ($estimate->invoices as $invoice) {
                                 if (!$invoice->is_proforma) {
                                     $totalInvoiced += $invoice->total_amount;
-                                    if ($invoice->status === 'paid') {
-                                        $totalPaid += $invoice->total_amount;
+                                    if ($invoice->payments->isNotEmpty()) {
+                                        $totalPaid += (float) $invoice->total_paid_amount;
+                                    } elseif ($invoice->status === 'paid') {
+                                        $totalPaid += (float) $invoice->total_amount;
+                                    } elseif ($invoice->status === 'partial') {
+                                        $totalPaid += (float) $invoice->total_paid_amount;
                                     }
                                 }
                             }
@@ -423,6 +436,9 @@ class DealController extends Controller
                         if ($dealRev > 0) {
                             $deptInvoiced = $totalInvoiced * $dealRatio;
                             $deptPaid = $totalPaid * $dealRatio;
+                            foreach ($dealPaidByCurrency as $c => $amt) {
+                                $deptPaidByCurrency[$c] = ($deptPaidByCurrency[$c] ?? 0.0) + ($amt * $dealRatio);
+                            }
                         }
                     } elseif ($deal->owner && in_array(trim(strtolower($deal->owner->department ?? '')), $activeDeptsForMetrics)) {
                         $deptRevenue = $deal->revenue;
@@ -431,11 +447,18 @@ class DealController extends Controller
                             foreach ($estimate->invoices as $invoice) {
                                 if (!$invoice->is_proforma) {
                                     $deptInvoiced += $invoice->total_amount;
-                                    if ($invoice->status === 'paid') {
-                                        $deptPaid += $invoice->total_amount;
+                                    if ($invoice->payments->isNotEmpty()) {
+                                        $deptPaid += (float) $invoice->total_paid_amount;
+                                    } elseif ($invoice->status === 'paid') {
+                                        $deptPaid += (float) $invoice->total_amount;
+                                    } elseif ($invoice->status === 'partial') {
+                                        $deptPaid += (float) $invoice->total_paid_amount;
                                     }
                                 }
                             }
+                        }
+                        foreach ($dealPaidByCurrency as $c => $amt) {
+                            $deptPaidByCurrency[$c] = ($deptPaidByCurrency[$c] ?? 0.0) + $amt;
                         }
                     }
                 }
@@ -454,6 +477,7 @@ class DealController extends Controller
                     $deal->dept_share_contribution = $deptContribution;
                     $deal->dept_share_invoiced = $deptInvoiced;
                     $deal->dept_share_paid = $deptPaid;
+                    $deal->dept_share_paid_by_currency = $deptPaidByCurrency;
                 }
             }
         });
@@ -488,18 +512,16 @@ class DealController extends Controller
             }
             return $total;
         };
-        $getMetricPaid = function($deal) {
-            if (isset($deal->dept_share_paid)) {
-                return $deal->dept_share_paid;
+        $getMetricPaidByCurrency = function($deal) {
+            if (isset($deal->dept_share_paid_by_currency)) {
+                return $deal->dept_share_paid_by_currency;
             }
-            // If not HOD, calculate total paid for this deal
-            $total = 0;
-            foreach ($deal->estimates as $estimate) {
-                foreach ($estimate->invoices as $invoice) {
-                    if (!$invoice->is_proforma && $invoice->status === 'paid') $total += $invoice->total_amount;
-                }
-            }
-            return $total;
+            return $this->getDealInvoicePaidByCurrency($deal);
+        };
+
+        $getMetricPaid = function($deal) use ($getMetricPaidByCurrency) {
+            $paidMap = $getMetricPaidByCurrency($deal);
+            return $paidMap['LKR'] ?? 0.0;
         };
 
         // Calculate metrics
@@ -540,7 +562,22 @@ class DealController extends Controller
 
         // Invoiced Amount & Payment Collected
         $invoicedAmount = $allDeals->sum($getMetricInvoiced);
-        $paymentCollected = $allDeals->sum($getMetricPaid);
+
+        $paymentsCollectedByCurrency = [];
+        foreach ($allDeals as $deal) {
+            $dealPaidMap = $getMetricPaidByCurrency($deal);
+            foreach ($dealPaidMap as $currencyCode => $amt) {
+                if ($amt > 0) {
+                    $paymentsCollectedByCurrency[$currencyCode] = ($paymentsCollectedByCurrency[$currencyCode] ?? 0.0) + $amt;
+                }
+            }
+        }
+
+        $paymentCollected = $paymentsCollectedByCurrency['LKR'] ?? 0.0;
+        $otherCurrenciesPaymentCollected = collect($paymentsCollectedByCurrency)
+            ->except('LKR')
+            ->filter(fn($amount) => $amount > 0)
+            ->all();
 
         return view('deals.index', compact(
             'stages',
@@ -559,6 +596,7 @@ class DealController extends Controller
             'averageDealAge',
             'invoicedAmount',
             'paymentCollected',
+            'otherCurrenciesPaymentCollected',
             'usersByDepartment',
             'seniorManagers',
             'currentSupervisor',
@@ -1093,6 +1131,30 @@ class DealController extends Controller
                 }
             }
         }
+    }
+
+    public function getDealInvoicePaidByCurrency(Deal $deal): array
+    {
+        $paidByCurrency = [];
+        foreach ($deal->estimates as $estimate) {
+            foreach ($estimate->invoices as $invoice) {
+                if (!$invoice->is_proforma) {
+                    $curr = strtoupper(trim($invoice->currency ?: ($deal->currency ?: 'LKR')));
+                    $paid = 0.0;
+                    if ($invoice->payments->isNotEmpty()) {
+                        $paid = (float) $invoice->total_paid_amount;
+                    } elseif ($invoice->status === 'paid') {
+                        $paid = (float) $invoice->total_amount;
+                    } elseif ($invoice->status === 'partial') {
+                        $paid = (float) $invoice->total_paid_amount;
+                    }
+                    if ($paid > 0) {
+                        $paidByCurrency[$curr] = ($paidByCurrency[$curr] ?? 0.0) + $paid;
+                    }
+                }
+            }
+        }
+        return $paidByCurrency;
     }
 
 }

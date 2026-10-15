@@ -203,10 +203,59 @@
                     <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($invoicedAmount, 2) }}
                 </p>
             </div>
-            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment Collected</h4>
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 relative" x-data="{ showOtherCurrencies: false }">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment Collected</h4>
+                    <div class="relative">
+                        <button type="button" 
+                            @click="showOtherCurrencies = !showOtherCurrencies"
+                            @click.outside="showOtherCurrencies = false"
+                            class="relative p-1 rounded-full transition-colors focus:outline-none flex items-center justify-center {{ !empty($otherCurrenciesPaymentCollected) ? 'text-brand-purple hover:bg-purple-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100' }}"
+                            title="View other currencies total payment collected">
+                            <i class="fas fa-info-circle text-xs"></i>
+                            @if(!empty($otherCurrenciesPaymentCollected))
+                                <span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-purple opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-brand-purple"></span>
+                                </span>
+                            @endif
+                        </button>
+
+                        <!-- Popover -->
+                        <div x-show="showOtherCurrencies" 
+                            x-cloak 
+                            x-transition:enter="transition ease-out duration-150"
+                            x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave="transition ease-in duration-100"
+                            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                            x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                            class="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 p-3.5 z-50 text-left">
+                            <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-2.5">
+                                <span class="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                                    <i class="fas fa-coins text-brand-purple"></i> Other Currencies
+                                </span>
+                                <button type="button" @click="showOtherCurrencies = false" class="text-gray-400 hover:text-gray-600 p-0.5">
+                                    <i class="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                            @if(!empty($otherCurrenciesPaymentCollected))
+                                <div class="space-y-2">
+                                    @foreach($otherCurrenciesPaymentCollected as $currCode => $currAmount)
+                                        <div class="flex items-center justify-between bg-gray-50 hover:bg-gray-100/80 transition-colors py-1.5 px-2.5 rounded-lg border border-gray-100">
+                                            <span class="text-xs font-bold text-gray-700">{{ $currCode }}</span>
+                                            <span class="text-xs font-bold text-green-600">{{ number_format($currAmount, 2) }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <p class="text-xs text-gray-400 italic py-1 text-center">No collections in other currencies</p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
                 <p class="text-lg 2xl:text-base font-bold text-green-600 mt-1 whitespace-nowrap">
-                    <span class="text-xs font-semibold opacity-75 mr-0.5">{{ $currency }}</span>{{ number_format($paymentCollected, 2) }}
+                    <span class="text-xs font-semibold opacity-75 mr-0.5">LKR</span>{{ number_format($paymentCollected, 2) }}
                 </p>
             </div>
         </div>
