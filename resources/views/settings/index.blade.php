@@ -830,82 +830,96 @@
                     </div>
 
                     <!-- Add Target Period Modal -->
-                    <div id="addPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150">
-                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                    <div id="addPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-gray-100 animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[92vh] overflow-hidden my-auto">
+                            <!-- Fixed Header -->
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple shrink-0 shadow-xs">
                                         <i class="fas fa-calendar-plus text-lg"></i>
                                     </div>
                                     <div>
                                         <h3 class="text-base font-bold text-gray-800">Add Target Period</h3>
-                                        <p class="text-xs text-gray-500">Configure target months for department and user quotas</p>
+                                        <p class="text-xs text-gray-500">Configure target period, baseline values, departments, and user quotas</p>
                                     </div>
                                 </div>
-                                <button type="button" onclick="closeAddPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <i class="fas fa-times text-sm"></i>
+                                <button type="button" onclick="closeAddPeriodModal()" class="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-base"></i>
                                 </button>
                             </div>
 
-                            <form action="{{ route('settings.storeTargetPeriod') }}" method="POST">
+                            <form action="{{ route('settings.storeTargetPeriod') }}" method="POST" class="flex flex-col flex-1 overflow-hidden min-h-0">
                                 @csrf
                                 <input type="hidden" name="copy_year" id="add_period_copy_year" value="">
                                 <input type="hidden" name="copy_month" id="add_period_copy_month" value="">
 
-                                <div class="space-y-4 mb-5">
-                                    <!-- Year and Month Grid -->
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Year:</label>
-                                            <select name="year" id="add_period_year" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple">
-                                                @for($y = (int)date('Y') - 2; $y <= (int)date('Y') + 4; $y++)
-                                                    <option value="{{ $y }}" {{ $y == $selectedYear ? 'selected' : '' }}>{{ $y }}</option>
-                                                @endfor
-                                            </select>
+                                <!-- Scrollable Body -->
+                                <div class="overflow-y-auto flex-1 p-5 sm:p-6 space-y-5">
+                                    <!-- Top Configuration: Target Period & Initial Values Baseline -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <!-- Period Selection -->
+                                        <div class="bg-gray-50/70 p-4 rounded-xl border border-gray-200/80 space-y-3">
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                <i class="fas fa-calendar-alt text-brand-purple"></i> Period Selection
+                                            </label>
+                                            <div class="grid grid-cols-2 gap-2.5">
+                                                <div>
+                                                    <span class="block text-[11px] font-semibold text-gray-600 mb-1">Year:</span>
+                                                    <select name="year" id="add_period_year" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple py-2">
+                                                        @for($y = (int)date('Y') - 2; $y <= (int)date('Y') + 4; $y++)
+                                                            <option value="{{ $y }}" {{ $y == $selectedYear ? 'selected' : '' }}>{{ $y }}</option>
+                                                        @endfor
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <span class="block text-[11px] font-semibold text-gray-600 mb-1">Month:</span>
+                                                    <select name="month" id="add_period_month" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple py-2">
+                                                        <option value="all">🌟 All 12 Months (Full Year)</option>
+                                                        @foreach([
+                                                            1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
+                                                            5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
+                                                            9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
+                                                        ] as $mNum => $mName)
+                                                            <option value="{{ $mNum }}" {{ $mNum == $selectedMonth ? 'selected' : '' }}>{{ $mName }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <p class="text-[11px] text-gray-500 leading-relaxed">
+                                                Select a specific month or choose "All 12 Months" to configure the full annual schedule in one step.
+                                            </p>
                                         </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Month:</label>
-                                            <select name="month" id="add_period_month" class="w-full rounded-lg border-gray-300 text-xs font-bold text-gray-800 focus:border-brand-purple focus:ring-brand-purple">
-                                                <option value="all">🌟 All 12 Months (Full Year)</option>
-                                                @foreach([
-                                                    1 => 'January', 2 => 'February', 3 => 'March', 4 => 'April',
-                                                    5 => 'May', 6 => 'June', 7 => 'July', 8 => 'August',
-                                                    9 => 'September', 10 => 'October', 11 => 'November', 12 => 'December'
-                                                ] as $mNum => $mName)
-                                                    <option value="{{ $mNum }}" {{ $mNum == $selectedMonth ? 'selected' : '' }}>{{ $mName }}</option>
-                                                @endforeach
-                                            </select>
-                                        </div>
-                                    </div>
 
-                                    <!-- Prefill Options -->
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
-                                        <div class="space-y-2">
-                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
-                                                <input type="radio" name="prefill" value="default" checked onchange="toggleCopyPeriodSelect('default')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
-                                                <div class="ml-3">
-                                                    <span class="block text-xs font-bold text-gray-800">Use Standard Defaults</span>
-                                                    <span class="block text-[11px] text-gray-500">Auto-fill departments and users with standard target numbers.</span>
+                                        <!-- Initial Target Values -->
+                                        <div class="bg-gray-50/70 p-4 rounded-xl border border-gray-200/80 space-y-2">
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                                                <i class="fas fa-sliders-h text-brand-purple"></i> Initial Target Values
+                                            </label>
+                                            
+                                            <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-all has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40 select-none">
+                                                <input type="radio" name="prefill" value="default" checked onchange="toggleCopyPeriodSelect('default')" class="text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                <div class="ml-2.5">
+                                                    <span class="block text-xs font-bold text-gray-800 leading-tight">Use Standard Defaults</span>
+                                                    <span class="block text-[10px] text-gray-500">Auto-fill departments and users with standard target numbers.</span>
                                                 </div>
                                             </label>
 
-                                            <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
-                                                <input type="radio" name="prefill" value="zero" onchange="toggleCopyPeriodSelect('zero')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
-                                                <div class="ml-3">
-                                                    <span class="block text-xs font-bold text-gray-800">Start with Zero (0.00)</span>
-                                                    <span class="block text-[11px] text-gray-500">Initialize with blank/zero targets to enter amounts manually.</span>
+                                            <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-all has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40 select-none">
+                                                <input type="radio" name="prefill" value="zero" onchange="toggleCopyPeriodSelect('zero')" class="text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                <div class="ml-2.5">
+                                                    <span class="block text-xs font-bold text-gray-800 leading-tight">Start with Zero (0.00)</span>
+                                                    <span class="block text-[10px] text-gray-500">Initialize with blank/zero targets to enter amounts manually.</span>
                                                 </div>
                                             </label>
 
                                             @if($configuredPeriods->isNotEmpty())
-                                                <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
-                                                    <input type="radio" name="prefill" value="copy" onchange="toggleCopyPeriodSelect('copy')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300">
-                                                    <div class="ml-3 w-full">
-                                                        <span class="block text-xs font-bold text-gray-800">Copy from Existing Period</span>
-                                                        <span class="block text-[11px] text-gray-500">Duplicate exact department and user numbers from an existing month.</span>
-                                                        <div id="copy_period_container" class="mt-2.5 hidden">
-                                                            <select onchange="handleCopyPeriodChange(this)" class="w-full text-xs font-medium rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple">
+                                                <label class="flex items-start p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-all has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40 select-none">
+                                                    <input type="radio" name="prefill" value="copy" onchange="toggleCopyPeriodSelect('copy')" class="mt-0.5 text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                    <div class="ml-2.5 w-full">
+                                                        <span class="block text-xs font-bold text-gray-800 leading-tight">Copy from Existing Period</span>
+                                                        <span class="block text-[10px] text-gray-500">Duplicate exact department and user numbers from an existing month.</span>
+                                                        <div id="copy_period_container" class="mt-2 hidden">
+                                                            <select onchange="handleCopyPeriodChange(this)" class="w-full text-xs font-medium rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple py-1.5">
                                                                 <option value="">-- Choose period to copy from --</option>
                                                                 @foreach($configuredPeriods as $cp)
                                                                     <option value="{{ $cp->year }}_{{ $cp->month }}">{{ $cp->month_name }} {{ $cp->year }}</option>
@@ -918,153 +932,170 @@
                                         </div>
                                     </div>
 
-                                    <!-- Assign Departments for Targets -->
-                                    <div class="pt-3 border-t border-gray-100">
-                                        <div class="flex items-center justify-between mb-1.5">
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                                    <i class="fas fa-building text-brand-pink mr-1"></i> Target Departments:
-                                                </label>
-                                                <p class="text-[11px] text-gray-500">Select departments that will receive targets. Unselected departments will not appear in targets.</p>
-                                            </div>
-                                            <span id="target_departments_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-pink-50 text-brand-pink border border-pink-200 shrink-0">
-                                                {{ count($departments) }} of {{ count($departments) }} selected
-                                            </span>
-                                        </div>
-
-                                        <!-- Search & Quick Selection Toolbar for Departments -->
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div class="relative flex-1">
-                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
-                                                    <i class="fas fa-search text-[10px]"></i>
+                                    <!-- Bottom Assignments: 2-column Grid for Departments & Users -->
+                                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
+                                        <!-- Target Departments Column -->
+                                        <div class="flex flex-col bg-white rounded-xl border border-gray-200 p-3.5 shadow-xs">
+                                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                        <span class="w-5 h-5 rounded-md bg-pink-100 text-brand-pink flex items-center justify-center text-[10px]">
+                                                            <i class="fas fa-building"></i>
+                                                        </span>
+                                                        Target Departments
+                                                    </label>
+                                                    <p class="text-[11px] text-gray-500">Unselected departments will not appear in targets</p>
                                                 </div>
-                                                <input type="text" id="target_dept_search" oninput="filterTargetDepartments(this.value)"
-                                                    placeholder="Search department..."
-                                                    class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-pink focus:ring-brand-pink placeholder:text-gray-400">
+                                                <span id="target_departments_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-pink-50 text-brand-pink border border-pink-200 shrink-0">
+                                                    {{ count($departments) }} of {{ count($departments) }} selected
+                                                </span>
                                             </div>
-                                            <div class="flex items-center gap-1 shrink-0">
-                                                <button type="button" onclick="selectAllTargetDepartments(true)"
-                                                    class="px-2 py-1 text-[11px] font-semibold text-brand-pink hover:bg-pink-50 rounded border border-pink-200 transition-colors">
-                                                    Select All
-                                                </button>
-                                                <button type="button" onclick="selectAllTargetDepartments(false)"
-                                                    class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
-                                                    Deselect All
-                                                </button>
-                                            </div>
-                                        </div>
 
-                                        <!-- Departments Checkbox List -->
-                                        <div class="max-h-40 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200" id="target_departments_list_container">
-                                            @foreach($departments as $dept)
-                                                <label class="target-dept-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors select-none"
-                                                    data-name="{{ strtolower($dept) }}">
-                                                    <div class="flex items-center gap-2.5 min-w-0">
-                                                        <input type="checkbox" name="departments[]" value="{{ $dept }}" checked
-                                                            onchange="updateTargetDepartmentsCount()"
-                                                            class="target-dept-cb rounded text-brand-pink focus:ring-brand-pink border-gray-300 h-4 w-4">
-                                                        <div class="min-w-0">
-                                                            <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $dept }}</span>
-                                                        </div>
+                                            <!-- Search & Actions -->
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <div class="relative flex-1">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                        <i class="fas fa-search text-[10px]"></i>
                                                     </div>
-                                                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-brand-pink border border-pink-100">Department</span>
-                                                    </div>
-                                                </label>
-                                            @endforeach
-                                            <div id="no_target_departments_match" class="hidden text-center py-3 text-xs text-gray-400">
-                                                <i class="fas fa-search mr-1"></i> No departments matching search
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Assign Users for Targets -->
-                                    <div class="pt-3 border-t border-gray-100">
-                                        <div class="flex items-center justify-between mb-1.5">
-                                            <div>
-                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                                    <i class="fas fa-users text-brand-purple mr-1"></i> Target Recipients (Users):
-                                                </label>
-                                                <p class="text-[11px] text-gray-500">Select users who will get targets. Unselected users will not appear in targets.</p>
-                                            </div>
-                                            <span id="target_users_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-purple-50 text-brand-purple border border-purple-200 shrink-0">
-                                                {{ count($users) }} of {{ count($users) }} selected
-                                            </span>
-                                        </div>
-
-                                        <!-- Search & Quick Selection Toolbar -->
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <div class="relative flex-1">
-                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
-                                                    <i class="fas fa-search text-[10px]"></i>
+                                                    <input type="text" id="target_dept_search" oninput="filterTargetDepartments(this.value)"
+                                                        placeholder="Search department..."
+                                                        class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-pink focus:ring-brand-pink placeholder:text-gray-400">
                                                 </div>
-                                                <input type="text" id="target_user_search" oninput="filterTargetUsers(this.value)"
-                                                    placeholder="Search by name, email or department..."
-                                                    class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple placeholder:text-gray-400">
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onclick="selectAllTargetDepartments(true)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-brand-pink hover:bg-pink-50 rounded border border-pink-200 transition-colors">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" onclick="selectAllTargetDepartments(false)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                        Clear
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div class="flex items-center gap-1 shrink-0">
-                                                <button type="button" onclick="selectAllTargetUsers(true)"
-                                                    class="px-2 py-1 text-[11px] font-semibold text-brand-purple hover:bg-purple-50 rounded border border-purple-200 transition-colors">
-                                                    Select All
-                                                </button>
-                                                <button type="button" onclick="selectAllTargetUsers(false)"
-                                                    class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
-                                                    Deselect All
-                                                </button>
+
+                                            <!-- Departments Checkbox List -->
+                                            <div class="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200 flex-1" id="target_departments_list_container">
+                                                @foreach($departments as $dept)
+                                                    <label class="target-dept-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors select-none"
+                                                        data-name="{{ strtolower($dept) }}">
+                                                        <div class="flex items-center gap-2.5 min-w-0">
+                                                            <input type="checkbox" name="departments[]" value="{{ $dept }}" checked
+                                                                onchange="updateTargetDepartmentsCount()"
+                                                                class="target-dept-cb rounded text-brand-pink focus:ring-brand-pink border-gray-300 h-4 w-4">
+                                                            <div class="min-w-0">
+                                                                <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $dept }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-brand-pink border border-pink-100">Department</span>
+                                                        </div>
+                                                    </label>
+                                                @endforeach
+                                                <div id="no_target_departments_match" class="hidden text-center py-4 text-xs text-gray-400">
+                                                    <i class="fas fa-search mr-1"></i> No departments matching search
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <!-- Users Checkbox List -->
-                                        <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200" id="target_users_list_container">
-                                            @foreach($users as $u)
-                                                <label class="target-user-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors select-none"
-                                                    data-name="{{ strtolower($u->name) }}"
-                                                    data-email="{{ strtolower($u->email) }}"
-                                                    data-dept="{{ strtolower($u->department ?? '') }}">
-                                                    <div class="flex items-center gap-2.5 min-w-0">
-                                                        <input type="checkbox" name="users[]" value="{{ $u->id }}" checked
-                                                            onchange="updateTargetUsersCount()"
-                                                            class="target-user-cb rounded text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
-                                                        <div class="min-w-0">
-                                                            <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $u->name }}</span>
-                                                            <span class="block text-[10px] text-gray-400 truncate">{{ $u->email }}</span>
+                                        <!-- Target Users Column -->
+                                        <div class="flex flex-col bg-white rounded-xl border border-gray-200 p-3.5 shadow-xs">
+                                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                        <span class="w-5 h-5 rounded-md bg-purple-100 text-brand-purple flex items-center justify-center text-[10px]">
+                                                            <i class="fas fa-users"></i>
+                                                        </span>
+                                                        Target Recipients (Users)
+                                                    </label>
+                                                    <p class="text-[11px] text-gray-500">Unselected users will not appear in targets</p>
+                                                </div>
+                                                <span id="target_users_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-purple-50 text-brand-purple border border-purple-200 shrink-0">
+                                                    {{ count($users) }} of {{ count($users) }} selected
+                                                </span>
+                                            </div>
+
+                                            <!-- Search & Actions -->
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <div class="relative flex-1">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                        <i class="fas fa-search text-[10px]"></i>
+                                                    </div>
+                                                    <input type="text" id="target_user_search" oninput="filterTargetUsers(this.value)"
+                                                        placeholder="Search by name, email or department..."
+                                                        class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple placeholder:text-gray-400">
+                                                </div>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onclick="selectAllTargetUsers(true)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-brand-purple hover:bg-purple-50 rounded border border-purple-200 transition-colors">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" onclick="selectAllTargetUsers(false)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Users Checkbox List -->
+                                            <div class="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200 flex-1" id="target_users_list_container">
+                                                @foreach($users as $u)
+                                                    <label class="target-user-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors select-none"
+                                                        data-name="{{ strtolower($u->name) }}"
+                                                        data-email="{{ strtolower($u->email) }}"
+                                                        data-dept="{{ strtolower($u->department ?? '') }}">
+                                                        <div class="flex items-center gap-2.5 min-w-0">
+                                                            <input type="checkbox" name="users[]" value="{{ $u->id }}" checked
+                                                                onchange="updateTargetUsersCount()"
+                                                                class="target-user-cb rounded text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                            <div class="min-w-0">
+                                                                <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $u->name }}</span>
+                                                                <span class="block text-[10px] text-gray-400 truncate">{{ $u->email }}</span>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
-                                                        @if($u->department)
-                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-brand-blue border border-blue-100">{{ $u->department }}</span>
-                                                        @endif
-                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ $u->role }}</span>
-                                                    </div>
-                                                </label>
-                                            @endforeach
-                                            <div id="no_target_users_match" class="hidden text-center py-4 text-xs text-gray-400">
-                                                <i class="fas fa-search mr-1"></i> No users matching search
+                                                        <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                            @if($u->department)
+                                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-brand-blue border border-blue-100">{{ $u->department }}</span>
+                                                            @endif
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ $u->role }}</span>
+                                                        </div>
+                                                    </label>
+                                                @endforeach
+                                                <div id="no_target_users_match" class="hidden text-center py-4 text-xs text-gray-400">
+                                                    <i class="fas fa-search mr-1"></i> No users matching search
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
-                                    <button type="button" onclick="closeAddPeriodModal()"
-                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
-                                        Cancel
-                                    </button>
-                                    <button type="submit"
-                                        class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
-                                        <i class="fas fa-plus text-[10px]"></i> Add Period
-                                    </button>
+                                <!-- Sticky Footer -->
+                                <div class="px-6 py-4 bg-gray-50/90 border-t border-gray-100 flex items-center justify-between shrink-0">
+                                    <p class="text-xs text-gray-500 hidden sm:block">
+                                        <i class="fas fa-info-circle text-brand-purple mr-1"></i>
+                                        Targets will only be created for the selected departments and users.
+                                    </p>
+                                    <div class="flex items-center gap-2.5 ml-auto">
+                                        <button type="button" onclick="closeAddPeriodModal()"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-xs">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-5 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:shadow-lg flex items-center gap-1.5">
+                                            <i class="fas fa-plus text-[10px]"></i> Add Period
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
                     </div>
 
                     <!-- Add Departments to Existing Period Modal -->
-                    <div id="addDepartmentsToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150 my-8 max-h-[90vh] overflow-y-auto">
-                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                    <div id="addDepartmentsToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-100 animate-in fade-in zoom-in duration-150 flex flex-col max-h-[90vh] overflow-hidden my-auto">
+                            <!-- Fixed Header -->
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center text-brand-pink">
+                                    <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center text-brand-pink shrink-0">
                                         <i class="fas fa-building text-lg"></i>
                                     </div>
                                     <div>
@@ -1072,22 +1103,22 @@
                                         <p class="text-xs text-gray-500">Assign targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
                                     </div>
                                 </div>
-                                <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <i class="fas fa-times text-sm"></i>
+                                <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-base"></i>
                                 </button>
                             </div>
 
-                            <form action="{{ route('settings.addDepartmentsToTargetPeriod') }}" method="POST">
+                            <form action="{{ route('settings.addDepartmentsToTargetPeriod') }}" method="POST" class="flex flex-col flex-1 overflow-hidden min-h-0">
                                 @csrf
                                 <input type="hidden" name="year" value="{{ $selectedYear }}">
                                 <input type="hidden" name="month" value="{{ $selectedMonth }}">
 
-                                <div class="space-y-4 mb-5">
-                                    @php
-                                        $availableDepartments = collect($departments)->filter(fn($d) => !isset($departmentTargets[$d]));
-                                    @endphp
+                                @php
+                                    $availableDepartments = collect($departments)->filter(fn($d) => !isset($departmentTargets[$d]));
+                                @endphp
 
-                                    @if($availableDepartments->isNotEmpty())
+                                @if($availableDepartments->isNotEmpty())
+                                    <div class="p-6 overflow-y-auto flex-1 space-y-4">
                                         <div>
                                             <div class="flex items-center justify-between mb-1.5">
                                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -1121,7 +1152,7 @@
                                             </div>
 
                                             <!-- Department List -->
-                                            <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
+                                            <div class="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
                                                 @foreach($availableDepartments as $ad)
                                                     <label class="add-dept-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors select-none"
                                                         data-name="{{ strtolower($ad) }}">
@@ -1148,11 +1179,11 @@
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
                                             <div class="grid grid-cols-2 gap-2">
-                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40 select-none">
                                                     <input type="radio" name="initial_amount" value="default" checked class="text-brand-pink focus:ring-brand-pink border-gray-300">
                                                     <span class="ml-2 text-xs font-semibold text-gray-800">Use Standard Defaults</span>
                                                 </label>
-                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40 select-none">
                                                     <input type="radio" name="initial_amount" value="zero" class="text-brand-pink focus:ring-brand-pink border-gray-300">
                                                     <span class="ml-2 text-xs font-semibold text-gray-800">Start with Zero (0.00)</span>
                                                 </label>
@@ -1164,40 +1195,42 @@
                                                 class="rounded border-gray-300 text-brand-pink focus:ring-brand-pink mr-2">
                                             <span>Apply these department targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
                                         </label>
+                                    </div>
 
-                                        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
-                                            <button type="button" onclick="closeAddDepartmentsToPeriodModal()"
-                                                class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
-                                                Cancel
-                                            </button>
-                                            <button type="submit"
-                                                class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
-                                                <i class="fas fa-plus text-[10px]"></i> Add Selected Departments
-                                            </button>
+                                    <!-- Sticky Footer -->
+                                    <div class="px-6 py-4 bg-gray-50/90 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
+                                        <button type="button" onclick="closeAddDepartmentsToPeriodModal()"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-xs">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                            <i class="fas fa-plus text-[10px]"></i> Add Selected Departments
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="p-6 text-center py-8">
+                                        <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                                            <i class="fas fa-check text-lg"></i>
                                         </div>
-                                    @else
-                                        <div class="text-center py-6">
-                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-2">
-                                                <i class="fas fa-check text-base"></i>
-                                            </div>
-                                            <h4 class="text-xs font-bold text-gray-800 mb-1">All Departments Already Added</h4>
-                                            <p class="text-[11px] text-gray-500">Every department is already configured with a target for this period.</p>
-                                            <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="mt-4 px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200">
-                                                Close
-                                            </button>
-                                        </div>
-                                    @endif
-                                </div>
+                                        <h4 class="text-sm font-bold text-gray-800 mb-1">All Departments Already Added</h4>
+                                        <p class="text-xs text-gray-500 max-w-xs mx-auto">Every department is already configured with a target for this period.</p>
+                                        <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="mt-5 px-5 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                            Close
+                                        </button>
+                                    </div>
+                                @endif
                             </form>
                         </div>
                     </div>
 
                     <!-- Add Users to Existing Period Modal -->
-                    <div id="addUsersToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150 my-8 max-h-[90vh] overflow-y-auto">
-                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                    <div id="addUsersToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-3 sm:p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full border border-gray-100 animate-in fade-in zoom-in duration-150 flex flex-col max-h-[90vh] overflow-hidden my-auto">
+                            <!-- Fixed Header -->
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple shrink-0">
                                         <i class="fas fa-user-plus text-lg"></i>
                                     </div>
                                     <div>
@@ -1205,22 +1238,22 @@
                                         <p class="text-xs text-gray-500">Assign targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
                                     </div>
                                 </div>
-                                <button type="button" onclick="closeAddUsersToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <i class="fas fa-times text-sm"></i>
+                                <button type="button" onclick="closeAddUsersToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-base"></i>
                                 </button>
                             </div>
 
-                            <form action="{{ route('settings.addUsersToTargetPeriod') }}" method="POST">
+                            <form action="{{ route('settings.addUsersToTargetPeriod') }}" method="POST" class="flex flex-col flex-1 overflow-hidden min-h-0">
                                 @csrf
                                 <input type="hidden" name="year" value="{{ $selectedYear }}">
                                 <input type="hidden" name="month" value="{{ $selectedMonth }}">
 
-                                <div class="space-y-4 mb-5">
-                                    @php
-                                        $availableUsers = $users->filter(fn($u) => !isset($userTargets[$u->id]));
-                                    @endphp
+                                @php
+                                    $availableUsers = $users->filter(fn($u) => !isset($userTargets[$u->id]));
+                                @endphp
 
-                                    @if($availableUsers->isNotEmpty())
+                                @if($availableUsers->isNotEmpty())
+                                    <div class="p-6 overflow-y-auto flex-1 space-y-4">
                                         <div>
                                             <div class="flex items-center justify-between mb-1.5">
                                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -1254,7 +1287,7 @@
                                             </div>
 
                                             <!-- User List -->
-                                            <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
+                                            <div class="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
                                                 @foreach($availableUsers as $au)
                                                     <label class="add-user-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors select-none"
                                                         data-name="{{ strtolower($au->name) }}"
@@ -1286,11 +1319,11 @@
                                         <div>
                                             <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
                                             <div class="grid grid-cols-2 gap-2">
-                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40 select-none">
                                                     <input type="radio" name="initial_amount" value="default" checked class="text-brand-purple focus:ring-brand-purple border-gray-300">
                                                     <span class="ml-2 text-xs font-semibold text-gray-800">Use Standard Defaults</span>
                                                 </label>
-                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40 select-none">
                                                     <input type="radio" name="initial_amount" value="zero" class="text-brand-purple focus:ring-brand-purple border-gray-300">
                                                     <span class="ml-2 text-xs font-semibold text-gray-800">Start with Zero (0.00)</span>
                                                 </label>
@@ -1302,40 +1335,41 @@
                                                 class="rounded border-gray-300 text-brand-purple focus:ring-brand-purple mr-2">
                                             <span>Apply these user targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
                                         </label>
+                                    </div>
 
-                                        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
-                                            <button type="button" onclick="closeAddUsersToPeriodModal()"
-                                                class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
-                                                Cancel
-                                            </button>
-                                            <button type="submit"
-                                                class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
-                                                <i class="fas fa-plus text-[10px]"></i> Add Selected Users
-                                            </button>
+                                    <!-- Sticky Footer -->
+                                    <div class="px-6 py-4 bg-gray-50/90 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
+                                        <button type="button" onclick="closeAddUsersToPeriodModal()"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-xs">
+                                            Cancel
+                                        </button>
+                                        <button type="submit"
+                                            class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                            <i class="fas fa-plus text-[10px]"></i> Add Selected Users
+                                        </button>
+                                    </div>
+                                @else
+                                    <div class="p-6 text-center py-8">
+                                        <div class="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                                            <i class="fas fa-check text-lg"></i>
                                         </div>
-                                    @else
-                                        <div class="text-center py-6">
-                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-2">
-                                                <i class="fas fa-check text-base"></i>
-                                            </div>
-                                            <h4 class="text-xs font-bold text-gray-800 mb-1">All Users Already Added</h4>
-                                            <p class="text-[11px] text-gray-500">Every user in the system is already configured with a target for this period.</p>
-                                            <button type="button" onclick="closeAddUsersToPeriodModal()" class="mt-4 px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200">
-                                                Close
-                                            </button>
-                                        </div>
-                                    @endif
-                                </div>
+                                        <h4 class="text-sm font-bold text-gray-800 mb-1">All Users Already Added</h4>
+                                        <p class="text-xs text-gray-500 max-w-xs mx-auto">Every user in the system is already configured with a target for this period.</p>
+                                        <button type="button" onclick="closeAddUsersToPeriodModal()" class="mt-5 px-5 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                            Close
+                                        </button>
+                                    </div>
+                                @endif
                             </form>
                         </div>
                     </div>
 
                     <!-- Delete/Destroy Target Period Modal -->
-                    <div id="destroyPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150">
-                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                    <div id="destroyPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-gray-100 animate-in fade-in zoom-in duration-150 flex flex-col max-h-[90vh] overflow-hidden my-auto">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600">
+                                    <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
                                         <i class="fas fa-calendar-times text-lg"></i>
                                     </div>
                                     <div>
@@ -1343,51 +1377,53 @@
                                         <p class="text-xs text-gray-500">Remove period and associated target data</p>
                                     </div>
                                 </div>
-                                <button type="button" onclick="closeDestroyPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                                    <i class="fas fa-times text-sm"></i>
+                                <button type="button" onclick="closeDestroyPeriodModal()" class="text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-base"></i>
                                 </button>
                             </div>
 
-                            <form action="{{ route('settings.destroyTargetPeriod') }}" method="POST">
+                            <form action="{{ route('settings.destroyTargetPeriod') }}" method="POST" class="flex flex-col flex-1 overflow-hidden min-h-0">
                                 @csrf
                                 @method('DELETE')
                                 <input type="hidden" name="year" id="destroy_period_year" value="{{ $selectedYear }}">
                                 <input type="hidden" name="month" id="destroy_period_month" value="{{ $selectedMonth }}">
 
-                                <div class="p-3 bg-red-50/80 rounded-xl border border-red-200 text-red-800 text-xs mb-4 flex items-start gap-2">
-                                    <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
-                                    <div>
-                                        <span class="font-bold">Permanent Action:</span> Deleting a period removes it from the active periods list and removes all saved department and user targets for that period.
+                                <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                                    <div class="p-3 bg-red-50/80 rounded-xl border border-red-200 text-red-800 text-xs flex items-start gap-2">
+                                        <i class="fas fa-exclamation-triangle text-red-500 mt-0.5"></i>
+                                        <div>
+                                            <span class="font-bold">Permanent Action:</span> Deleting a period removes it from the active periods list and removes all saved department and user targets for that period.
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-2.5">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Choose deletion scope:</label>
+                                        
+                                        <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
+                                            <input type="radio" name="destroy_scope" id="destroy_scope_month" value="single" checked data-month="{{ $selectedMonth }}" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                            <div class="ml-3">
+                                                <span class="block text-xs font-bold text-gray-800">
+                                                    Delete <span id="destroy_period_single_label">{{ $currentMonthName }} {{ $selectedYear }}</span> only
+                                                </span>
+                                                <span class="block text-[11px] text-gray-500">Deletes this single monthly period and its targets.</span>
+                                            </div>
+                                        </label>
+
+                                        <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
+                                            <input type="radio" name="destroy_scope" id="destroy_scope_all" value="all" data-month="all" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
+                                            <div class="ml-3">
+                                                <span class="block text-xs font-bold text-red-700">
+                                                    Delete all periods in <span id="destroy_period_year_label">{{ $selectedYear }}</span>
+                                                </span>
+                                                <span class="block text-[11px] text-gray-500">Deletes all monthly periods and all targets for the entire year.</span>
+                                            </div>
+                                        </label>
                                     </div>
                                 </div>
 
-                                <div class="mb-5 space-y-2.5">
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Choose deletion scope:</label>
-                                    
-                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
-                                        <input type="radio" name="destroy_scope" id="destroy_scope_month" value="single" checked data-month="{{ $selectedMonth }}" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
-                                        <div class="ml-3">
-                                            <span class="block text-xs font-bold text-gray-800">
-                                                Delete <span id="destroy_period_single_label">{{ $currentMonthName }} {{ $selectedYear }}</span> only
-                                            </span>
-                                            <span class="block text-[11px] text-gray-500">Deletes this single monthly period and its targets.</span>
-                                        </div>
-                                    </label>
-
-                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors has-[:checked]:border-red-400 has-[:checked]:bg-red-50/30">
-                                        <input type="radio" name="destroy_scope" id="destroy_scope_all" value="all" data-month="all" onchange="handleDestroyScopeChange(this)" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
-                                        <div class="ml-3">
-                                            <span class="block text-xs font-bold text-red-700">
-                                                Delete all periods in <span id="destroy_period_year_label">{{ $selectedYear }}</span>
-                                            </span>
-                                            <span class="block text-[11px] text-gray-500">Deletes all monthly periods and all targets for the entire year.</span>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                <div class="px-6 py-4 bg-gray-50/90 border-t border-gray-100 flex items-center justify-end gap-2.5 shrink-0">
                                     <button type="button" onclick="closeDestroyPeriodModal()"
-                                        class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                        class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors shadow-xs">
                                         Cancel
                                     </button>
                                     <button type="submit"
