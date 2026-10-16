@@ -35,7 +35,13 @@ class Target extends Model
             return (float) $target;
         }
 
-        if (TargetPeriod::exists() && !TargetPeriod::where('year', $year)->where('month', $month)->exists()) {
+        // If target periods exist in the system and this period is configured:
+        // A department without a target record for this period has target 0.0
+        if (TargetPeriod::where('year', $year)->where('month', $month)->exists()) {
+            return 0.0;
+        }
+
+        if (TargetPeriod::exists()) {
             return 0.0;
         }
 
@@ -62,7 +68,13 @@ class Target extends Model
             return (float) $target;
         }
 
-        if (TargetPeriod::exists() && !TargetPeriod::where('year', $year)->where('month', $month)->exists()) {
+        // If target periods exist in the system and this period is configured:
+        // A user without a target record for this period (not selected) has target 0.0
+        if (TargetPeriod::where('year', $year)->where('month', $month)->exists()) {
+            return 0.0;
+        }
+
+        if (TargetPeriod::exists()) {
             return 0.0;
         }
 

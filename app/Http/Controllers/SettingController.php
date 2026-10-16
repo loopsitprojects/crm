@@ -105,6 +105,8 @@ class SettingController extends Controller
             'prefill' => 'nullable|in:default,zero,copy',
             'copy_year' => 'nullable|integer',
             'copy_month' => 'nullable|integer|min:1|max:12',
+            'users' => 'nullable|array',
+            'users.*' => 'integer|exists:users,id',
         ]);
 
         $year = (int) $request->year;
@@ -115,7 +117,12 @@ class SettingController extends Controller
 
         $monthsToAdd = ($monthInput === 'all') ? range(1, 12) : [(int) $monthInput];
         $departments = User::getDepartmentList();
-        $users = User::all();
+        
+        // If users parameter is passed in the request (e.g. from UI checkboxes), use selected users;
+        // If not provided in request (e.g. legacy test calls), fallback to all users.
+        $selectedUserIds = $request->has('users')
+            ? array_map('intval', (array) $request->input('users', []))
+            : User::pluck('id')->toArray();
 
         // Prepare copy source if needed
         $sourceDeptTargets = [];
@@ -164,19 +171,26 @@ class SettingController extends Controller
                 );
             }
 
-            // Populate user targets
-            foreach ($users as $u) {
+            // Populate user targets ONLY for selected users
+            foreach ($selectedUserIds as $uId) {
                 $amount = 0;
                 if ($prefill === 'copy') {
-                    $amount = $sourceUserTargets[$u->id] ?? 0;
+                    $amount = $sourceUserTargets[$uId] ?? 0;
                 } elseif ($prefill === 'default') {
-                    $amount = $defaultUserTargets[$u->id] ?? 0;
+                    $amount = $defaultUserTargets[$uId] ?? 0;
                 }
                 Target::updateOrCreate(
-                    ['type' => 'user', 'user_id' => $u->id, 'year' => $year, 'month' => $m],
+                    ['type' => 'user', 'user_id' => $uId, 'year' => $year, 'month' => $m],
                     ['target_amount' => $amount]
                 );
             }
+
+            // Clean up any existing targets for users not selected in this period
+            Target::where('type', 'user')
+                ->where('year', $year)
+                ->where('month', $m)
+                ->whereNotIn('user_id', $selectedUserIds)
+                ->delete();
         }
 
         $firstAddedMonth = $monthsToAdd[0];
@@ -198,6 +212,7 @@ class SettingController extends Controller
                 'copy_year' => $copyYear,
                 'copy_month' => $copyMonth,
                 'months_added' => $monthsToAdd,
+                'selected_users_count' => count($selectedUserIds),
             ]);
         } else {
             $createdPeriod = TargetPeriod::where('year', $year)->where('month', $firstAddedMonth)->first();
@@ -208,6 +223,7 @@ class SettingController extends Controller
                 'prefill' => $prefill,
                 'copy_year' => $copyYear,
                 'copy_month' => $copyMonth,
+                'selected_users_count' => count($selectedUserIds),
             ]);
         }
 
@@ -417,38 +433,48 @@ class SettingController extends Controller
             $msg = "All targets for {$targetName} were completely deleted.";
             $actionDesc = "Deleted all targets for {$targetName} (" . ucfirst($type) . ")";
         } elseif ($scope === 'year') {
-            // Remove existing year rows and set 0 for all 12 months to prevent default fallback
+            // Remove existing year rows
             Target::where('type', $type)
                 ->where($identifierCol, $identifierVal)
                 ->where('year', $year)
                 ->delete();
 
-            foreach (range(1, 12) as $m) {
-                Target::create([
-                    'type' => $type,
-                    $identifierCol => $identifierVal,
-                    'year' => $year,
-                    'month' => $m,
-                    'target_amount' => 0,
-                ]);
+            if ($type === 'department') {
+                foreach (range(1, 12) as $m) {
+                    Target::create([
+                        'type' => $type,
+                        $identifierCol => $identifierVal,
+                        'year' => $year,
+                        'month' => $m,
+                        'target_amount' => 0,
+                    ]);
+                }
             }
 
-            $msg = "Target for {$targetName} was cleared for all 12 months of {$year}.";
-            $actionDesc = "Cleared target for {$targetName} (" . ucfirst($type) . ") for all 12 months of {$year}";
+            $msg = "Target for {$targetName} was removed for all 12 months of {$year}.";
+            $actionDesc = "Removed target for {$targetName} (" . ucfirst($type) . ") for all 12 months of {$year}";
         } else { // scope === 'month'
-            // Set 0 for this specific month
-            Target::updateOrCreate(
-                [
-                    'type' => $type,
-                    $identifierCol => $identifierVal,
-                    'year' => $year,
-                    'month' => $month,
-                ],
-                ['target_amount' => 0]
-            );
-
-            $msg = "Target for {$targetName} was cleared for {$monthName} {$year}.";
-            $actionDesc = "Cleared target for {$targetName} (" . ucfirst($type) . ") for {$monthName} {$year}";
+            if ($type === 'user') {
+                Target::where('type', 'user')
+                    ->where('user_id', $userId)
+                    ->where('year', $year)
+                    ->where('month', $month)
+                    ->delete();
+                $msg = "Target for {$targetName} was removed for {$monthName} {$year}.";
+                $actionDesc = "Removed user target for {$targetName} for {$monthName} {$year}";
+            } else {
+                Target::updateOrCreate(
+                    [
+                        'type' => $type,
+                        $identifierCol => $identifierVal,
+                        'year' => $year,
+                        'month' => $month,
+                    ],
+                    ['target_amount' => 0]
+                );
+                $msg = "Target for {$targetName} was cleared for {$monthName} {$year}.";
+                $actionDesc = "Cleared target for {$targetName} (" . ucfirst($type) . ") for {$monthName} {$year}";
+            }
         }
 
         $this->logAction($actionDesc, null, [
@@ -494,27 +520,31 @@ class SettingController extends Controller
                 Target::where('type', $t)->delete();
             } elseif ($scope === 'year') {
                 Target::where('type', $t)->where('year', $year)->delete();
-                foreach ($items as $item) {
-                    foreach (range(1, 12) as $m) {
-                        Target::create([
-                            'type' => $t,
-                            $identifierCol => $item,
-                            'year' => $year,
-                            'month' => $m,
-                            'target_amount' => 0,
-                        ]);
+                if ($t === 'department') {
+                    foreach ($items as $item) {
+                        foreach (range(1, 12) as $m) {
+                            Target::create([
+                                'type' => $t,
+                                $identifierCol => $item,
+                                'year' => $year,
+                                'month' => $m,
+                                'target_amount' => 0,
+                            ]);
+                        }
                     }
                 }
             } else { // scope === 'month'
                 Target::where('type', $t)->where('year', $year)->where('month', $month)->delete();
-                foreach ($items as $item) {
-                    Target::create([
-                        'type' => $t,
-                        $identifierCol => $item,
-                        'year' => $year,
-                        'month' => $month,
-                        'target_amount' => 0,
-                    ]);
+                if ($t === 'department') {
+                    foreach ($items as $item) {
+                        Target::create([
+                            'type' => $t,
+                            $identifierCol => $item,
+                            'year' => $year,
+                            'month' => $month,
+                            'target_amount' => 0,
+                        ]);
+                    }
                 }
             }
         }
@@ -536,6 +566,70 @@ class SettingController extends Controller
             'year' => $year,
             'month' => $month,
             'scope' => $scope,
+        ]);
+
+        return redirect()->route('settings.index', [
+            'section' => 'targets',
+            'year' => $year,
+            'month' => $month,
+        ])->with('success', $msg);
+    }
+
+    public function addUsersToTargetPeriod(Request $request)
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2099',
+            'month' => 'required|integer|min:1|max:12',
+            'apply_to_all_months' => 'nullable|boolean',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'integer|exists:users,id',
+            'initial_amount' => 'nullable|in:default,zero',
+        ]);
+
+        $year = (int) $request->year;
+        $month = (int) $request->month;
+        $applyToAll = $request->boolean('apply_to_all_months');
+        $monthsToUpdate = $applyToAll ? range(1, 12) : [$month];
+        $initialMode = $request->input('initial_amount', 'default');
+
+        $defaultUserTargets = Target::where('type', 'user')
+            ->whereNull('month')
+            ->pluck('target_amount', 'user_id')
+            ->toArray();
+
+        foreach ($monthsToUpdate as $m) {
+            $mName = date('F Y', mktime(0, 0, 0, $m, 10, $year));
+            TargetPeriod::firstOrCreate(
+                ['year' => $year, 'month' => $m],
+                ['name' => $mName]
+            );
+
+            foreach ($request->user_ids as $userId) {
+                $amt = ($initialMode === 'default') ? ($defaultUserTargets[$userId] ?? 0) : 0;
+                Target::updateOrCreate(
+                    [
+                        'type' => 'user',
+                        'user_id' => $userId,
+                        'year' => $year,
+                        'month' => $m,
+                    ],
+                    ['target_amount' => $amt]
+                );
+            }
+        }
+
+        $count = count($request->user_ids);
+        $monthName = date('F', mktime(0, 0, 0, $month, 10));
+        $msg = $applyToAll
+            ? "{$count} user(s) added to targets for all 12 months of {$year} successfully."
+            : "{$count} user(s) added to targets for {$monthName} {$year} successfully.";
+
+        $this->logAction("Added {$count} user(s) to targets for " . ($applyToAll ? "all 12 months of {$year}" : "{$monthName} {$year}"), null, [
+            'type' => 'user',
+            'year' => $year,
+            'month' => $month,
+            'apply_to_all_months' => $applyToAll,
+            'user_ids' => $request->user_ids,
         ]);
 
         return redirect()->route('settings.index', [

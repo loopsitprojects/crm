@@ -271,6 +271,7 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('settings/targets/periods', [SettingController::class, 'destroyTargetPeriod'])->name('settings.destroyTargetPeriod');
             Route::post('settings/targets/delete-period', [SettingController::class, 'deleteTargetPeriod'])->name('settings.deleteTargetPeriod');
             Route::post('settings/targets/delete-single', [SettingController::class, 'deleteSingleTarget'])->name('settings.deleteSingleTarget');
+            Route::post('settings/targets/add-users', [SettingController::class, 'addUsersToTargetPeriod'])->name('settings.addUsersToTargetPeriod');
             Route::post('settings/maintenance', [SettingController::class, 'updateMaintenance'])->name('settings.updateMaintenance');
             Route::post('settings/notifications', [SettingController::class, 'updateNotifications'])->name('settings.updateNotifications');
             

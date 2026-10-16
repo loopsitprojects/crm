@@ -514,77 +514,96 @@
                                     <h3 class="text-base font-bold text-gray-800">User Targets (LKR)</h3>
                                     <p class="text-xs text-gray-500">Individual targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
                                 </div>
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2 sm:gap-3">
+                                    <button type="button" onclick="openAddUsersToPeriodModal()"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-brand-purple bg-purple-50 hover:bg-purple-100 hover:border-purple-300 rounded-lg font-semibold transition-colors border border-purple-200"
+                                        title="Add users to {{ $currentMonthName }} {{ $selectedYear }} targets">
+                                        <i class="fas fa-user-plus text-[10px]"></i> Add Users
+                                    </button>
                                     <button type="button" onclick="openDeletePeriodModal('user')"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md font-semibold transition-colors border border-transparent hover:border-red-200"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg font-semibold transition-colors border border-transparent hover:border-red-200"
                                         title="Clear all user targets for {{ $currentMonthName }} {{ $selectedYear }}">
                                         <i class="fas fa-trash-alt text-[10px]"></i> Clear User Targets
                                     </button>
-                                    <div class="text-right">
+                                    <div class="text-right ml-1">
                                         <span class="text-xs text-gray-500">Total:</span>
                                         <span class="text-sm font-bold text-brand-blue ml-1">LKR {{ number_format($totalUserTargetMonth, 2) }}</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="p-6">
-                                <form action="{{ route('settings.updateUserTargets') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="year" value="{{ $selectedYear }}">
-                                    <input type="hidden" name="month" value="{{ $selectedMonth }}">
+                                @php
+                                    $targetUsers = $users->filter(fn($u) => isset($userTargets[$u->id]));
+                                @endphp
 
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        @foreach($users as $user)
-                                            @php
-                                                $isMonthCustom = isset($userTargets[$user->id]);
-                                                $val = $isMonthCustom 
-                                                    ? $userTargets[$user->id]->target_amount 
-                                                    : (isset($defaultUserTargets[$user->id]) ? $defaultUserTargets[$user->id]->target_amount : 0);
-                                            @endphp
-                                            <div class="bg-gray-50/80 p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
-                                                <div class="flex items-center justify-between mb-1.5">
-                                                    <div>
-                                                        <span class="block text-sm font-bold text-gray-800 leading-tight">{{ $user->name }}</span>
-                                                        <span class="text-[11px] font-semibold text-brand-blue">{{ $user->department ?? 'No Dept' }}</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-1.5">
-                                                        @if($isMonthCustom)
+                                @if($targetUsers->isNotEmpty())
+                                    <form action="{{ route('settings.updateUserTargets') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                        <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            @foreach($targetUsers as $user)
+                                                @php
+                                                    $val = $userTargets[$user->id]->target_amount ?? 0;
+                                                @endphp
+                                                <div class="bg-gray-50/80 p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
+                                                    <div class="flex items-center justify-between mb-1.5">
+                                                        <div>
+                                                            <span class="block text-sm font-bold text-gray-800 leading-tight">{{ $user->name }}</span>
+                                                            <span class="text-[11px] font-semibold text-brand-blue">{{ $user->department ?? 'No Dept' }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5">
                                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
                                                                 <i class="fas fa-check mr-0.5 text-[8px]"></i> {{ substr($currentMonthName, 0, 3) }} Set
                                                             </span>
-                                                        @else
-                                                            <span class="text-[10px] text-gray-400 italic">Default</span>
-                                                        @endif
-                                                        <button type="button" 
-                                                            onclick="openDeleteSingleModal('user', '{{ $user->id }}', '{{ addslashes($user->name) }}', '{{ $val }}')"
-                                                            class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
-                                                            title="Delete/Clear target for {{ $user->name }}">
-                                                            <i class="fas fa-trash-alt text-[11px]"></i>
-                                                        </button>
+                                                            <button type="button" 
+                                                                onclick="openDeleteSingleModal('user', '{{ $user->id }}', '{{ addslashes($user->name) }}', '{{ $val }}')"
+                                                                class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
+                                                                title="Remove {{ $user->name }} from targets">
+                                                                <i class="fas fa-trash-alt text-[11px]"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="relative rounded-md shadow-sm mt-2">
+                                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                            <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
+                                                        </div>
+                                                        <input type="number" step="0.01" name="targets[{{ $user->id }}]"
+                                                            value="{{ $val }}"
+                                                            class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-blue focus:ring-brand-blue sm:text-sm font-semibold text-gray-800">
                                                     </div>
                                                 </div>
-                                                <div class="relative rounded-md shadow-sm mt-2">
-                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                        <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
-                                                    </div>
-                                                    <input type="number" step="0.01" name="targets[{{ $user->id }}]"
-                                                        value="{{ $val }}"
-                                                        class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-blue focus:ring-brand-blue sm:text-sm font-semibold text-gray-800">
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
-                                            <input type="checkbox" name="apply_to_all_months" value="1" 
-                                                class="rounded border-gray-300 text-brand-blue focus:ring-brand-blue mr-2">
-                                            <span>Apply these user targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
-                                        </label>
-                                        <button type="submit"
-                                            class="w-full sm:w-auto px-5 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
-                                            <i class="fas fa-save mr-1.5"></i> Save User Targets
+                                            @endforeach
+                                        </div>
+                                        <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
+                                                <input type="checkbox" name="apply_to_all_months" value="1" 
+                                                    class="rounded border-gray-300 text-brand-blue focus:ring-brand-blue mr-2">
+                                                <span>Apply these user targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                            </label>
+                                            <button type="submit"
+                                                class="w-full sm:w-auto px-5 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
+                                                <i class="fas fa-save mr-1.5"></i> Save User Targets
+                                            </button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <!-- Empty state when no users are assigned targets for this period -->
+                                    <div class="text-center py-10 px-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50 my-2">
+                                        <div class="w-12 h-12 rounded-2xl bg-purple-100/80 text-brand-purple flex items-center justify-center mx-auto mb-3 shadow-xs">
+                                            <i class="fas fa-user-tag text-lg"></i>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-gray-800 mb-1">No Users Selected for Targets</h4>
+                                        <p class="text-xs text-gray-500 max-w-sm mx-auto mb-4 leading-relaxed">
+                                            No users were selected for targets in {{ $currentMonthName }} {{ $selectedYear }}. You can add users to this target period at any time.
+                                        </p>
+                                        <button type="button" onclick="openAddUsersToPeriodModal()"
+                                            class="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all">
+                                            <i class="fas fa-user-plus text-[10px]"></i> Add Users to Targets
                                         </button>
                                     </div>
-                                </form>
+                                @endif
                             </div>
                         </div>
                     @else
@@ -661,24 +680,24 @@
                                     <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
                                         <input type="radio" name="scope" value="month" checked class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
                                         <div class="ml-3">
-                                            <span class="block text-xs font-bold text-gray-800">Clear for {{ $currentMonthName }} {{ $selectedYear }} only</span>
-                                            <span class="block text-[11px] text-gray-500">Sets this target to 0.00 for this month. Other months remain untouched.</span>
+                                            <span class="block text-xs font-bold text-gray-800" id="del_single_scope_month_title">Clear for {{ $currentMonthName }} {{ $selectedYear }} only</span>
+                                            <span class="block text-[11px] text-gray-500" id="del_single_scope_month_desc">Sets this target to 0.00 for this month. Other months remain untouched.</span>
                                         </div>
                                     </label>
 
                                     <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
                                         <input type="radio" name="scope" value="year" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
                                         <div class="ml-3">
-                                            <span class="block text-xs font-bold text-gray-800">Clear for all 12 months of {{ $selectedYear }}</span>
-                                            <span class="block text-[11px] text-gray-500">Sets target to 0.00 across Jan–Dec {{ $selectedYear }}.</span>
+                                            <span class="block text-xs font-bold text-gray-800" id="del_single_scope_year_title">Clear for all 12 months of {{ $selectedYear }}</span>
+                                            <span class="block text-[11px] text-gray-500" id="del_single_scope_year_desc">Sets target to 0.00 across Jan–Dec {{ $selectedYear }}.</span>
                                         </div>
                                     </label>
 
                                     <label class="flex items-start p-3 bg-white border border-gray-200 rounded-xl hover:border-red-300 hover:bg-red-50/20 cursor-pointer transition-colors">
                                         <input type="radio" name="scope" value="all" class="mt-0.5 text-red-600 focus:ring-red-500 border-gray-300">
                                         <div class="ml-3">
-                                            <span class="block text-xs font-bold text-red-700">Delete target completely</span>
-                                            <span class="block text-[11px] text-gray-500">Removes this target permanently from the database (including default fallback).</span>
+                                            <span class="block text-xs font-bold text-red-700" id="del_single_scope_all_title">Delete target completely</span>
+                                            <span class="block text-[11px] text-gray-500" id="del_single_scope_all_desc">Removes this target permanently from the database (including default fallback).</span>
                                         </div>
                                     </label>
                                 </div>
@@ -879,6 +898,72 @@
                                             @endif
                                         </div>
                                     </div>
+
+                                    <!-- Assign Users for Targets -->
+                                    <div class="pt-3 border-t border-gray-100">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <div>
+                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                    <i class="fas fa-users text-brand-purple mr-1"></i> Target Recipients (Users):
+                                                </label>
+                                                <p class="text-[11px] text-gray-500">Select users who will get targets. Unselected users will not appear in targets.</p>
+                                            </div>
+                                            <span id="target_users_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-purple-50 text-brand-purple border border-purple-200 shrink-0">
+                                                {{ count($users) }} of {{ count($users) }} selected
+                                            </span>
+                                        </div>
+
+                                        <!-- Search & Quick Selection Toolbar -->
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div class="relative flex-1">
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                    <i class="fas fa-search text-[10px]"></i>
+                                                </div>
+                                                <input type="text" id="target_user_search" oninput="filterTargetUsers(this.value)"
+                                                    placeholder="Search by name, email or department..."
+                                                    class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple placeholder:text-gray-400">
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button type="button" onclick="selectAllTargetUsers(true)"
+                                                    class="px-2 py-1 text-[11px] font-semibold text-brand-purple hover:bg-purple-50 rounded border border-purple-200 transition-colors">
+                                                    Select All
+                                                </button>
+                                                <button type="button" onclick="selectAllTargetUsers(false)"
+                                                    class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                    Deselect All
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Users Checkbox List -->
+                                        <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200" id="target_users_list_container">
+                                            @foreach($users as $u)
+                                                <label class="target-user-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors select-none"
+                                                    data-name="{{ strtolower($u->name) }}"
+                                                    data-email="{{ strtolower($u->email) }}"
+                                                    data-dept="{{ strtolower($u->department ?? '') }}">
+                                                    <div class="flex items-center gap-2.5 min-w-0">
+                                                        <input type="checkbox" name="users[]" value="{{ $u->id }}" checked
+                                                            onchange="updateTargetUsersCount()"
+                                                            class="target-user-cb rounded text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                        <div class="min-w-0">
+                                                            <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $u->name }}</span>
+                                                            <span class="block text-[10px] text-gray-400 truncate">{{ $u->email }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                        @if($u->department)
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-brand-blue border border-blue-100">{{ $u->department }}</span>
+                                                        @endif
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ $u->role }}</span>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                            <div id="no_target_users_match" class="hidden text-center py-4 text-xs text-gray-400">
+                                                <i class="fas fa-search mr-1"></i> No users matching search
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
@@ -890,6 +975,144 @@
                                         class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
                                         <i class="fas fa-plus text-[10px]"></i> Add Period
                                     </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Add Users to Existing Period Modal -->
+                    <div id="addUsersToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150 my-8 max-h-[90vh] overflow-y-auto">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-brand-purple">
+                                        <i class="fas fa-user-plus text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Add Users to Targets</h3>
+                                        <p class="text-xs text-gray-500">Assign targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeAddUsersToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-sm"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.addUsersToTargetPeriod') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                <div class="space-y-4 mb-5">
+                                    @php
+                                        $availableUsers = $users->filter(fn($u) => !isset($userTargets[$u->id]));
+                                    @endphp
+
+                                    @if($availableUsers->isNotEmpty())
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                    Choose Users to Add:
+                                                </label>
+                                                <span id="add_modal_users_count" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-purple-50 text-brand-purple border border-purple-200">
+                                                    0 of {{ count($availableUsers) }} selected
+                                                </span>
+                                            </div>
+
+                                            <!-- Search Bar & Select All -->
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <div class="relative flex-1">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                        <i class="fas fa-search text-[10px]"></i>
+                                                    </div>
+                                                    <input type="text" oninput="filterAddUsersModal(this.value)"
+                                                        placeholder="Search user..."
+                                                        class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-purple focus:ring-brand-purple placeholder:text-gray-400">
+                                                </div>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onclick="selectAllAddUsersModal(true)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-brand-purple hover:bg-purple-50 rounded border border-purple-200 transition-colors">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" onclick="selectAllAddUsersModal(false)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- User List -->
+                                            <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
+                                                @foreach($availableUsers as $au)
+                                                    <label class="add-user-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors select-none"
+                                                        data-name="{{ strtolower($au->name) }}"
+                                                        data-dept="{{ strtolower($au->department ?? '') }}">
+                                                        <div class="flex items-center gap-2.5 min-w-0">
+                                                            <input type="checkbox" name="user_ids[]" value="{{ $au->id }}"
+                                                                onchange="updateAddModalUsersCount()"
+                                                                class="add-user-cb rounded text-brand-purple focus:ring-brand-purple border-gray-300 h-4 w-4">
+                                                            <div class="min-w-0">
+                                                                <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $au->name }}</span>
+                                                                <span class="block text-[10px] text-gray-400 truncate">{{ $au->email }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                            @if($au->department)
+                                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-brand-blue border border-blue-100">{{ $au->department }}</span>
+                                                            @endif
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ $au->role }}</span>
+                                                        </div>
+                                                    </label>
+                                                @endforeach
+                                                <div id="no_add_users_match" class="hidden text-center py-4 text-xs text-gray-400">
+                                                    <i class="fas fa-search mr-1"></i> No users matching search
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Initial Value Options -->
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                    <input type="radio" name="initial_amount" value="default" checked class="text-brand-purple focus:ring-brand-purple border-gray-300">
+                                                    <span class="ml-2 text-xs font-semibold text-gray-800">Use Standard Defaults</span>
+                                                </label>
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-purple hover:bg-purple-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-purple has-[:checked]:bg-purple-50/40">
+                                                    <input type="radio" name="initial_amount" value="zero" class="text-brand-purple focus:ring-brand-purple border-gray-300">
+                                                    <span class="ml-2 text-xs font-semibold text-gray-800">Start with Zero (0.00)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none pt-1">
+                                            <input type="checkbox" name="apply_to_all_months" value="1"
+                                                class="rounded border-gray-300 text-brand-purple focus:ring-brand-purple mr-2">
+                                            <span>Apply these user targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                        </label>
+
+                                        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                            <button type="button" onclick="closeAddUsersToPeriodModal()"
+                                                class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                                Cancel
+                                            </button>
+                                            <button type="submit"
+                                                class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                                <i class="fas fa-plus text-[10px]"></i> Add Selected Users
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="text-center py-6">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-2">
+                                                <i class="fas fa-check text-base"></i>
+                                            </div>
+                                            <h4 class="text-xs font-bold text-gray-800 mb-1">All Users Already Added</h4>
+                                            <p class="text-[11px] text-gray-500">Every user in the system is already configured with a target for this period.</p>
+                                            <button type="button" onclick="closeAddUsersToPeriodModal()" class="mt-4 px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200">
+                                                Close
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
                             </form>
                         </div>
@@ -1850,14 +2073,31 @@
             if (type === 'department') {
                 document.getElementById('del_single_department').value = idOrName;
                 document.getElementById('del_single_user_id').value = '';
+                const mTitle = document.getElementById('del_single_scope_month_title');
+                if (mTitle) mTitle.textContent = 'Clear for {{ $currentMonthName }} {{ $selectedYear }} only';
+                const mDesc = document.getElementById('del_single_scope_month_desc');
+                if (mDesc) mDesc.textContent = 'Sets this department target to 0.00 for this month. Other months remain untouched.';
+                const yTitle = document.getElementById('del_single_scope_year_title');
+                if (yTitle) yTitle.textContent = 'Clear for all 12 months of {{ $selectedYear }}';
+                const yDesc = document.getElementById('del_single_scope_year_desc');
+                if (yDesc) yDesc.textContent = 'Sets target to 0.00 across Jan–Dec {{ $selectedYear }}.';
+                document.getElementById('single-target-modal-subtitle').textContent = 'Clear target for ' + displayName;
             } else {
                 document.getElementById('del_single_department').value = '';
                 document.getElementById('del_single_user_id').value = idOrName;
+                const mTitle = document.getElementById('del_single_scope_month_title');
+                if (mTitle) mTitle.textContent = 'Remove from {{ $currentMonthName }} {{ $selectedYear }} only';
+                const mDesc = document.getElementById('del_single_scope_month_desc');
+                if (mDesc) mDesc.textContent = 'Removes this user from targets for this month. They will no longer appear in this month\'s targets.';
+                const yTitle = document.getElementById('del_single_scope_year_title');
+                if (yTitle) yTitle.textContent = 'Remove from all 12 months of {{ $selectedYear }}';
+                const yDesc = document.getElementById('del_single_scope_year_desc');
+                if (yDesc) yDesc.textContent = 'Removes this user from targets across all 12 months of {{ $selectedYear }}.';
+                document.getElementById('single-target-modal-subtitle').textContent = 'Remove target for ' + displayName;
             }
             document.getElementById('del_single_name_display').textContent = displayName + ' (' + (type === 'department' ? 'Department' : 'User') + ')';
             const num = parseFloat(currentAmount) || 0;
             document.getElementById('del_single_amount_display').textContent = 'LKR ' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById('single-target-modal-subtitle').textContent = 'Delete target for ' + displayName;
             document.getElementById('deleteSingleTargetModal').classList.remove('hidden');
         }
 
@@ -1890,11 +2130,107 @@
                 const mEl = document.getElementById('add_period_month');
                 if (mEl) mEl.value = month;
             }
+            const searchInput = document.getElementById('target_user_search');
+            if (searchInput) {
+                searchInput.value = '';
+                filterTargetUsers('');
+            }
+            selectAllTargetUsers(true);
             document.getElementById('addPeriodModal').classList.remove('hidden');
         }
 
         function closeAddPeriodModal() {
             document.getElementById('addPeriodModal').classList.add('hidden');
+        }
+
+        function filterTargetUsers(query) {
+            const q = (query || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.target-user-item');
+            let matchCount = 0;
+            items.forEach(el => {
+                const name = el.dataset.name || '';
+                const email = el.dataset.email || '';
+                const dept = el.dataset.dept || '';
+                const matches = !q || name.includes(q) || email.includes(q) || dept.includes(q);
+                el.style.display = matches ? 'flex' : 'none';
+                if (matches) matchCount++;
+            });
+            const noMatch = document.getElementById('no_target_users_match');
+            if (noMatch) {
+                noMatch.style.display = matchCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        function selectAllTargetUsers(select) {
+            const checkboxes = document.querySelectorAll('.target-user-cb');
+            checkboxes.forEach(cb => {
+                const parent = cb.closest('.target-user-item');
+                if (!parent || parent.style.display !== 'none') {
+                    cb.checked = select;
+                }
+            });
+            updateTargetUsersCount();
+        }
+
+        function updateTargetUsersCount() {
+            const total = document.querySelectorAll('.target-user-cb').length;
+            const checked = document.querySelectorAll('.target-user-cb:checked').length;
+            const badge = document.getElementById('target_users_count_badge');
+            if (badge) {
+                badge.textContent = checked + ' of ' + total + ' selected';
+            }
+        }
+
+        function openAddUsersToPeriodModal() {
+            const modal = document.getElementById('addUsersToPeriodModal');
+            if (modal) {
+                selectAllAddUsersModal(false);
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeAddUsersToPeriodModal() {
+            const modal = document.getElementById('addUsersToPeriodModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function filterAddUsersModal(query) {
+            const q = (query || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.add-user-item');
+            let matchCount = 0;
+            items.forEach(el => {
+                const name = el.dataset.name || '';
+                const dept = el.dataset.dept || '';
+                const matches = !q || name.includes(q) || dept.includes(q);
+                el.style.display = matches ? 'flex' : 'none';
+                if (matches) matchCount++;
+            });
+            const noMatch = document.getElementById('no_add_users_match');
+            if (noMatch) {
+                noMatch.style.display = matchCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        function selectAllAddUsersModal(select) {
+            const checkboxes = document.querySelectorAll('.add-user-cb');
+            checkboxes.forEach(cb => {
+                const parent = cb.closest('.add-user-item');
+                if (!parent || parent.style.display !== 'none') {
+                    cb.checked = select;
+                }
+            });
+            updateAddModalUsersCount();
+        }
+
+        function updateAddModalUsersCount() {
+            const total = document.querySelectorAll('.add-user-cb').length;
+            const checked = document.querySelectorAll('.add-user-cb:checked').length;
+            const badge = document.getElementById('add_modal_users_count');
+            if (badge) {
+                badge.textContent = checked + ' of ' + total + ' selected';
+            }
         }
 
         function toggleCopyPeriodSelect(prefillVal) {

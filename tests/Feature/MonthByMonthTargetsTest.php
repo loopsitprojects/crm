@@ -587,5 +587,149 @@ class MonthByMonthTargetsTest extends TestCase
         $response->assertSee('Total Dept Target:');
         $response->assertSee('LKR 7,000,000.00');
     }
+
+    public function test_admin_can_select_users_when_adding_target_period_and_unselected_users_are_omitted(): void
+    {
+        $userA = User::factory()->create(['name' => 'Alice Selected', 'role' => 'Staff', 'department' => 'AM']);
+        $userB = User::factory()->create(['name' => 'Bob Selected', 'role' => 'Staff', 'department' => 'BD']);
+        $userC = User::factory()->create(['name' => 'Charlie Unselected', 'role' => 'Staff', 'department' => 'Tech']);
+
+        $response = $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 4,
+            'prefill' => 'default',
+            'users' => [$userA->id, $userB->id],
+        ]);
+
+        $response->assertRedirect(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 4,
+        ]));
+
+        $this->assertDatabaseHas('targets', [
+            'type' => 'user',
+            'user_id' => $userA->id,
+            'year' => 2026,
+            'month' => 4,
+        ]);
+        $this->assertDatabaseHas('targets', [
+            'type' => 'user',
+            'user_id' => $userB->id,
+            'year' => 2026,
+            'month' => 4,
+        ]);
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'user',
+            'user_id' => $userC->id,
+            'year' => 2026,
+            'month' => 4,
+        ]);
+
+        $this->assertEquals(0.00, Target::getUserTarget($userC->id, 2026, 4));
+
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 4,
+        ]));
+
+        $viewResponse->assertOk();
+        $viewResponse->assertSee("targets[{$userA->id}]");
+        $viewResponse->assertSee("targets[{$userB->id}]");
+        $viewResponse->assertDontSee("targets[{$userC->id}]");
+    }
+
+    public function test_admin_can_add_users_to_existing_target_period(): void
+    {
+        $userA = User::factory()->create(['name' => 'Alice Existing', 'role' => 'Staff']);
+        $userB = User::factory()->create(['name' => 'Bob AddedLater', 'role' => 'Staff']);
+
+        // First add period with only user A
+        $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 5,
+            'prefill' => 'zero',
+            'users' => [$userA->id],
+        ]);
+
+        // Verify user B is not in targets
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'user',
+            'user_id' => $userB->id,
+            'year' => 2026,
+            'month' => 5,
+        ]);
+
+        // Add user B to period
+        $response = $this->actingAs($this->admin)->post(route('settings.addUsersToTargetPeriod'), [
+            'year' => 2026,
+            'month' => 5,
+            'user_ids' => [$userB->id],
+            'initial_amount' => 'zero',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('targets', [
+            'type' => 'user',
+            'user_id' => $userB->id,
+            'year' => 2026,
+            'month' => 5,
+        ]);
+
+        // Both users should now be visible in targets grid
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 5,
+        ]));
+        $viewResponse->assertSee("targets[{$userA->id}]");
+        $viewResponse->assertSee("targets[{$userB->id}]");
+    }
+
+    public function test_deleting_user_target_removes_user_from_targets_grid(): void
+    {
+        $userA = User::factory()->create(['name' => 'Alice RemoveMe', 'role' => 'Staff']);
+
+        $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 6,
+            'prefill' => 'zero',
+            'users' => [$userA->id],
+        ]);
+
+        $this->assertDatabaseHas('targets', [
+            'type' => 'user',
+            'user_id' => $userA->id,
+            'year' => 2026,
+            'month' => 6,
+        ]);
+
+        // Delete user target for month
+        $response = $this->actingAs($this->admin)->post(route('settings.deleteSingleTarget'), [
+            'type' => 'user',
+            'user_id' => $userA->id,
+            'year' => 2026,
+            'month' => 6,
+            'scope' => 'month',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'user',
+            'user_id' => $userA->id,
+            'year' => 2026,
+            'month' => 6,
+        ]);
+
+        // Should not see Alice RemoveMe in targets grid
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 6,
+        ]));
+        $viewResponse->assertDontSee("targets[{$userA->id}]");
+        $viewResponse->assertSee('No Users Selected for Targets');
+    }
 }
 
