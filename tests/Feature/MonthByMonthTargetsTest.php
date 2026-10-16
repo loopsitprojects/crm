@@ -731,5 +731,147 @@ class MonthByMonthTargetsTest extends TestCase
         $viewResponse->assertDontSee("targets[{$userA->id}]");
         $viewResponse->assertSee('No Users Selected for Targets');
     }
+
+    public function test_admin_can_select_departments_when_adding_target_period_and_unselected_departments_are_omitted(): void
+    {
+        $response = $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 4,
+            'prefill' => 'default',
+            'departments' => ['Tech', 'Creative'],
+        ]);
+
+        $response->assertRedirect(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 4,
+        ]));
+
+        $this->assertDatabaseHas('targets', [
+            'type' => 'department',
+            'department' => 'Tech',
+            'year' => 2026,
+            'month' => 4,
+        ]);
+        $this->assertDatabaseHas('targets', [
+            'type' => 'department',
+            'department' => 'Creative',
+            'year' => 2026,
+            'month' => 4,
+        ]);
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'department',
+            'department' => 'AM',
+            'year' => 2026,
+            'month' => 4,
+        ]);
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'department',
+            'department' => 'Digital',
+            'year' => 2026,
+            'month' => 4,
+        ]);
+
+        $this->assertEquals(0.00, Target::getDepartmentTarget('AM', 2026, 4));
+
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 4,
+        ]));
+
+        $viewResponse->assertOk();
+        $viewResponse->assertSee('targets[Tech]');
+        $viewResponse->assertSee('targets[Creative]');
+        $viewResponse->assertDontSee('targets[AM]');
+        $viewResponse->assertDontSee('targets[Digital]');
+    }
+
+    public function test_admin_can_add_departments_to_existing_target_period(): void
+    {
+        // First add period with only Tech
+        $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 5,
+            'prefill' => 'zero',
+            'departments' => ['Tech'],
+        ]);
+
+        // Verify AM is not in targets
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'department',
+            'department' => 'AM',
+            'year' => 2026,
+            'month' => 5,
+        ]);
+
+        // Add AM to period
+        $response = $this->actingAs($this->admin)->post(route('settings.addDepartmentsToTargetPeriod'), [
+            'year' => 2026,
+            'month' => 5,
+            'departments' => ['AM'],
+            'initial_amount' => 'zero',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('targets', [
+            'type' => 'department',
+            'department' => 'AM',
+            'year' => 2026,
+            'month' => 5,
+        ]);
+
+        // Both departments should now be visible in targets grid
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 5,
+        ]));
+        $viewResponse->assertSee('targets[Tech]');
+        $viewResponse->assertSee('targets[AM]');
+    }
+
+    public function test_deleting_department_target_removes_department_from_targets_grid(): void
+    {
+        $this->actingAs($this->admin)->post(route('settings.storeTargetPeriod'), [
+            'year' => 2026,
+            'month' => 6,
+            'prefill' => 'zero',
+            'departments' => ['Tech'],
+        ]);
+
+        $this->assertDatabaseHas('targets', [
+            'type' => 'department',
+            'department' => 'Tech',
+            'year' => 2026,
+            'month' => 6,
+        ]);
+
+        // Delete department target for month
+        $response = $this->actingAs($this->admin)->post(route('settings.deleteSingleTarget'), [
+            'type' => 'department',
+            'department' => 'Tech',
+            'year' => 2026,
+            'month' => 6,
+            'scope' => 'month',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseMissing('targets', [
+            'type' => 'department',
+            'department' => 'Tech',
+            'year' => 2026,
+            'month' => 6,
+        ]);
+
+        // Should not see Tech in targets grid, and should see empty state
+        $viewResponse = $this->actingAs($this->admin)->get(route('settings.index', [
+            'section' => 'targets',
+            'year' => 2026,
+            'month' => 6,
+        ]));
+        $viewResponse->assertDontSee('targets[Tech]');
+        $viewResponse->assertSee('No Departments Selected for Targets');
+    }
 }
 

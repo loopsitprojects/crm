@@ -436,74 +436,93 @@
                                     <h3 class="text-base font-bold text-gray-800">Department Targets (LKR)</h3>
                                     <p class="text-xs text-gray-500">Targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
                                 </div>
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2 sm:gap-3">
+                                    <button type="button" onclick="openAddDepartmentsToPeriodModal()"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-brand-pink bg-pink-50 hover:bg-pink-100 hover:border-pink-300 rounded-lg font-semibold transition-colors border border-pink-200"
+                                        title="Add departments to {{ $currentMonthName }} {{ $selectedYear }} targets">
+                                        <i class="fas fa-plus text-[10px]"></i> Add Departments
+                                    </button>
                                     <button type="button" onclick="openDeletePeriodModal('department')"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-md font-semibold transition-colors border border-transparent hover:border-red-200"
+                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg font-semibold transition-colors border border-transparent hover:border-red-200"
                                         title="Clear all department targets for {{ $currentMonthName }} {{ $selectedYear }}">
                                         <i class="fas fa-trash-alt text-[10px]"></i> Clear Dept Targets
                                     </button>
-                                    <div class="text-right">
+                                    <div class="text-right ml-1">
                                         <span class="text-xs text-gray-500">Total:</span>
                                         <span class="text-sm font-bold text-brand-pink ml-1">LKR {{ number_format($totalDeptTargetMonth, 2) }}</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="p-6">
-                                <form action="{{ route('settings.updateDepartmentTargets') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="year" value="{{ $selectedYear }}">
-                                    <input type="hidden" name="month" value="{{ $selectedMonth }}">
+                                @php
+                                    $targetDepartments = collect($departments)->filter(fn($d) => isset($departmentTargets[$d]));
+                                @endphp
 
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        @foreach($departments as $dept)
-                                            @php
-                                                $isMonthCustom = isset($departmentTargets[$dept]);
-                                                $val = $isMonthCustom 
-                                                    ? $departmentTargets[$dept]->target_amount 
-                                                    : (isset($defaultDepartmentTargets[$dept]) ? $defaultDepartmentTargets[$dept]->target_amount : 0);
-                                            @endphp
-                                            <div class="p-3 bg-gray-50/70 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
-                                                <div class="flex items-center justify-between mb-1">
-                                                    <label class="block text-sm font-semibold text-gray-700">{{ $dept }}</label>
-                                                    <div class="flex items-center gap-1.5">
-                                                        @if($isMonthCustom)
+                                @if($targetDepartments->isNotEmpty())
+                                    <form action="{{ route('settings.updateDepartmentTargets') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                        <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            @foreach($targetDepartments as $dept)
+                                                @php
+                                                    $val = $departmentTargets[$dept]->target_amount ?? 0;
+                                                @endphp
+                                                <div class="p-3 bg-gray-50/70 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors">
+                                                    <div class="flex items-center justify-between mb-1">
+                                                        <label class="block text-sm font-semibold text-gray-700">{{ $dept }}</label>
+                                                        <div class="flex items-center gap-1.5">
                                                             <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">
                                                                 <i class="fas fa-check mr-0.5 text-[8px]"></i> {{ substr($currentMonthName, 0, 3) }} Set
                                                             </span>
-                                                        @else
-                                                            <span class="text-[10px] text-gray-400 italic">Default</span>
-                                                        @endif
-                                                        <button type="button" 
-                                                            onclick="openDeleteSingleModal('department', '{{ $dept }}', '{{ $dept }}', '{{ $val }}')"
-                                                            class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
-                                                            title="Delete/Clear target for {{ $dept }}">
-                                                            <i class="fas fa-trash-alt text-[11px]"></i>
-                                                        </button>
+                                                            <button type="button" 
+                                                                onclick="openDeleteSingleModal('department', '{{ $dept }}', '{{ $dept }}', '{{ $val }}')"
+                                                                class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded hover:bg-red-50" 
+                                                                title="Remove target for {{ $dept }}">
+                                                                <i class="fas fa-trash-alt text-[11px]"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="relative rounded-md shadow-sm">
+                                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                            <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
+                                                        </div>
+                                                        <input type="number" step="0.01" name="targets[{{ $dept }}]"
+                                                            value="{{ $val }}"
+                                                            class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-purple focus:ring-brand-purple sm:text-sm font-semibold text-gray-800">
                                                     </div>
                                                 </div>
-                                                <div class="relative rounded-md shadow-sm">
-                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                                        <span class="text-gray-400 sm:text-xs font-semibold">LKR</span>
-                                                    </div>
-                                                    <input type="number" step="0.01" name="targets[{{ $dept }}]"
-                                                        value="{{ $val }}"
-                                                        class="w-full rounded-md border-gray-300 pl-11 focus:border-brand-purple focus:ring-brand-purple sm:text-sm font-semibold text-gray-800">
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                    <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
-                                            <input type="checkbox" name="apply_to_all_months" value="1" 
-                                                class="rounded border-gray-300 text-brand-pink focus:ring-brand-pink mr-2">
-                                            <span>Apply these department targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
-                                        </label>
-                                        <button type="submit"
-                                            class="w-full sm:w-auto px-5 py-2 bg-brand-pink text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
-                                            <i class="fas fa-save mr-1.5"></i> Save Department Targets
+                                            @endforeach
+                                        </div>
+                                        <div class="mt-6 pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                            <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none">
+                                                <input type="checkbox" name="apply_to_all_months" value="1" 
+                                                    class="rounded border-gray-300 text-brand-pink focus:ring-brand-pink mr-2">
+                                                <span>Apply these department targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                            </label>
+                                            <button type="submit"
+                                                class="w-full sm:w-auto px-5 py-2 bg-brand-pink text-white rounded-lg hover:bg-brand-purple text-sm font-semibold transition-all shadow-sm">
+                                                <i class="fas fa-save mr-1.5"></i> Save Department Targets
+                                            </button>
+                                        </div>
+                                    </form>
+                                @else
+                                    <!-- Empty state when no departments are assigned targets for this period -->
+                                    <div class="text-center py-10 px-4 border border-dashed border-gray-200 rounded-2xl bg-gray-50/50 my-2">
+                                        <div class="w-12 h-12 rounded-2xl bg-pink-100/80 text-brand-pink flex items-center justify-center mx-auto mb-3 shadow-xs">
+                                            <i class="fas fa-building text-lg"></i>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-gray-800 mb-1">No Departments Selected for Targets</h4>
+                                        <p class="text-xs text-gray-500 max-w-sm mx-auto mb-4 leading-relaxed">
+                                            No departments were selected for targets in {{ $currentMonthName }} {{ $selectedYear }}. You can add departments to this target period at any time.
+                                        </p>
+                                        <button type="button" onclick="openAddDepartmentsToPeriodModal()"
+                                            class="inline-flex items-center gap-2 px-4 py-2 bg-brand-pink text-white rounded-xl text-xs font-bold hover:bg-brand-purple transition-all shadow-sm">
+                                            <i class="fas fa-plus"></i> Add Departments to Targets
                                         </button>
                                     </div>
-                                </form>
+                                @endif
                             </div>
                         </div>
 
@@ -897,6 +916,64 @@
                                                 </label>
                                             @endif
                                         </div>
+                                    <!-- Assign Departments for Targets -->
+                                    <div class="pt-3 border-t border-gray-100">
+                                        <div class="flex items-center justify-between mb-1.5">
+                                            <div>
+                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                    <i class="fas fa-building text-brand-pink mr-1"></i> Target Departments:
+                                                </label>
+                                                <p class="text-[11px] text-gray-500">Select departments that will receive targets. Unselected departments will not appear in targets.</p>
+                                            </div>
+                                            <span id="target_departments_count_badge" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-pink-50 text-brand-pink border border-pink-200 shrink-0">
+                                                {{ count($departments) }} of {{ count($departments) }} selected
+                                            </span>
+                                        </div>
+
+                                        <!-- Search & Quick Selection Toolbar for Departments -->
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <div class="relative flex-1">
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                    <i class="fas fa-search text-[10px]"></i>
+                                                </div>
+                                                <input type="text" id="target_dept_search" oninput="filterTargetDepartments(this.value)"
+                                                    placeholder="Search department..."
+                                                    class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-pink focus:ring-brand-pink placeholder:text-gray-400">
+                                            </div>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button type="button" onclick="selectAllTargetDepartments(true)"
+                                                    class="px-2 py-1 text-[11px] font-semibold text-brand-pink hover:bg-pink-50 rounded border border-pink-200 transition-colors">
+                                                    Select All
+                                                </button>
+                                                <button type="button" onclick="selectAllTargetDepartments(false)"
+                                                    class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                    Deselect All
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Departments Checkbox List -->
+                                        <div class="max-h-40 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200" id="target_departments_list_container">
+                                            @foreach($departments as $dept)
+                                                <label class="target-dept-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors select-none"
+                                                    data-name="{{ strtolower($dept) }}">
+                                                    <div class="flex items-center gap-2.5 min-w-0">
+                                                        <input type="checkbox" name="departments[]" value="{{ $dept }}" checked
+                                                            onchange="updateTargetDepartmentsCount()"
+                                                            class="target-dept-cb rounded text-brand-pink focus:ring-brand-pink border-gray-300 h-4 w-4">
+                                                        <div class="min-w-0">
+                                                            <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $dept }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-brand-pink border border-pink-100">Department</span>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                            <div id="no_target_departments_match" class="hidden text-center py-3 text-xs text-gray-400">
+                                                <i class="fas fa-search mr-1"></i> No departments matching search
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- Assign Users for Targets -->
@@ -975,6 +1052,137 @@
                                         class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
                                         <i class="fas fa-plus text-[10px]"></i> Add Period
                                     </button>
+                                </div>
+                            </form>
+                        </div>
+                    <!-- Add Departments to Existing Period Modal -->
+                    <div id="addDepartmentsToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                        <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150 my-8 max-h-[90vh] overflow-y-auto">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center text-brand-pink">
+                                        <i class="fas fa-building text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-800">Add Departments to Targets</h3>
+                                        <p class="text-xs text-gray-500">Assign targets for {{ $currentMonthName }} {{ $selectedYear }}</p>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                    <i class="fas fa-times text-sm"></i>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('settings.addDepartmentsToTargetPeriod') }}" method="POST">
+                                @csrf
+                                <input type="hidden" name="year" value="{{ $selectedYear }}">
+                                <input type="hidden" name="month" value="{{ $selectedMonth }}">
+
+                                <div class="space-y-4 mb-5">
+                                    @php
+                                        $availableDepartments = collect($departments)->filter(fn($d) => !isset($departmentTargets[$d]));
+                                    @endphp
+
+                                    @if($availableDepartments->isNotEmpty())
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1.5">
+                                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                                    Choose Departments to Add:
+                                                </label>
+                                                <span id="add_modal_departments_count" class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-pink-50 text-brand-pink border border-pink-200">
+                                                    0 of {{ count($availableDepartments) }} selected
+                                                </span>
+                                            </div>
+
+                                            <!-- Search Bar & Select All -->
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <div class="relative flex-1">
+                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-gray-400">
+                                                        <i class="fas fa-search text-[10px]"></i>
+                                                    </div>
+                                                    <input type="text" oninput="filterAddDepartmentsModal(this.value)"
+                                                        placeholder="Search department..."
+                                                        class="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border-gray-300 focus:border-brand-pink focus:ring-brand-pink placeholder:text-gray-400">
+                                                </div>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button type="button" onclick="selectAllAddDepartmentsModal(true)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-brand-pink hover:bg-pink-50 rounded border border-pink-200 transition-colors">
+                                                        Select All
+                                                    </button>
+                                                    <button type="button" onclick="selectAllAddDepartmentsModal(false)"
+                                                        class="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded border border-gray-200 transition-colors">
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Department List -->
+                                            <div class="max-h-48 overflow-y-auto space-y-1.5 p-2 bg-gray-50/70 rounded-xl border border-gray-200">
+                                                @foreach($availableDepartments as $ad)
+                                                    <label class="add-dept-item flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200/80 hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors select-none"
+                                                        data-name="{{ strtolower($ad) }}">
+                                                        <div class="flex items-center gap-2.5 min-w-0">
+                                                            <input type="checkbox" name="departments[]" value="{{ $ad }}"
+                                                                onchange="updateAddModalDepartmentsCount()"
+                                                                class="add-dept-cb rounded text-brand-pink focus:ring-brand-pink border-gray-300 h-4 w-4">
+                                                            <div class="min-w-0">
+                                                                <span class="block text-xs font-bold text-gray-800 leading-tight truncate">{{ $ad }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5 shrink-0 ml-2">
+                                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-brand-pink border border-pink-100">Department</span>
+                                                        </div>
+                                                    </label>
+                                                @endforeach
+                                                <div id="no_add_departments_match" class="hidden text-center py-4 text-xs text-gray-400">
+                                                    <i class="fas fa-search mr-1"></i> No departments matching search
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Initial Value Options -->
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Initial Target Values:</label>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40">
+                                                    <input type="radio" name="initial_amount" value="default" checked class="text-brand-pink focus:ring-brand-pink border-gray-300">
+                                                    <span class="ml-2 text-xs font-semibold text-gray-800">Use Standard Defaults</span>
+                                                </label>
+                                                <label class="flex items-center p-2.5 bg-white border border-gray-200 rounded-lg hover:border-brand-pink hover:bg-pink-50/20 cursor-pointer transition-colors has-[:checked]:border-brand-pink has-[:checked]:bg-pink-50/40">
+                                                    <input type="radio" name="initial_amount" value="zero" class="text-brand-pink focus:ring-brand-pink border-gray-300">
+                                                    <span class="ml-2 text-xs font-semibold text-gray-800">Start with Zero (0.00)</span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <label class="flex items-center text-xs text-gray-600 cursor-pointer select-none pt-1">
+                                            <input type="checkbox" name="apply_to_all_months" value="1"
+                                                class="rounded border-gray-300 text-brand-pink focus:ring-brand-pink mr-2">
+                                            <span>Apply these department targets to <span class="font-bold text-gray-700">all 12 months</span> of {{ $selectedYear }}</span>
+                                        </label>
+
+                                        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+                                            <button type="button" onclick="closeAddDepartmentsToPeriodModal()"
+                                                class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                                                Cancel
+                                            </button>
+                                            <button type="submit"
+                                                class="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm flex items-center gap-1.5">
+                                                <i class="fas fa-plus text-[10px]"></i> Add Selected Departments
+                                            </button>
+                                        </div>
+                                    @else
+                                        <div class="text-center py-6">
+                                            <div class="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto mb-2">
+                                                <i class="fas fa-check text-base"></i>
+                                            </div>
+                                            <h4 class="text-xs font-bold text-gray-800 mb-1">All Departments Already Added</h4>
+                                            <p class="text-[11px] text-gray-500">Every department is already configured with a target for this period.</p>
+                                            <button type="button" onclick="closeAddDepartmentsToPeriodModal()" class="mt-4 px-4 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200">
+                                                Close
+                                            </button>
+                                        </div>
+                                    @endif
                                 </div>
                             </form>
                         </div>
@@ -2074,14 +2282,14 @@
                 document.getElementById('del_single_department').value = idOrName;
                 document.getElementById('del_single_user_id').value = '';
                 const mTitle = document.getElementById('del_single_scope_month_title');
-                if (mTitle) mTitle.textContent = 'Clear for {{ $currentMonthName }} {{ $selectedYear }} only';
+                if (mTitle) mTitle.textContent = 'Remove from {{ $currentMonthName }} {{ $selectedYear }} only';
                 const mDesc = document.getElementById('del_single_scope_month_desc');
-                if (mDesc) mDesc.textContent = 'Sets this department target to 0.00 for this month. Other months remain untouched.';
+                if (mDesc) mDesc.textContent = 'Removes this department from targets for this month. It will no longer appear in this month\'s targets.';
                 const yTitle = document.getElementById('del_single_scope_year_title');
-                if (yTitle) yTitle.textContent = 'Clear for all 12 months of {{ $selectedYear }}';
+                if (yTitle) yTitle.textContent = 'Remove from all 12 months of {{ $selectedYear }}';
                 const yDesc = document.getElementById('del_single_scope_year_desc');
-                if (yDesc) yDesc.textContent = 'Sets target to 0.00 across Jan–Dec {{ $selectedYear }}.';
-                document.getElementById('single-target-modal-subtitle').textContent = 'Clear target for ' + displayName;
+                if (yDesc) yDesc.textContent = 'Removes this department from targets across all 12 months of {{ $selectedYear }}.';
+                document.getElementById('single-target-modal-subtitle').textContent = 'Remove target for ' + displayName;
             } else {
                 document.getElementById('del_single_department').value = '';
                 document.getElementById('del_single_user_id').value = idOrName;
@@ -2130,6 +2338,13 @@
                 const mEl = document.getElementById('add_period_month');
                 if (mEl) mEl.value = month;
             }
+            const deptSearchInput = document.getElementById('target_dept_search');
+            if (deptSearchInput) {
+                deptSearchInput.value = '';
+                filterTargetDepartments('');
+            }
+            selectAllTargetDepartments(true);
+
             const searchInput = document.getElementById('target_user_search');
             if (searchInput) {
                 searchInput.value = '';
@@ -2141,6 +2356,93 @@
 
         function closeAddPeriodModal() {
             document.getElementById('addPeriodModal').classList.add('hidden');
+        }
+
+        function filterTargetDepartments(query) {
+            const q = (query || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.target-dept-item');
+            let matchCount = 0;
+            items.forEach(el => {
+                const name = el.dataset.name || '';
+                const matches = !q || name.includes(q);
+                el.style.display = matches ? 'flex' : 'none';
+                if (matches) matchCount++;
+            });
+            const noMatch = document.getElementById('no_target_departments_match');
+            if (noMatch) {
+                noMatch.style.display = matchCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        function selectAllTargetDepartments(select) {
+            const checkboxes = document.querySelectorAll('.target-dept-cb');
+            checkboxes.forEach(cb => {
+                const parent = cb.closest('.target-dept-item');
+                if (!parent || parent.style.display !== 'none') {
+                    cb.checked = select;
+                }
+            });
+            updateTargetDepartmentsCount();
+        }
+
+        function updateTargetDepartmentsCount() {
+            const total = document.querySelectorAll('.target-dept-cb').length;
+            const checked = document.querySelectorAll('.target-dept-cb:checked').length;
+            const badge = document.getElementById('target_departments_count_badge');
+            if (badge) {
+                badge.textContent = checked + ' of ' + total + ' selected';
+            }
+        }
+
+        function openAddDepartmentsToPeriodModal() {
+            const modal = document.getElementById('addDepartmentsToPeriodModal');
+            if (modal) {
+                selectAllAddDepartmentsModal(false);
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeAddDepartmentsToPeriodModal() {
+            const modal = document.getElementById('addDepartmentsToPeriodModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function filterAddDepartmentsModal(query) {
+            const q = (query || '').toLowerCase().trim();
+            const items = document.querySelectorAll('.add-dept-item');
+            let matchCount = 0;
+            items.forEach(el => {
+                const name = el.dataset.name || '';
+                const matches = !q || name.includes(q);
+                el.style.display = matches ? 'flex' : 'none';
+                if (matches) matchCount++;
+            });
+            const noMatch = document.getElementById('no_add_departments_match');
+            if (noMatch) {
+                noMatch.style.display = matchCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        function selectAllAddDepartmentsModal(select) {
+            const checkboxes = document.querySelectorAll('.add-dept-cb');
+            checkboxes.forEach(cb => {
+                const parent = cb.closest('.add-dept-item');
+                if (!parent || parent.style.display !== 'none') {
+                    cb.checked = select;
+                }
+            });
+            updateAddModalDepartmentsCount();
+        }
+
+        function updateAddModalDepartmentsCount() {
+            const total = document.querySelectorAll('.add-dept-cb').length;
+            const checked = document.querySelectorAll('.add-dept-cb:checked').length;
+            const badge = document.getElementById('add_modal_departments_count');
+            if (badge) {
+                badge.textContent = checked + ' of ' + total + ' selected';
+            }
         }
 
         function filterTargetUsers(query) {
