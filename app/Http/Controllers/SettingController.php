@@ -282,10 +282,16 @@ class SettingController extends Controller
             ]);
         }
 
+        $nextPeriod = TargetPeriod::where('year', $year)->orderBy('month')->first()
+            ?? TargetPeriod::orderByDesc('year')->orderByDesc('month')->first();
+
+        $redirectYear = $nextPeriod ? $nextPeriod->year : $year;
+        $redirectMonth = $nextPeriod ? $nextPeriod->month : ($monthInput !== 'all' ? (int) $monthInput : (int) date('n'));
+
         return redirect()->route('settings.index', [
             'section' => 'targets',
-            'year' => (int) date('Y'),
-            'month' => (int) date('n'),
+            'year' => $redirectYear,
+            'month' => $redirectMonth,
         ])->with('success', $msg);
     }
 

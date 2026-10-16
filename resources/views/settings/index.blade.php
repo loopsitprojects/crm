@@ -916,6 +916,8 @@
                                                 </label>
                                             @endif
                                         </div>
+                                    </div>
+
                                     <!-- Assign Departments for Targets -->
                                     <div class="pt-3 border-t border-gray-100">
                                         <div class="flex items-center justify-between mb-1.5">
@@ -1055,6 +1057,8 @@
                                 </div>
                             </form>
                         </div>
+                    </div>
+
                     <!-- Add Departments to Existing Period Modal -->
                     <div id="addDepartmentsToPeriodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
                         <div class="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 animate-in fade-in zoom-in duration-150 my-8 max-h-[90vh] overflow-y-auto">
