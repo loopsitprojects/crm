@@ -70,6 +70,14 @@
                             id="btn-financial-performance-settings">
                             <i class="fas fa-chart-line mr-2 text-emerald-500"></i> Financial Performance
                         </button>
+                        <button onclick="showSection('seasonal-theme')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-orange-500 transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-seasonal-theme">
+                            <i class="fas fa-ghost mr-2 text-orange-500"></i> Halloween Theme
+                            @if(\App\Models\Setting::isHalloweenTheme())
+                                <span class="ml-1.5 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-orange-100 text-orange-700 animate-pulse">ON</span>
+                            @endif
+                        </button>
                     @endif
                 </div>
             </div>
@@ -2249,6 +2257,151 @@
                         </form>
                     </section>
                 @endif
+
+                @if(auth()->user()->isITAdmin())
+                    <!-- Seasonal Theme (Halloween) Section -->
+                    <section id="section-seasonal-theme" class="settings-section hidden space-y-6">
+                        @php
+                            $halloweenEnabled = \App\Models\Setting::isHalloweenTheme();
+                        @endphp
+                        <form action="{{ route('settings.halloween.update') }}" method="POST" id="halloweenThemeForm">
+                            @csrf
+                            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-orange-100">
+                                <div class="px-6 py-4 border-b border-orange-100 flex items-center justify-between bg-gradient-to-r from-orange-50/60 to-purple-50/40">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center text-xl shadow-xs">
+                                            🎃
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                                Halloween Seasonal Theme & Effects
+                                                @if($halloweenEnabled)
+                                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-100 text-orange-800 border border-orange-200 animate-pulse">
+                                                        Active 🎃
+                                                    </span>
+                                                @else
+                                                    <span class="px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
+                                                        Off
+                                                    </span>
+                                                @endif
+                                            </h3>
+                                            <p class="text-xs text-gray-500 mt-0.5">Control the spooky Halloween visual makeover across the entire Loops CRM</p>
+                                        </div>
+                                    </div>
+                                    <button type="submit"
+                                        class="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white rounded-lg text-sm font-bold transition-all shadow-md hover:shadow-orange-500/25 active:scale-95 flex items-center gap-2">
+                                        <i class="fas fa-save"></i>
+                                        <span>Save Changes</span>
+                                    </button>
+                                </div>
+
+                                <div class="p-6 space-y-6">
+                                    <!-- Master Toggle Card -->
+                                    <div class="p-5 rounded-2xl border-2 {{ $halloweenEnabled ? 'border-orange-400 bg-orange-50/40 shadow-sm' : 'border-gray-200 bg-gray-50/50' }} transition-all">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-start space-x-4">
+                                                <div class="w-12 h-12 rounded-xl {{ $halloweenEnabled ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-gray-200 text-gray-500' }} flex items-center justify-center text-2xl shrink-0 transition-all">
+                                                    <i class="fas fa-ghost"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center space-x-3">
+                                                        <h4 class="text-base font-black text-gray-800">System-wide Halloween Effect</h4>
+                                                        <span id="themeStatusBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ $halloweenEnabled ? 'bg-orange-500 text-white shadow-xs' : 'bg-gray-200 text-gray-600' }}">
+                                                            {{ $halloweenEnabled ? 'ENABLED' : 'DISABLED' }}
+                                                        </span>
+                                                    </div>
+                                                    <p class="text-xs text-gray-600 mt-1 max-w-xl">
+                                                        When turned on, Loops CRM adopts the Halloween theme: haunted login background, witch hat on logo, glowing pumpkin navigation, dark spooky sidebar, Halloween chart palettes, and animated seasonal touches.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Toggle Switch -->
+                                            <div class="flex items-center space-x-3 shrink-0 ml-4">
+                                                <label class="relative inline-flex items-center cursor-pointer select-none">
+                                                    <input type="checkbox" name="halloween_theme_enabled" id="halloweenThemeToggle" value="1"
+                                                        {{ $halloweenEnabled ? 'checked' : '' }}
+                                                        onchange="handleThemeToggleChange(this)"
+                                                        class="sr-only peer">
+                                                    <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-amber-500 peer-checked:shadow-md peer-checked:shadow-orange-500/30"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Features Breakdown Grid -->
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                                        <!-- Feature 1: Login Screen -->
+                                        <div class="p-4 rounded-xl border border-gray-200 bg-white hover:border-orange-300 transition-all group">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                                                    🌕
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="text-sm font-bold text-gray-800">Haunted Login Experience</h5>
+                                                    <p class="text-xs text-gray-500 mt-0.5">Atmospheric 4K spooky night sky, glowing harvest moon, haunted mansion, smiling jack-o'-lanterns, spiderweb corners, witch hat on logo, and radiant glowing orange Sign-In button.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Feature 2: Spooky Sidebar -->
+                                        <div class="p-4 rounded-xl border border-gray-200 bg-white hover:border-orange-300 transition-all group">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                                                    🏰
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="text-sm font-bold text-gray-800">Spooky Sidebar & Navigation</h5>
+                                                    <p class="text-xs text-gray-500 mt-0.5">Deep purple-black gradient background, corner spiderwebs with hanging spiders, glowing pumpkin orange active pills, and haunted castle illustration at the bottom.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Feature 3: Header Banner -->
+                                        <div class="p-4 rounded-xl border border-gray-200 bg-white hover:border-orange-300 transition-all group">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                                                    🦇
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="text-sm font-bold text-gray-800">Header Silhouettes & Badges</h5>
+                                                    <p class="text-xs text-gray-500 mt-0.5">Subtle haunted house silhouette and flying bats on the top navigation header bar, with pumpkin badges on app installation buttons.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Feature 4: Halloween Charts -->
+                                        <div class="p-4 rounded-xl border border-gray-200 bg-white hover:border-orange-300 transition-all group">
+                                            <div class="flex items-start space-x-3">
+                                                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm shrink-0 mt-0.5 group-hover:scale-110 transition-transform">
+                                                    📊
+                                                </div>
+                                                <div class="flex-1 min-w-0">
+                                                    <h5 class="text-sm font-bold text-gray-800">Festive Chart Color Palettes</h5>
+                                                    <p class="text-xs text-gray-500 mt-0.5">Dashboard charts transition to vibrant Halloween tones: pumpkin orange, eerie violet purple, neon magenta, and glowing gold accents.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Toggle AJAX Notice -->
+                                    <div class="p-4 bg-orange-50/70 border border-orange-200 rounded-xl text-xs text-orange-800 flex items-center justify-between">
+                                        <div class="flex items-center space-x-2">
+                                            <i class="fas fa-magic text-orange-500 text-base"></i>
+                                            <span>
+                                                <strong>Tip:</strong> Flipping the switch above and saving or clicking Quick Instant Toggle updates the theme setting instantly across Loops CRM!
+                                            </span>
+                                        </div>
+                                        <button type="button" onclick="quickToggleThemeAjax()"
+                                            class="px-3 py-1 bg-white hover:bg-orange-100 border border-orange-300 text-orange-700 font-bold rounded-lg text-xs transition-colors shrink-0">
+                                            Quick Instant Toggle
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
+                @endif
             </div>
         </div>
     </div>
@@ -2665,6 +2818,51 @@
             document.getElementById('edit_dept_group').value = group;
             document.getElementById('edit_dept_status').value = status;
             document.getElementById('editDepartmentModal').classList.remove('hidden');
+        }
+
+        function handleThemeToggleChange(input) {
+            const isChecked = input.checked;
+            const badge = document.getElementById('themeStatusBadge');
+            if (badge) {
+                badge.textContent = isChecked ? 'ENABLED' : 'DISABLED';
+                badge.className = isChecked 
+                    ? 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-500 text-white shadow-xs'
+                    : 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-200 text-gray-600';
+            }
+        }
+
+        function quickToggleThemeAjax() {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            fetch('{{ route('settings.halloween.toggle') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.enabled ? '🎃 Spooky Season Activated!' : 'Standard Theme Restored',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('halloweenThemeForm')?.submit();
+            });
         }
 
         // Initialize

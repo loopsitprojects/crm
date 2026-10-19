@@ -304,6 +304,10 @@ Route::middleware(['auth'])->group(function () {
 
             // Financial Performance Permissions Setting
             Route::post('settings/financial-performance-permissions', [SettingController::class, 'updateFinancialPerformancePermissions'])->name('settings.updateFinancialPerformancePermissions');
+
+            // Seasonal Theme (Halloween) Settings
+            Route::post('settings/halloween-theme', [SettingController::class, 'updateHalloweenTheme'])->name('settings.halloween.update');
+            Route::post('settings/halloween-theme/toggle', [SettingController::class, 'toggleHalloweenTheme'])->name('settings.halloween.toggle');
         });
 
         // Financial Performance Dashboard (Access controlled dynamically by IT Admin settings)

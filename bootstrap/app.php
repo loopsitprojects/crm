@@ -69,6 +69,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // 3. Global Exception Handler - Never show raw Laravel error pages to users
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {
+            if (app()->runningUnitTests()) {
+                return null;
+            }
+
             // Allow Laravel's built-in handlers for Validation and Authentication
             if ($e instanceof \Illuminate\Validation\ValidationException ||
                 $e instanceof \Illuminate\Auth\AuthenticationException) {

@@ -1108,4 +1108,73 @@ class SettingController extends Controller
             ->with('success', 'Financial Performance permissions updated successfully.')
             ->with('section', 'financial-performance-settings');
     }
+
+    /**
+     * Update Halloween Theme settings.
+     * Accessible strictly by IT Admin.
+     */
+    public function updateHalloweenTheme(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user || !$user->isITAdmin()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action. Only IT Admin can configure theme settings.'], 403);
+            }
+            abort(403, 'Unauthorized action. Only IT Admin can configure theme settings.');
+        }
+
+        $enabled = $request->boolean('halloween_theme_enabled');
+        Setting::set('halloween_theme_enabled', $enabled ? '1' : '0', 'theme');
+
+        $this->logAction($enabled ? 'Enabled Halloween Seasonal Theme' : 'Disabled Halloween Seasonal Theme', null, [
+            'halloween_theme_enabled' => $enabled
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'enabled' => $enabled,
+                'message' => $enabled ? 'Halloween theme activated! 🎃' : 'Halloween theme deactivated.'
+            ]);
+        }
+
+        return redirect()->route('settings.index', ['section' => 'seasonal-theme'])
+            ->with('success', $enabled ? 'Halloween seasonal theme activated! 🎃' : 'Halloween seasonal theme turned off.')
+            ->with('section', 'seasonal-theme');
+    }
+
+    /**
+     * Quick toggle for Halloween theme (can be called via AJAX from IT Admin Settings).
+     */
+    public function toggleHalloweenTheme(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user || !$user->isITAdmin()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action. Only IT Admin can configure theme settings.'], 403);
+            }
+            abort(403, 'Unauthorized action.');
+        }
+
+        $current = Setting::isHalloweenTheme();
+        $new = !$current;
+        Setting::set('halloween_theme_enabled', $new ? '1' : '0', 'theme');
+
+        $this->logAction($new ? 'Toggled ON Halloween Seasonal Theme' : 'Toggled OFF Halloween Seasonal Theme', null, [
+            'halloween_theme_enabled' => $new
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'enabled' => $new,
+                'message' => $new ? 'Halloween theme is now ON! 🎃' : 'Halloween theme is now OFF.'
+            ]);
+        }
+
+        return back()->with('success', $new ? 'Halloween theme is now ON! 🎃' : 'Halloween theme is now OFF.');
+    }
 }
+

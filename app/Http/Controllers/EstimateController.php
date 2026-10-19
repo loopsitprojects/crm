@@ -454,7 +454,11 @@ class EstimateController extends Controller
         $message = "Estimate status updated to " . ucfirst($request->status) . ".";
 
         if ($request->status === 'ready_to_invoice' || $request->status === 'accepted') {
-            return redirect()->route('invoices.ready')->with('success', $message);
+            $redirect = redirect()->route('invoices.ready')->with('success', $message);
+            if (\App\Models\Setting::isHalloweenTheme() && $request->status === 'ready_to_invoice') {
+                $redirect->with('halloween_ready_to_invoice', true);
+            }
+            return $redirect;
         } elseif ($request->status === 'approved' || $request->status === 'invoiced') {
             return redirect()->route('invoices.invoiced')->with('success', $message);
         } elseif ($request->status === 'rejected') {
