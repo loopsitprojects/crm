@@ -1098,11 +1098,13 @@
             // Customer Data for auto-populating fields
             @php
                 $customersData = $customers->mapWithKeys(function($item) {
+                     $rawBrand = trim($item['brand'] ?? '', " .\t\n\r\0\x0B");
                      return [$item['id'] => [
-                         'brand' => $item['brand'],
-                         'attention' => $item['primary_contact_name'],
-                         'designation' => $item['primary_contact_designation'],
-                         'address' => $item['billing_address']
+                         'name' => $item['name'],
+                         'brand' => $rawBrand ?: $item['name'],
+                         'attention' => $item['primary_contact_name'] ?: $item['name'],
+                         'designation' => $item['primary_contact_designation'] ?: '',
+                         'address' => $item['billing_address'] ?: $item['address']
                      ]];
                  });
             @endphp
@@ -1113,29 +1115,39 @@
                 
                 if (customerId && data) {
                     // Fill Brand
-                    if (data.brand && typeof brandSelectInstance !== 'undefined' && brandSelectInstance) {
-                        brandSelectInstance.addOption({value: data.brand, text: data.brand});
-                        brandSelectInstance.setValue(data.brand);
+                    const brandVal = data.brand || data.name || '';
+                    if (brandVal && typeof brandSelectInstance !== 'undefined' && brandSelectInstance) {
+                        brandSelectInstance.addOption({value: brandVal, text: brandVal});
+                        brandSelectInstance.setValue(brandVal);
                         if (brandSelectInstance.control) {
                             brandSelectInstance.control.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
                         }
                         if (brandSelectInstance.wrapper) {
                             brandSelectInstance.wrapper.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
                         }
+                        const parent = brandSelectInstance.wrapper ? brandSelectInstance.wrapper.closest('div') : null;
+                        const err = parent ? parent.querySelector('.field-error') : null;
+                        if (err) err.remove();
                     } else if (typeof brandSelectInstance !== 'undefined' && brandSelectInstance) {
                         brandSelectInstance.clear();
                     }
 
                     // Fill Attention To
                     const attentionInput = document.querySelector('input[name="attention_to"]');
-                    if (attentionInput) attentionInput.value = data.attention || '';
+                    if (attentionInput) {
+                        attentionInput.value = data.attention || '';
+                        attentionInput.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+                        const p = attentionInput.closest('div');
+                        const err = p ? p.querySelector('.field-error') : null;
+                        if (err) err.remove();
+                    }
 
                     // Fill Designation
                     const designationInput = document.querySelector('input[name="designation"]');
                     if (designationInput) designationInput.value = data.designation || '';
 
                     // Fill Address
-                    if (data.address) {
+                    if (data.address && data.address !== 'TBD') {
                         const lines = data.address.split(/\r?\n/);
                         const a1 = document.querySelector('input[name="address_line_1"]');
                         const a2 = document.querySelector('input[name="address_line_2"]');
@@ -1180,6 +1192,17 @@
                 }
                 updateCustomerFields(customerId);
             });
+
+            // Trigger immediately in case customer is selected but fields are empty
+            @if(!(isset($readonly) && $readonly))
+            if (customerSelectInstance.getValue()) {
+                const currentAtt = document.querySelector('input[name="attention_to"]');
+                const currentBrand = typeof brandSelectInstance !== 'undefined' && brandSelectInstance ? brandSelectInstance.getValue() : '';
+                if (!currentBrand || !currentAtt || !currentAtt.value) {
+                    updateCustomerFields(customerSelectInstance.getValue());
+                }
+            }
+            @endif
 
             // Custom Form Validation
             const form = document.getElementById('estimate-form');

@@ -996,29 +996,92 @@ class DealController extends Controller
     protected function createEstimateFromDeal(Deal $deal)
     {
         $customerId = $deal->customer_id;
+        $customer = null;
 
-        // Create Customer if not exists
-        if (!$customerId) {
+        if ($customerId) {
+            $customer = $deal->customer ?: Customer::find($customerId);
+        }
+
+        // If customer not found, attempt search by email or name/brand
+        if (!$customer) {
+            if (!empty($deal->customer_email)) {
+                $customer = Customer::where('email', $deal->customer_email)->first();
+            }
+            if (!$customer && !empty($deal->customer_name)) {
+                $customer = Customer::where('name', $deal->customer_name)
+                    ->orWhere('brand', $deal->customer_name)
+                    ->first();
+            }
+        }
+
+        // Create Customer if still not exists
+        if (!$customer) {
             $email = $deal->customer_email ?? ('client_' . Str::random(8) . '@example.com');
             $customer = Customer::create([
                 'name' => $deal->customer_name ?? 'Unknown Customer',
+                'brand' => $deal->customer_name ?? 'Unknown Brand',
                 'email' => $email,
                 'phone' => $deal->customer_phone,
                 'address' => 'TBD'
             ]);
-            $customerId = $customer->id;
+        }
+
+        $customerId = $customer->id;
+        if ($deal->customer_id !== $customerId) {
             $deal->update(['customer_id' => $customerId]);
+        }
+
+        // Determine brand name
+        $rawBrand = trim($customer->brand ?? '', " .\t\n\r\0\x0B");
+        $brandName = $rawBrand ?: ($deal->customer_name ?: $customer->name);
+
+        // Determine attention to and designation
+        $attentionTo = !empty(trim($customer->primary_contact_name ?? '')) 
+            ? trim($customer->primary_contact_name) 
+            : ($customer->name ?? null);
+
+        $designation = !empty(trim($customer->primary_contact_designation ?? '')) 
+            ? trim($customer->primary_contact_designation) 
+            : null;
+
+        // Parse address lines from billing_address or address
+        $rawAddress = $customer->billing_address ?: $customer->address;
+        $addressLine1 = null;
+        $addressLine2 = null;
+        $addressLine3 = null;
+        if ($rawAddress && $rawAddress !== 'TBD') {
+            $addressLines = preg_split('/\r\n|\r|\n/', trim($rawAddress));
+            $addressLine1 = $addressLines[0] ?? null;
+            $addressLine2 = $addressLines[1] ?? null;
+            $addressLine3 = $addressLines[2] ?? null;
+        }
+
+        // Determine department and revenue category for default item
+        $userDept = $deal->owner->department ?? 'creative';
+        $validDepts = ['creative', 'digital', 'play', 'tech', 'PM', 'Corporate'];
+        $itemDept = 'creative';
+        foreach ($validDepts as $dept) {
+            if (strcasecmp($dept, $userDept) === 0) {
+                $itemDept = $dept;
+                break;
+            }
         }
 
         $estimate = Estimate::create([
             'customer_id' => $customerId,
             'user_id' => $deal->user_id,
             'deal_id' => $deal->id,
+            'brand_name' => $brandName,
+            'attention_to' => $attentionTo,
+            'designation' => $designation,
+            'address_line_1' => $addressLine1,
+            'address_line_2' => $addressLine2,
+            'address_line_3' => $addressLine3,
             'reference_number' => Estimate::generateReferenceNumber(),
             'date' => now(),
             'status' => 'draft',
             'total_amount' => $deal->revenue,
-            'currency' => 'LKR',
+            'currency' => $deal->currency ?? 'LKR',
             'heading' => $deal->title,
             'senior_manager' => $deal->senior_manager ?? ($deal->owner->name ?? null),
             'terms' => Setting::get('standard_terms', null)
@@ -1032,7 +1095,10 @@ class DealController extends Controller
             'amount' => $deal->revenue,
             'vat_amount' => 0,
             'total_with_vat' => $deal->revenue,
-            'sscl_amount' => 0
+            'sscl_amount' => 0,
+            'position' => 0,
+            'department' => $itemDept,
+            'revenue_category' => 'Retainer'
         ]);
 
         return $estimate;

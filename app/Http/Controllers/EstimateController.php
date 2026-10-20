@@ -118,7 +118,7 @@ class EstimateController extends Controller
 
         $deal = null;
         if ($request->has('deal_id')) {
-            $deal = \App\Models\Deal::with(['customer'])->find($request->deal_id);
+            $deal = \App\Models\Deal::with(['customer', 'owner'])->find($request->deal_id);
         }
 
         return view('estimates.create', compact('customers', 'standardTerms', 'currencies', 'ssclRate', 'vatRate', 'brands', 'nextReferenceNumber', 'users', 'deal'));
@@ -565,7 +565,7 @@ class EstimateController extends Controller
      */
     public function edit(string $id)
     {
-        $estimate = Estimate::with(['items', 'deal.owner'])->findOrFail($id);
+        $estimate = Estimate::with(['items', 'deal.owner', 'customer'])->findOrFail($id);
 
         $user = auth()->user();
         if (!$estimate->canEdit($user)) {
