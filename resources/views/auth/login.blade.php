@@ -166,7 +166,7 @@
                         <i class="fas fa-envelope text-sm"></i>
                     </span>
                     <input type="email" name="email" id="email" required
-                        value="{{ old('email', 'madara@loopsintegrated.com') }}"
+                        value="{{ old('email') }}"
                         placeholder="name@company.com"
                         class="block w-full pl-10 pr-4 py-3 {{ $isHalloween ? 'bg-[#190c24]/90 border border-orange-500/40 text-gray-100 placeholder-gray-500/80 focus:bg-[#201030] focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30' : 'bg-gray-50 border-2 border-transparent text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-100' }} rounded-xl outline-none transition-all duration-300 text-sm font-medium">
                 </div>
