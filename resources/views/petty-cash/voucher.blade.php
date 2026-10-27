@@ -64,7 +64,7 @@
 @section('header', 'Petty Cash Voucher')
 
 @section('content')
-<div class="max-w-4xl mx-auto my-6">
+<div class="max-w-4xl mx-auto my-6 text-gray-800">
     <!-- Top Action Bar (hidden in PDF output & print) -->
     <div class="no-print mb-4 flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-gray-200">
         @if(auth()->check())

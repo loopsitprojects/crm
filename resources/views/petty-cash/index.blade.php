@@ -47,7 +47,7 @@
 @endpush
 
 @section('content')
-<div class="max-w-7xl mx-auto space-y-6 pb-12">
+<div class="max-w-7xl mx-auto space-y-6 pb-12 text-gray-800">
 
     <!-- Header & Action Bar -->
     <div class="bg-white rounded-xl shadow-md p-6 flex flex-col md:flex-row justify-between items-center gap-4">
