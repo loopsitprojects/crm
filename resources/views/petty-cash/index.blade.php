@@ -613,7 +613,6 @@
             @endforelse
         </div>
     </div>
-</div>
 
 <!-- New Petty Cash Request Modal (Available to All Users) -->
 <div id="newPettyCashModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden overflow-y-auto h-full w-full z-50">
@@ -1673,6 +1672,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 
 @push('scripts')
