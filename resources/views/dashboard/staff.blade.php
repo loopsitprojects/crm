@@ -53,7 +53,7 @@
 <div class="max-w-6xl xl:max-w-7xl mx-auto py-4 sm:py-8 px-3 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
 
     <!-- Welcome Header Banner -->
-    <div class="{{ $isHalloween ? 'bg-gradient-to-r from-[#200833] via-[#45124b] to-[#8c2e0b] border-2 border-orange-500/40 shadow-[0_10px_35px_rgba(255,100,0,0.25)]' : 'bg-gradient-to-r from-brand-pink via-brand-purple to-brand-blue shadow-xl' }} rounded-2xl p-5 sm:p-7 lg:p-8 text-white relative overflow-hidden flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 sm:gap-6">
+    <div class="{{ $isHalloween ? 'bg-gradient-to-r from-[#200833] via-[#45124b] to-[#8c2e0b] border-2 border-orange-500/40 shadow-[0_10px_35px_rgba(255,100,0,0.25)]' : 'bg-gradient-to-r from-brand-pink via-brand-purple to-brand-blue shadow-xl' }} rounded-2xl p-5 sm:p-7 lg:p-8 text-white relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-5 sm:gap-6">
         @if($isHalloween)
             <div class="absolute -right-6 -bottom-6 opacity-25 pointer-events-none">
                 <img src="{{ asset('images/halloween/pumpkin.svg') }}" class="w-44 sm:w-56 h-auto" alt="pumpkin">
@@ -66,7 +66,7 @@
                 <i class="fas fa-id-card text-8xl sm:text-9xl"></i>
             </div>
         @endif
-        <div class="relative z-10 flex flex-col sm:flex-row items-center sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 md:space-x-6 text-center sm:text-left min-w-0">
+        <div class="relative z-10 flex flex-col sm:flex-row items-center sm:items-center space-y-3 sm:space-y-0 sm:space-x-5 md:space-x-6 text-center sm:text-left min-w-0 flex-1">
             <div class="relative flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 aspect-square">
                 <img src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background={{ $isHalloween ? 'ea580c' : 'random' }}&color=ffffff&size=128"
                      alt="{{ $user->name }}" 
@@ -75,7 +75,7 @@
                     <span class="absolute -bottom-1 -right-1 text-xl filter drop-shadow select-none pointer-events-none">🎃</span>
                 @endif
             </div>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
                 <span class="inline-block px-3 py-1 {{ $isHalloween ? 'bg-orange-500/25 border border-orange-400/50 text-orange-200' : 'bg-white/20 text-white' }} backdrop-blur-md rounded-full text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-2">
                     <i class="fas {{ $isHalloween ? 'fa-ghost text-amber-300' : 'fa-user-tag' }} mr-1"></i> {{ $user->role === 'HR Admin' ? 'HR Admin' : 'Staff Member' }}
                 </span>
@@ -87,26 +87,29 @@
                 </p>
             </div>
         </div>
-        <!-- Petty Cash Action Button -->
-        <div class="relative z-10 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 sm:gap-3 flex-shrink-0 w-full lg:w-auto">
+        <!-- Action Buttons (Stacked Vertically at Right Corner) -->
+        <div class="relative z-10 flex flex-col items-stretch sm:items-end justify-center gap-2.5 flex-shrink-0 w-full sm:w-auto">
             @if($user->role === 'HR Admin')
                 <a href="{{ route('petty-cash.index', ['scope' => 'approvals']) }}"
-                    class="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 {{ $isHalloween ? 'bg-[#1b092b]/80 hover:bg-[#250d3b] text-orange-200 border-orange-500/40 shadow-md' : 'bg-white/20 hover:bg-white/30 text-white border-white/30 shadow-md' }} font-bold text-xs sm:text-sm rounded-xl border transition-all inline-flex items-center justify-center whitespace-nowrap">
-                    <i class="fas fa-check-double mr-2 text-emerald-300 text-sm sm:text-base"></i> Team Approvals
+                    class="w-full sm:w-56 px-4 py-2.5 {{ $isHalloween ? 'bg-[#1b092b]/85 hover:bg-[#250d3b] text-orange-200 border-orange-500/40 shadow-md' : 'bg-white/20 hover:bg-white/30 text-white border-white/30 shadow-md' }} font-bold text-xs sm:text-sm rounded-xl border transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-check-double text-emerald-300 text-sm"></i>
+                    <span>Team Approvals</span>
                     @if(!empty($teamPendingApprovalsCount) && $teamPendingApprovalsCount > 0)
-                        <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-red-500 text-white">
+                        <span class="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-red-500 text-white">
                             {{ $teamPendingApprovalsCount }}
                         </span>
                     @endif
                 </a>
                 <a href="{{ route('petty-cash.index', ['scope' => 'all_team']) }}"
-                    class="w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 {{ $isHalloween ? 'bg-[#1b092b]/80 hover:bg-[#250d3b] text-orange-200 border-orange-500/40 shadow-md' : 'bg-white/20 hover:bg-white/30 text-white border-white/30 shadow-md' }} font-bold text-xs sm:text-sm rounded-xl border transition-all inline-flex items-center justify-center whitespace-nowrap">
-                    <i class="fas fa-users-cog mr-2 text-cyan-200 text-sm sm:text-base"></i> Team Requests
+                    class="w-full sm:w-56 px-4 py-2.5 {{ $isHalloween ? 'bg-[#1b092b]/85 hover:bg-[#250d3b] text-orange-200 border-orange-500/40 shadow-md' : 'bg-white/20 hover:bg-white/30 text-white border-white/30 shadow-md' }} font-bold text-xs sm:text-sm rounded-xl border transition-all inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-users-cog text-cyan-200 text-sm"></i>
+                    <span>Team Requests</span>
                 </a>
             @endif
             <button onclick="handleNewRequestClick(event)"
-                class="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 {{ $isHalloween ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold shadow-[0_0_25px_rgba(255,120,0,0.55)] border border-amber-300/40' : 'bg-white text-brand-purple hover:bg-gray-50 shadow-lg' }} font-bold text-xs sm:text-sm rounded-xl transition-all transform hover:-translate-y-0.5 inline-flex items-center justify-center whitespace-nowrap">
-                <i class="fas fa-wallet mr-2 {{ $isHalloween ? 'text-white' : 'text-brand-pink' }} text-base sm:text-lg"></i> Petty Cash Request
+                class="w-full sm:w-56 px-4 py-2.5 {{ $isHalloween ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold shadow-[0_0_25px_rgba(255,120,0,0.55)] border border-amber-300/40' : 'bg-white text-brand-purple hover:bg-gray-50 shadow-lg' }} font-bold text-xs sm:text-sm rounded-xl transition-all transform hover:-translate-y-0.5 inline-flex items-center justify-center gap-2 whitespace-nowrap">
+                <i class="fas fa-wallet {{ $isHalloween ? 'text-white' : 'text-brand-pink' }} text-base"></i>
+                <span>Petty Cash Request</span>
             </button>
         </div>
     </div>
