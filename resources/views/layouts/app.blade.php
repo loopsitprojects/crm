@@ -86,6 +86,55 @@
         }
         .animate-spider-swing { transform-origin: top center; animation: spiderSwing 4s ease-in-out infinite; }
 
+        @keyframes ghostPeek {
+            0%, 15% {
+                opacity: 0;
+                transform: translate(-50px, -60px) rotate(-30deg) scale(0.65);
+                filter: drop-shadow(0 0 0 rgba(100, 200, 255, 0));
+            }
+            24% {
+                opacity: 0.92;
+                transform: translate(6px, 6px) rotate(-6deg) scale(0.95);
+                filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.75));
+            }
+            32% {
+                opacity: 1;
+                transform: translate(10px, 8px) rotate(4deg) scale(1.02);
+                filter: drop-shadow(0 0 14px rgba(100, 220, 255, 0.9)) drop-shadow(0 4px 12px rgba(168, 85, 247, 0.45));
+            }
+            40% {
+                opacity: 0.95;
+                transform: translate(7px, 10px) rotate(-2deg) scale(0.98);
+                filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.8));
+            }
+            48% {
+                opacity: 1;
+                transform: translate(11px, 7px) rotate(3deg) scale(1.01);
+                filter: drop-shadow(0 0 15px rgba(100, 220, 255, 0.9));
+            }
+            55% {
+                opacity: 0.88;
+                transform: translate(4px, 2px) rotate(-10deg) scale(0.9);
+                filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.6));
+            }
+            62%, 100% {
+                opacity: 0;
+                transform: translate(-50px, -60px) rotate(-30deg) scale(0.65);
+                filter: drop-shadow(0 0 0 rgba(100, 200, 255, 0));
+            }
+        }
+        .animate-ghost-peek {
+            transform-origin: top left;
+            animation: ghostPeek 8.5s ease-in-out infinite;
+            will-change: transform, opacity;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .animate-ghost-peek {
+                animation: none !important;
+                opacity: 0 !important;
+            }
+        }
+
 
         /* Halloween Header Title & Navigation Text Contrast */
         header h2,
@@ -357,7 +406,12 @@
                 @if($isHalloween)
                     <!-- Spiderweb in top-left corner -->
                     <img src="{{ asset('images/halloween/spiderweb.svg') }}" class="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50 z-10" alt="spiderweb">
-
+                    @if(\App\Models\Setting::isHalloweenGhostPeeking())
+                        <!-- Realistic Peeking Ghost in mobile sliding sidebar -->
+                        <div class="absolute top-0 left-0 pointer-events-none z-20 animate-ghost-peek">
+                            <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-12 sm:w-14 h-auto max-h-20 select-none pointer-events-none filter drop-shadow-[0_0_12px_rgba(100,220,255,0.75)] drop-shadow-[0_0_25px_rgba(147,51,234,0.45)]" alt="ghost">
+                        </div>
+                    @endif
                 @endif
                 <div class="flex items-center gap-2">
                     @if($isHalloween)

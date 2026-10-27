@@ -281,6 +281,9 @@ class HalloweenThemeTest extends TestCase
         $response->assertOk();
         $response->assertSee('images/halloween/realistic-ghost.png');
         $response->assertSee('halloweenCornerGhost');
+        $response->assertSee('animate-ghost-peek');
+        $response->assertSee('@keyframes ghostPeek', false);
+        $response->assertSee('Realistic Peeking Ghost in mobile sliding sidebar');
 
         // When theme enabled but ghost disabled
         Setting::set('halloween_ghost_peeking_enabled', false, 'theme');
@@ -289,6 +292,7 @@ class HalloweenThemeTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('images/halloween/realistic-ghost.png');
         $response->assertDontSee('halloweenCornerGhost');
+        $response->assertDontSee('Realistic Peeking Ghost in mobile sliding sidebar');
 
         // When theme disabled completely
         Setting::set('halloween_theme_enabled', false, 'theme');
