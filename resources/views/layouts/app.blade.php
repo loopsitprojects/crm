@@ -86,54 +86,6 @@
         }
         .animate-spider-swing { transform-origin: top center; animation: spiderSwing 4s ease-in-out infinite; }
 
-        @keyframes ghostPeek {
-            0%, 15% {
-                opacity: 0;
-                transform: translate(-55px, -65px) rotate(-30deg) scale(0.6);
-                filter: drop-shadow(0 0 0 rgba(100, 200, 255, 0));
-            }
-            24% {
-                opacity: 0.92;
-                transform: translate(6px, 6px) rotate(-6deg) scale(0.95);
-                filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.75));
-            }
-            32% {
-                opacity: 1;
-                transform: translate(12px, 10px) rotate(4deg) scale(1.02);
-                filter: drop-shadow(0 0 14px rgba(100, 220, 255, 0.9)) drop-shadow(0 4px 12px rgba(168, 85, 247, 0.45));
-            }
-            40% {
-                opacity: 0.95;
-                transform: translate(8px, 12px) rotate(-2deg) scale(0.98);
-                filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.8));
-            }
-            48% {
-                opacity: 1;
-                transform: translate(14px, 8px) rotate(3deg) scale(1.01);
-                filter: drop-shadow(0 0 15px rgba(100, 220, 255, 0.9));
-            }
-            55% {
-                opacity: 0.88;
-                transform: translate(4px, 2px) rotate(-10deg) scale(0.9);
-                filter: drop-shadow(0 0 8px rgba(0, 210, 255, 0.6));
-            }
-            62%, 100% {
-                opacity: 0;
-                transform: translate(-55px, -65px) rotate(-30deg) scale(0.6);
-                filter: drop-shadow(0 0 0 rgba(100, 200, 255, 0));
-            }
-        }
-        .animate-ghost-peek {
-            transform-origin: top left;
-            animation: ghostPeek 9s ease-in-out infinite;
-            will-change: transform, opacity;
-        }
-        @media (prefers-reduced-motion: reduce) {
-            .animate-ghost-peek {
-                animation: none !important;
-                opacity: 0 !important;
-            }
-        }
 
         /* Halloween Header Title & Navigation Text Contrast */
         header h2,
@@ -254,10 +206,7 @@
                 @if($isHalloween)
                     <!-- Spiderweb in top-left corner -->
                     <img src="{{ asset('images/halloween/spiderweb.svg') }}" class="absolute top-0 left-0 w-16 h-16 pointer-events-none opacity-65 z-10" alt="spiderweb">
-                    <!-- Realistic Peeking Ghost from top-left corner -->
-                    <div class="absolute top-0 left-0 pointer-events-none z-20 animate-ghost-peek">
-                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-14 sm:w-16 h-auto max-h-24 select-none pointer-events-none filter drop-shadow-[0_0_14px_rgba(100,220,255,0.75)]" alt="ghost">
-                    </div>
+
                     <!-- Hanging spider on thread -->
                     <div class="absolute top-0 right-4 pointer-events-none animate-spider-swing z-10">
                         <img src="{{ asset('images/halloween/hanging-spider.svg') }}" class="w-6 h-9 opacity-90" alt="spider">
@@ -408,10 +357,7 @@
                 @if($isHalloween)
                     <!-- Spiderweb in top-left corner -->
                     <img src="{{ asset('images/halloween/spiderweb.svg') }}" class="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50 z-10" alt="spiderweb">
-                    <!-- Realistic Peeking Ghost -->
-                    <div class="absolute top-0 left-0 pointer-events-none z-20 animate-ghost-peek">
-                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-12 sm:w-14 h-auto max-h-20 select-none pointer-events-none filter drop-shadow-[0_0_12px_rgba(100,220,255,0.7)]" alt="ghost">
-                    </div>
+
                 @endif
                 <div class="flex items-center gap-2">
                     @if($isHalloween)

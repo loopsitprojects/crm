@@ -1,4 +1,4 @@
-@if(\App\Models\Setting::isHalloweenTheme())
+@if(\App\Models\Setting::isHalloweenGhostPeeking())
 <!-- Spooky AI Vision Corner Peeking Ghost Overlay -->
 <div x-data="halloweenCornerGhost()"
      x-init="initGhost()"

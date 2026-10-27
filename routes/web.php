@@ -308,6 +308,7 @@ Route::middleware(['auth'])->group(function () {
             // Seasonal Theme (Halloween) Settings
             Route::post('settings/halloween-theme', [SettingController::class, 'updateHalloweenTheme'])->name('settings.halloween.update');
             Route::post('settings/halloween-theme/toggle', [SettingController::class, 'toggleHalloweenTheme'])->name('settings.halloween.toggle');
+            Route::post('settings/halloween-ghost/toggle', [SettingController::class, 'toggleHalloweenGhost'])->name('settings.halloween.toggle-ghost');
         });
 
         // Financial Performance Dashboard (Access controlled dynamically by IT Admin settings)

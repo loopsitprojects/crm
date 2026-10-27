@@ -88,6 +88,35 @@ class HalloweenThemeTest extends TestCase
         $this->assertFalse(Setting::isHalloweenTheme());
     }
 
+    public function test_it_admin_can_toggle_ghost_peeking_via_ajax(): void
+    {
+        Setting::set('halloween_theme_enabled', true, 'theme');
+        Setting::set('halloween_ghost_peeking_enabled', true, 'theme');
+        $this->assertTrue(Setting::isHalloweenGhostPeeking());
+
+        // Toggle off
+        $response = $this->actingAs($this->itAdmin)
+            ->postJson(route('settings.halloween.toggle-ghost'));
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'enabled' => false,
+            ]);
+        $this->assertFalse(Setting::isHalloweenGhostPeeking());
+
+        // Toggle on
+        $response = $this->actingAs($this->itAdmin)
+            ->postJson(route('settings.halloween.toggle-ghost'));
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'enabled' => true,
+            ]);
+        $this->assertTrue(Setting::isHalloweenGhostPeeking());
+    }
+
     public function test_non_it_admin_cannot_update_or_toggle_halloween_theme(): void
     {
         Setting::set('halloween_theme_enabled', false, 'theme');
@@ -104,6 +133,10 @@ class HalloweenThemeTest extends TestCase
             ->postJson(route('settings.halloween.toggle'));
         $response->assertForbidden();
         $this->assertFalse(Setting::isHalloweenTheme());
+
+        $response = $this->actingAs($this->financeAdmin)
+            ->postJson(route('settings.halloween.toggle-ghost'));
+        $response->assertForbidden();
 
         // Test with regular user (blocked by prevent.staff middleware and redirected to dashboard)
         $response = $this->actingAs($this->regularUser)
@@ -235,22 +268,46 @@ class HalloweenThemeTest extends TestCase
 
     public function test_sidebar_renders_ghost_animation_on_halloween_theme(): void
     {
-        // When enabled
+        $this->test_ghost_animation_renders_on_halloween_theme();
+    }
+
+    public function test_ghost_animation_renders_on_halloween_theme(): void
+    {
+        // When theme enabled and ghost enabled
         Setting::set('halloween_theme_enabled', true, 'theme');
+        Setting::set('halloween_ghost_peeking_enabled', true, 'theme');
 
         $response = $this->actingAs($this->itAdmin)->get(route('dashboard'));
         $response->assertOk();
         $response->assertSee('images/halloween/realistic-ghost.png');
-        $response->assertSee('animate-ghost-peek');
-        $response->assertSee('@keyframes ghostPeek', false);
+        $response->assertSee('halloweenCornerGhost');
 
-        // When disabled
-        Setting::set('halloween_theme_enabled', false, 'theme');
+        // When theme enabled but ghost disabled
+        Setting::set('halloween_ghost_peeking_enabled', false, 'theme');
 
         $response = $this->actingAs($this->itAdmin)->get(route('dashboard'));
         $response->assertOk();
         $response->assertDontSee('images/halloween/realistic-ghost.png');
-        $response->assertDontSee('animate-ghost-peek');
+        $response->assertDontSee('halloweenCornerGhost');
+
+        // When theme disabled completely
+        Setting::set('halloween_theme_enabled', false, 'theme');
+        Setting::set('halloween_ghost_peeking_enabled', true, 'theme');
+
+        $response = $this->actingAs($this->itAdmin)->get(route('dashboard'));
+        $response->assertOk();
+        $response->assertDontSee('images/halloween/realistic-ghost.png');
+        $response->assertDontSee('halloweenCornerGhost');
+
+        // Form submission test
+        $response = $this->actingAs($this->itAdmin)
+            ->post(route('settings.halloween.update'), [
+                'halloween_theme_enabled' => '1',
+                'halloween_ghost_peeking_enabled' => '0',
+            ]);
+        $response->assertRedirect(route('settings.index', ['section' => 'seasonal-theme']));
+        $this->assertTrue(Setting::isHalloweenTheme());
+        $this->assertFalse(Setting::isHalloweenGhostPeeking());
     }
 
     public function test_estimate_status_change_to_ready_to_invoice_triggers_halloween_celebration(): void

@@ -39,4 +39,19 @@ class Setting extends Model
         $val = self::get('halloween_theme_enabled', true);
         return filter_var($val, FILTER_VALIDATE_BOOLEAN);
     }
+
+    /**
+     * Check if Halloween Ghost Peeking effect is enabled.
+     * Requires Halloween seasonal theme to be enabled.
+     * Defaults to true (ON).
+     */
+    public static function isHalloweenGhostPeeking(): bool
+    {
+        if (!self::isHalloweenTheme()) {
+            return false;
+        }
+
+        $val = self::get('halloween_ghost_peeking_enabled', true);
+        return filter_var($val, FILTER_VALIDATE_BOOLEAN);
+    }
 }

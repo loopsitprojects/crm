@@ -2301,11 +2301,11 @@
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-start space-x-4">
                                                 <div class="w-12 h-12 rounded-xl {{ $halloweenEnabled ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' : 'bg-gray-200 text-gray-500' }} flex items-center justify-center text-2xl shrink-0 transition-all">
-                                                    <i class="fas fa-ghost"></i>
+                                                    <i class="fas fa-spider"></i>
                                                 </div>
                                                 <div>
                                                     <div class="flex items-center space-x-3">
-                                                        <h4 class="text-base font-black text-gray-800">System-wide Halloween Effect</h4>
+                                                        <h4 class="text-base font-black text-gray-800">System-wide Halloween Theme</h4>
                                                         <span id="themeStatusBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ $halloweenEnabled ? 'bg-orange-500 text-white shadow-xs' : 'bg-gray-200 text-gray-600' }}">
                                                             {{ $halloweenEnabled ? 'ENABLED' : 'DISABLED' }}
                                                         </span>
@@ -2324,6 +2324,46 @@
                                                         onchange="handleThemeToggleChange(this)"
                                                         class="sr-only peer">
                                                     <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-orange-500 peer-checked:to-amber-500 peer-checked:shadow-md peer-checked:shadow-orange-500/30"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @php
+                                        $ghostRawEnabled = filter_var(\App\Models\Setting::get('halloween_ghost_peeking_enabled', true), FILTER_VALIDATE_BOOLEAN);
+                                    @endphp
+                                    <!-- Ghost Peeking Toggle Card -->
+                                    <div class="p-5 rounded-2xl border-2 {{ $ghostRawEnabled ? 'border-purple-300 bg-purple-50/40 shadow-sm' : 'border-gray-200 bg-gray-50/50' }} transition-all" id="ghostPeekingCard">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-start space-x-4">
+                                                <div class="w-12 h-12 rounded-xl {{ $ghostRawEnabled ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'bg-gray-200 text-gray-500' }} flex items-center justify-center text-2xl shrink-0 transition-all" id="ghostCardIcon">
+                                                    <i class="fas fa-ghost"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="flex items-center space-x-3">
+                                                        <h4 class="text-base font-black text-gray-800">Corner Peeking Ghost Animation</h4>
+                                                        <span id="ghostStatusBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider {{ $ghostRawEnabled ? 'bg-purple-600 text-white shadow-xs' : 'bg-gray-200 text-gray-600' }}">
+                                                            {{ $ghostRawEnabled ? 'ENABLED' : 'DISABLED' }}
+                                                        </span>
+                                                        @if(!$halloweenEnabled)
+                                                            <span class="text-xs text-amber-600 font-medium italic">(Theme is currently off)</span>
+                                                        @endif
+                                                    </div>
+                                                    <p class="text-xs text-gray-600 mt-1 max-w-xl">
+                                                        Controls the realistic Flutter AI Vision ghost that sneaks in and peeks sequentially from all 4 corners of the screen (Top-Left, Top-Right, Bottom-Right, Bottom-Left) with timed suspense gaps. Uncheck or toggle off if you prefer a quieter experience without pop-in spirits.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Toggle Switch -->
+                                            <div class="flex items-center space-x-3 shrink-0 ml-4">
+                                                <input type="hidden" name="halloween_ghost_peeking_enabled" value="0">
+                                                <label class="relative inline-flex items-center cursor-pointer select-none">
+                                                    <input type="checkbox" name="halloween_ghost_peeking_enabled" id="halloweenGhostToggle" value="1"
+                                                        {{ $ghostRawEnabled ? 'checked' : '' }}
+                                                        onchange="handleGhostToggleChange(this)"
+                                                        class="sr-only peer">
+                                                    <div class="w-14 h-7 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-purple-600 peer-checked:to-indigo-600 peer-checked:shadow-md peer-checked:shadow-purple-500/30"></div>
                                                 </label>
                                             </div>
                                         </div>
@@ -2385,17 +2425,24 @@
                                     </div>
 
                                     <!-- Quick Toggle AJAX Notice -->
-                                    <div class="p-4 bg-orange-50/70 border border-orange-200 rounded-xl text-xs text-orange-800 flex items-center justify-between">
+                                    <div class="p-4 bg-orange-50/70 border border-orange-200 rounded-xl text-xs text-orange-800 flex flex-col sm:flex-row items-center justify-between gap-3">
                                         <div class="flex items-center space-x-2">
                                             <i class="fas fa-magic text-orange-500 text-base"></i>
                                             <span>
-                                                <strong>Tip:</strong> Flipping the switch above and saving or clicking Quick Instant Toggle updates the theme setting instantly across Loops CRM!
+                                                <strong>Tip:</strong> Flip either switch and click <strong>Save Changes</strong>, or use the instant toggle buttons for immediate updates without reloading!
                                             </span>
                                         </div>
-                                        <button type="button" onclick="quickToggleThemeAjax()"
-                                            class="px-3 py-1 bg-white hover:bg-orange-100 border border-orange-300 text-orange-700 font-bold rounded-lg text-xs transition-colors shrink-0">
-                                            Quick Instant Toggle
-                                        </button>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <button type="button" onclick="quickToggleGhostAjax()"
+                                                class="px-3 py-1.5 bg-white hover:bg-purple-50 border border-purple-300 text-purple-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-2xs">
+                                                <i class="fas fa-ghost text-purple-500"></i>
+                                                <span>Quick Ghost Toggle</span>
+                                            </button>
+                                            <button type="button" onclick="quickToggleThemeAjax()"
+                                                class="px-3 py-1.5 bg-white hover:bg-orange-100 border border-orange-300 text-orange-700 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-2xs">
+                                                <span>🎃 Quick Theme Toggle</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2829,6 +2876,69 @@
                     ? 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-orange-500 text-white shadow-xs'
                     : 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-200 text-gray-600';
             }
+        }
+
+        function handleGhostToggleChange(input) {
+            const isChecked = input.checked;
+            const badge = document.getElementById('ghostStatusBadge');
+            const card = document.getElementById('ghostPeekingCard');
+            const icon = document.getElementById('ghostCardIcon');
+            if (badge) {
+                badge.textContent = isChecked ? 'ENABLED' : 'DISABLED';
+                badge.className = isChecked 
+                    ? 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-600 text-white shadow-xs'
+                    : 'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-gray-200 text-gray-600';
+            }
+            if (card) {
+                if (isChecked) {
+                    card.classList.remove('border-gray-200', 'bg-gray-50/50');
+                    card.classList.add('border-purple-300', 'bg-purple-50/40', 'shadow-sm');
+                } else {
+                    card.classList.remove('border-purple-300', 'bg-purple-50/40', 'shadow-sm');
+                    card.classList.add('border-gray-200', 'bg-gray-50/50');
+                }
+            }
+            if (icon) {
+                if (isChecked) {
+                    icon.className = 'w-12 h-12 rounded-xl bg-purple-600 text-white shadow-lg shadow-purple-500/30 flex items-center justify-center text-2xl shrink-0 transition-all';
+                } else {
+                    icon.className = 'w-12 h-12 rounded-xl bg-gray-200 text-gray-500 flex items-center justify-center text-2xl shrink-0 transition-all';
+                }
+            }
+        }
+
+        function quickToggleGhostAjax() {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            fetch('{{ route('settings.halloween.toggle-ghost') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': token
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: data.enabled ? '👻 Ghost Peeking Enabled!' : 'Ghost Peeking Disabled',
+                            text: data.message,
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('halloweenThemeForm')?.submit();
+            });
         }
 
         function quickToggleThemeAjax() {

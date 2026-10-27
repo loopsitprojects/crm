@@ -1127,20 +1127,27 @@ class SettingController extends Controller
         $enabled = $request->boolean('halloween_theme_enabled');
         Setting::set('halloween_theme_enabled', $enabled ? '1' : '0', 'theme');
 
-        $this->logAction($enabled ? 'Enabled Halloween Seasonal Theme' : 'Disabled Halloween Seasonal Theme', null, [
-            'halloween_theme_enabled' => $enabled
-        ]);
+        $logData = ['halloween_theme_enabled' => $enabled];
+
+        if ($request->has('halloween_ghost_peeking_enabled')) {
+            $ghostEnabled = $request->boolean('halloween_ghost_peeking_enabled');
+            Setting::set('halloween_ghost_peeking_enabled', $ghostEnabled ? '1' : '0', 'theme');
+            $logData['halloween_ghost_peeking_enabled'] = $ghostEnabled;
+        }
+
+        $this->logAction($enabled ? 'Updated Halloween Seasonal Theme Settings' : 'Disabled Halloween Seasonal Theme', null, $logData);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'enabled' => $enabled,
-                'message' => $enabled ? 'Halloween theme activated! 🎃' : 'Halloween theme deactivated.'
+                'ghost_enabled' => Setting::isHalloweenGhostPeeking(),
+                'message' => $enabled ? 'Halloween theme settings updated! 🎃' : 'Halloween theme deactivated.'
             ]);
         }
 
         return redirect()->route('settings.index', ['section' => 'seasonal-theme'])
-            ->with('success', $enabled ? 'Halloween seasonal theme activated! 🎃' : 'Halloween seasonal theme turned off.')
+            ->with('success', $enabled ? 'Halloween seasonal settings saved! 🎃' : 'Halloween seasonal theme turned off.')
             ->with('section', 'seasonal-theme');
     }
 
@@ -1175,6 +1182,40 @@ class SettingController extends Controller
         }
 
         return back()->with('success', $new ? 'Halloween theme is now ON! 🎃' : 'Halloween theme is now OFF.');
+    }
+
+    /**
+     * Quick toggle for Ghost Peeking effect (can be called via AJAX from IT Admin Settings).
+     */
+    public function toggleHalloweenGhost(Request $request)
+    {
+        $user = auth()->user();
+
+        if (!$user || !$user->isITAdmin()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized action. Only IT Admin can configure theme settings.'], 403);
+            }
+            abort(403, 'Unauthorized action.');
+        }
+
+        $current = filter_var(Setting::get('halloween_ghost_peeking_enabled', true), FILTER_VALIDATE_BOOLEAN);
+        $new = !$current;
+        Setting::set('halloween_ghost_peeking_enabled', $new ? '1' : '0', 'theme');
+
+        $this->logAction($new ? 'Toggled ON Halloween Ghost Peeking' : 'Toggled OFF Halloween Ghost Peeking', null, [
+            'halloween_ghost_peeking_enabled' => $new
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'enabled' => $new,
+                'active' => Setting::isHalloweenGhostPeeking(),
+                'message' => $new ? 'Ghost peeking animation is now ENABLED! 👻' : 'Ghost peeking animation is now DISABLED.'
+            ]);
+        }
+
+        return back()->with('success', $new ? 'Ghost peeking animation is now ENABLED! 👻' : 'Ghost peeking animation is now DISABLED.');
     }
 }
 
