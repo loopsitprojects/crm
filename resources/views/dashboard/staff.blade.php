@@ -69,11 +69,13 @@
     }
     #newPettyCashModal input[type="text"],
     #newPettyCashModal input[type="number"],
+    #newPettyCashModal select,
     #newPettyCashModal textarea,
     #reappealModal input[type="text"],
     #reappealModal textarea,
     #settleIouModal input[type="text"],
     #settleIouModal input[type="number"],
+    #settleIouModal select,
     #settleIouModal textarea {
         background-color: #0f041b !important;
         border-color: rgba(255, 120, 0, 0.3) !important;
@@ -540,7 +542,7 @@
 
 <!-- New Petty Cash Request Modal -->
 <div id="newPettyCashModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
-    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-3xl shadow-2xl rounded-xl sm:rounded-2xl bg-white max-h-[90vh] overflow-y-auto">
+    <div class="relative my-auto p-4 sm:p-6 border w-full max-w-3xl shadow-2xl rounded-xl sm:rounded-2xl bg-white text-gray-900 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center pb-3.5 border-b border-gray-200">
             <h3 class="text-lg sm:text-xl font-bold text-gray-800 flex items-center">
                 <i class="fas fa-wallet text-brand-pink mr-2 text-base sm:text-lg"></i> New Petty Cash Request
@@ -592,7 +594,7 @@
                 </div>
                 <div>
                     <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Job Number(s)</label>
-                    <select name="job_numbers[]" id="staff_create_job_number" multiple placeholder="-- Select Job Number(s) (Optional) --" class="w-full rounded-lg border-gray-300 text-base sm:text-sm focus:border-brand-blue focus:ring-brand-blue">
+                    <select name="job_numbers[]" id="staff_create_job_number" multiple placeholder="-- Select Job Number(s) (Optional) --" class="w-full rounded-lg border-gray-300 text-base sm:text-sm focus:border-brand-blue focus:ring-brand-blue bg-white text-gray-900">
                         @foreach($jobs as $jobNo => $display)
                             <option value="{{ $jobNo }}">{{ $display }}</option>
                         @endforeach
@@ -636,7 +638,7 @@
                     <!-- Initial Row -->
                     <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 item-row">
                         <div class="col-span-1 md:col-span-4 category-col">
-                            <select name="items[0][expense_category_id]" required onchange="toggleMealAllowanceAttendees(this)" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
+                            <select name="items[0][expense_category_id]" required onchange="toggleMealAllowanceAttendees(this)" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
                                 <option value="">Select Category *</option>
                                 @foreach($expenseCategories as $category)
                                     <option value="{{ $category->id }}">{{ $category->name }}</option>
@@ -644,10 +646,10 @@
                             </select>
                         </div>
                         <div class="col-span-1 md:col-span-3 amount-col">
-                            <input type="number" step="0.01" min="0.01" name="items[0][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
+                            <input type="number" step="0.01" min="0.01" name="items[0][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
                         </div>
                         <div class="col-span-1 md:col-span-4 desc-col">
-                            <input type="text" name="items[0][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
+                            <input type="text" name="items[0][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
                         </div>
                         <div class="col-span-1 md:col-span-1 flex justify-end md:justify-center pt-1 md:pt-0 delete-col">
                             <button type="button" onclick="if(document.querySelectorAll('#expenseItemsContainer .item-row').length > 1) this.closest('.item-row').remove()" class="text-red-500 hover:text-red-700 text-xs py-1 flex items-center gap-1 font-semibold">
@@ -662,11 +664,11 @@
                                 <span class="text-[11px] text-blue-700">Enter names of people who attended</span>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                                <input type="text" name="items[0][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                                <input type="text" name="items[0][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                                <input type="text" name="items[0][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                                <input type="text" name="items[0][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                                <input type="text" name="items[0][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                                <input type="text" name="items[0][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
                             </div>
                         </div>
                     </div>
@@ -675,7 +677,7 @@
 
             <div>
                 <label class="block text-xs sm:text-sm font-bold text-gray-800 mb-1">Extra Notes / Remarks</label>
-                <textarea name="extra_notes" rows="2" placeholder="Optional extra notes, remarks, or justification for this request..." class="w-full rounded-lg border-gray-300 text-base sm:text-xs focus:border-brand-blue focus:ring-brand-blue"></textarea>
+                <textarea name="extra_notes" rows="2" placeholder="Optional extra notes, remarks, or justification for this request..." class="w-full rounded-lg border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:border-brand-blue focus:ring-brand-blue"></textarea>
             </div>
 
             <div>
@@ -1158,16 +1160,16 @@
         row.className = 'grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center bg-gray-50 p-3 rounded-lg border border-gray-200 item-row';
         row.innerHTML = `
             <div class="col-span-1 md:col-span-4 category-col">
-                <select name="items[${index}][expense_category_id]" required onchange="toggleMealAllowanceAttendees(this)" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
+                <select name="items[${index}][expense_category_id]" required onchange="toggleMealAllowanceAttendees(this)" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-cat-select">
                     <option value="">Select Category *</option>
                     ${catOptions}
                 </select>
             </div>
             <div class="col-span-1 md:col-span-3 amount-col">
-                <input type="number" step="0.01" min="0.01" name="items[${index}][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
+                <input type="number" step="0.01" min="0.01" name="items[${index}][amount]" required placeholder="Amount *" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-amount-input">
             </div>
             <div class="col-span-1 md:col-span-4 desc-col">
-                <input type="text" name="items[${index}][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
+                <input type="text" name="items[${index}][description]" placeholder="Note / Details" class="w-full rounded-md border-gray-300 bg-white text-gray-900 text-base sm:text-xs focus:ring-brand-blue item-desc-input">
             </div>
             <div class="col-span-1 md:col-span-1 flex justify-end md:justify-center pt-1 md:pt-0 delete-col">
                 <button type="button" onclick="if(document.querySelectorAll('#expenseItemsContainer .item-row').length > 1) this.closest('.item-row').remove()" class="text-red-500 hover:text-red-700 text-xs py-1 flex items-center gap-1 font-semibold">
@@ -1182,11 +1184,11 @@
                     <span class="text-[11px] text-blue-700">Enter names of people who attended</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
-                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
-                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 text-xs focus:ring-brand-blue bg-white">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 1 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 2 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 3 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 4 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
+                    <input type="text" name="items[${index}][attendees][]" placeholder="Person 5 Name" class="w-full rounded-md border-blue-200 bg-white text-gray-900 text-xs focus:ring-brand-blue">
                 </div>
             </div>
         `;

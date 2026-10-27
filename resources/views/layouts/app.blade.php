@@ -196,6 +196,16 @@
         .ql-snow .ql-toolbar .ql-formats {
             margin-right: 6px;
         }
+
+        /* Ensure input, select, and textarea text inside white/light modals and containers is always dark and legible */
+        .bg-white input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]):not([class*="text-white"]):not([class*="text-orange"]),
+        .bg-white select:not([class*="text-white"]):not([class*="text-orange"]),
+        .bg-white textarea:not([class*="text-white"]):not([class*="text-orange"]),
+        .bg-gray-50 input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="hidden"]):not([class*="text-white"]):not([class*="text-orange"]),
+        .bg-gray-50 select:not([class*="text-white"]):not([class*="text-orange"]),
+        .bg-gray-50 textarea:not([class*="text-white"]):not([class*="text-orange"]) {
+            color: #111827;
+        }
     </style>
     <script>
         window.refreshPwaApp = function(btn) {
@@ -224,6 +234,7 @@
         };
     </script>
     @stack('head')
+    @stack('styles')
 </head>
 
 <body class="{{ ($isHalloween && $isStaffUser) ? 'bg-[#f4effa]' : 'bg-gray-100' }} text-gray-800" x-data="{ mobileSidebarOpen: false }">
