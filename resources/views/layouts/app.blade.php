@@ -980,6 +980,9 @@
     <!-- Halloween Celebration Effects (Smiling Pumpkin, Swarming Bats & Trick or Treat) -->
     @include('partials.halloween-celebration')
 
+    <!-- Halloween 4-Corner Peeking Ghost Effect -->
+    @include('partials.halloween-ghost-corners')
+
     <!-- PWA Install Prompts & Controller -->
     @include('partials.pwa-install')
 </body>
