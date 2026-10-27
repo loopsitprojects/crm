@@ -256,7 +256,7 @@
                     <img src="{{ asset('images/halloween/spiderweb.svg') }}" class="absolute top-0 left-0 w-16 h-16 pointer-events-none opacity-65 z-10" alt="spiderweb">
                     <!-- Realistic Peeking Ghost from top-left corner -->
                     <div class="absolute top-0 left-0 pointer-events-none z-20 animate-ghost-peek">
-                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-12 h-auto max-h-18 select-none pointer-events-none" alt="ghost">
+                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-14 sm:w-16 h-auto max-h-24 select-none pointer-events-none filter drop-shadow-[0_0_14px_rgba(100,220,255,0.75)]" alt="ghost">
                     </div>
                     <!-- Hanging spider on thread -->
                     <div class="absolute top-0 right-4 pointer-events-none animate-spider-swing z-10">
@@ -410,7 +410,7 @@
                     <img src="{{ asset('images/halloween/spiderweb.svg') }}" class="absolute top-0 left-0 w-14 h-14 pointer-events-none opacity-50 z-10" alt="spiderweb">
                     <!-- Realistic Peeking Ghost -->
                     <div class="absolute top-0 left-0 pointer-events-none z-20 animate-ghost-peek">
-                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-10 h-auto max-h-16 select-none pointer-events-none" alt="ghost">
+                        <img src="{{ asset('images/halloween/realistic-ghost.png') }}" class="w-12 sm:w-14 h-auto max-h-20 select-none pointer-events-none filter drop-shadow-[0_0_12px_rgba(100,220,255,0.7)]" alt="ghost">
                     </div>
                 @endif
                 <div class="flex items-center gap-2">
