@@ -519,6 +519,9 @@
                         <p class="text-sm font-semibold {{ $isHalloween ? 'text-orange-100' : 'text-white' }} truncate">{{ Auth::user()->name ?? 'Admin User' }}</p>
                         <p class="text-xs {{ $isHalloween ? 'text-orange-200/50' : 'text-gray-400' }} truncate">{{ Auth::user()->email ?? 'admin@example.com' }}</p>
                     </div>
+                    <button type="button" onclick="document.getElementById('changePasswordModal').classList.remove('hidden')" class="p-2 {{ $isHalloween ? 'text-orange-300 hover:text-white' : 'text-gray-400 hover:text-white' }} rounded-lg transition-colors" title="Change Password">
+                        <i class="fas fa-key text-base"></i>
+                    </button>
                     <form action="{{ route('logout') }}" method="POST">
                         @csrf
                         <button type="submit" class="p-2 {{ $isHalloween ? 'text-orange-300 hover:text-white' : 'text-gray-400 hover:text-white' }} rounded-lg" title="Logout">
@@ -533,48 +536,49 @@
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Header -->
-            <header class="bg-white shadow-sm relative z-40 h-20 flex-shrink-0 flex items-center {{ $isHalloween ? 'border-b border-orange-500/20' : 'border-b border-gray-200' }}"
+            <header class="{{ $isHalloween ? 'bg-[#150727] border-b border-orange-500/30' : 'bg-white border-b border-gray-200' }} shadow-sm relative z-40 h-16 sm:h-20 flex-shrink-0 flex items-center"
                 @if($isHalloween)
-                    style="background: url('{{ asset('images/halloween/header-banner.jpg') }}') center / cover no-repeat;"
+                    style="background: linear-gradient(90deg, rgba(21, 7, 39, 0.94) 0%, rgba(38, 11, 62, 0.88) 50%, rgba(21, 7, 39, 0.94) 100%), url('{{ asset('images/halloween/header-banner.jpg') }}') left center / cover no-repeat;"
                 @endif>
-                <div class="flex items-center justify-between px-4 sm:px-6 w-full">
-                    <div class="flex items-center flex-1 mr-4 min-w-0">
+                <div class="flex items-center justify-between px-3 sm:px-6 w-full">
+                    <div class="flex items-center flex-1 mr-2 sm:mr-4 min-w-0">
                         @unless(View::hasSection('no_sidebar'))
                         <button @click="mobileSidebarOpen = !mobileSidebarOpen" 
-                                class="md:hidden {{ $isHalloween ? 'text-white hover:text-orange-300 hover:bg-white/10' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' }} p-2 rounded-lg focus:outline-none transition-colors mr-2">
-                            <i class="fas fa-bars text-lg"></i>
+                                class="md:hidden {{ $isHalloween ? 'text-amber-300 hover:text-white hover:bg-white/10' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100' }} p-2 rounded-lg focus:outline-none transition-colors mr-1 sm:mr-2 flex-shrink-0"
+                                aria-label="Toggle navigation">
+                            <i class="fas fa-bars text-lg sm:text-xl"></i>
                         </button>
                         @endunless
-                        <h2 class="text-lg sm:text-xl font-extrabold {{ $isHalloween ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]' : 'text-gray-800' }} truncate flex items-center gap-2">
+                        <h2 class="text-base sm:text-xl font-extrabold {{ $isHalloween ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]' : 'text-gray-800' }} truncate flex items-center gap-2">
                             @yield('header')
                         </h2>
                     </div>
                     @auth
-                    <div class="flex items-center space-x-2 sm:space-x-3">
+                    <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
                         <button type="button" 
                                 onclick="refreshPwaApp(this)" 
-                                class="pwa-refresh-btn px-3 py-1.5 {{ $isHalloween ? 'bg-white hover:bg-slate-50 text-slate-700 border border-purple-200/50 shadow-sm' : 'bg-gray-100/90 hover:bg-gray-200 text-gray-700' }} text-xs font-bold rounded-lg transition-all inline-flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer" 
+                                class="pwa-refresh-btn px-2.5 py-1.5 sm:px-3 sm:py-1.5 {{ $isHalloween ? 'bg-[#220b38]/90 hover:bg-[#2d0e4a] text-orange-200 border border-orange-500/40 shadow-sm' : 'bg-gray-100/90 hover:bg-gray-200 text-gray-700' }} text-xs font-bold rounded-lg transition-all inline-flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer" 
                                 title="Refresh Page">
-                            <i class="fas fa-arrows-rotate text-[#8035ca] text-xs sm:text-sm"></i>
+                            <i class="fas fa-arrows-rotate text-xs sm:text-sm {{ $isHalloween ? 'text-amber-300' : 'text-[#8035ca]' }}"></i>
                             <span class="hidden sm:inline">Refresh</span>
                         </button>
 
                         @if($isHalloween)
-                            <button type="button" class="pwa-install-btn inline-flex px-3 py-1.5 bg-gradient-to-r from-[#7020eb] to-[#ea580c] hover:opacity-95 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all items-center gap-1.5 border border-orange-400/40" title="Install Loops CRM">
+                            <button type="button" class="pwa-install-btn inline-flex px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-[#7020eb] to-[#ea580c] hover:opacity-95 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all items-center gap-1.5 border border-orange-400/40" title="Install Loops CRM">
                                 <i class="fas fa-download text-xs text-orange-200"></i>
-                                <span>Install</span>
-                                <img src="{{ asset('images/halloween/pumpkin.svg') }}" class="w-4 h-4 ml-0.5 inline-block" alt="pumpkin">
+                                <span class="hidden sm:inline">Install</span>
+                                <img src="{{ asset('images/halloween/pumpkin.svg') }}" class="w-3.5 h-3.5 inline-block" alt="pumpkin">
                             </button>
                         @else
                             <button type="button" class="pwa-install-btn inline-flex px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-brand-purple to-brand-pink text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 active:scale-95 transition-all items-center gap-1.5" title="Install Loops CRM">
                                 <i class="fas fa-download text-xs"></i>
-                                <span>Install</span>
+                                <span class="hidden sm:inline">Install</span>
                             </button>
                         @endif
 
-                        <button type="button" onclick="document.getElementById('changePasswordModal').classList.remove('hidden')" class="px-3 py-1.5 {{ $isHalloween ? 'bg-white hover:bg-slate-50 text-slate-700 border border-purple-200/50 shadow-sm' : 'bg-gray-100/90 hover:bg-gray-200 text-gray-700' }} text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-sm" title="Change Password">
-                            <i class="fas fa-key text-[#8035ca]"></i>
-                            <span class="hidden sm:inline">Change Password</span>
+                        <button type="button" onclick="document.getElementById('changePasswordModal').classList.remove('hidden')" class="hidden sm:inline-flex px-3 py-1.5 {{ $isHalloween ? 'bg-[#220b38]/90 hover:bg-[#2d0e4a] text-orange-200 border border-orange-500/40 shadow-sm' : 'bg-gray-100/90 hover:bg-gray-200 text-gray-700' }} text-xs font-bold rounded-lg transition-colors items-center gap-1.5 shadow-sm" title="Change Password">
+                            <i class="fas fa-key {{ $isHalloween ? 'text-amber-300' : 'text-[#8035ca]' }}"></i>
+                            <span>Change Password</span>
                         </button>
 
                         <div x-data="{ 
@@ -602,8 +606,8 @@
                             }
                         }" class="relative">
                         <button @click="markRead()"
-                            class="relative p-2 {{ $isHalloween ? 'text-slate-700 bg-white/85 hover:bg-white border border-purple-200/50 shadow-sm rounded-lg' : 'text-gray-500 hover:text-gray-700' }} focus:outline-none transition-colors">
-                            <i class="fas fa-bell text-lg"></i>
+                            class="relative p-2 {{ $isHalloween ? 'text-orange-200 bg-[#220b38]/90 hover:bg-[#2d0e4a] border border-orange-500/40 shadow-sm rounded-lg' : 'text-gray-500 hover:text-gray-700' }} focus:outline-none transition-colors">
+                            <i class="fas fa-bell text-base sm:text-lg {{ $isHalloween ? 'text-amber-300' : '' }}"></i>
                             <template x-if="unreadCount > 0">
                                 <span
                                     class="absolute top-1 right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 {{ $isHalloween ? 'bg-orange-500' : 'bg-red-600' }} rounded-full"
