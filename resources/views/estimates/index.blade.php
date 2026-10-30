@@ -200,6 +200,12 @@
                                     <i class="fas fa-eye"></i>
                                 </a>
 
+                                <!-- Activity Logs -->
+                                <a href="{{ route('activities.index', ['search' => $estimate->reference_number]) }}"
+                                    class="text-gray-500 hover:text-brand-purple" title="View Activity Logs">
+                                    <i class="fas fa-history"></i>
+                                </a>
+
                                 <!-- Duplicate -->
                                 <button type="button" 
                                     @click="confirmDuplicate('{{ route('estimates.duplicate', $estimate) }}', '{{ $estimate->reference_number }}')"

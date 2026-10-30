@@ -324,7 +324,20 @@ class EstimateController extends Controller
 
             $this->syncProformaInvoice($estimate);
 
-            $this->logAction("Created estimate: {$estimate->reference_number}", $estimate);
+            $this->logAction("Created estimate: {$estimate->reference_number}", $estimate, [
+                'reference_number' => $estimate->reference_number,
+                'customer' => $estimate->customer->name ?? null,
+                'deal_id' => $estimate->deal_id,
+                'deal_title' => $estimate->deal->title ?? null,
+                'brand_name' => $estimate->brand_name,
+                'currency' => $estimate->currency,
+                'total_amount' => $estimate->total_amount,
+                'date' => $estimate->date,
+                'status' => $estimate->status,
+                'proforma_invoice' => $estimate->proforma_invoice,
+                'invoice_type' => $estimate->invoice_type,
+                'items_count' => count($request->items ?? []),
+            ]);
 
             \Illuminate\Support\Facades\DB::commit();
         } catch (\Throwable $e) {
@@ -348,7 +361,13 @@ class EstimateController extends Controller
     {
         $oldStatus = $estimate->status;
         $estimate->update(['status' => 'accepted']);
-        $this->logAction("Accepted estimate: {$estimate->reference_number}", $estimate);
+        $this->logAction("Accepted estimate: {$estimate->reference_number}", $estimate, [
+            'reference_number' => $estimate->reference_number,
+            'old_status' => $oldStatus,
+            'new_status' => 'accepted',
+            'total_amount' => $estimate->total_amount,
+            'customer' => $estimate->customer->name ?? null,
+        ]);
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'accepted', auth()->user()));
         }
@@ -359,7 +378,13 @@ class EstimateController extends Controller
     {
         $oldStatus = $estimate->status;
         $estimate->update(['status' => 'rejected']);
-        $this->logAction("Rejected estimate: {$estimate->reference_number}", $estimate);
+        $this->logAction("Rejected estimate: {$estimate->reference_number}", $estimate, [
+            'reference_number' => $estimate->reference_number,
+            'old_status' => $oldStatus,
+            'new_status' => 'rejected',
+            'total_amount' => $estimate->total_amount,
+            'customer' => $estimate->customer->name ?? null,
+        ]);
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, 'rejected', auth()->user()));
         }
@@ -439,6 +464,13 @@ class EstimateController extends Controller
                     }
 
                     \Illuminate\Support\Facades\DB::commit();
+
+                    $this->logAction("Auto-created temp invoice {$tempInvoiceNumber} for estimate: {$estimate->reference_number}", $estimate, [
+                        'estimate_reference' => $estimate->reference_number,
+                        'temp_invoice_number' => $tempInvoiceNumber,
+                        'total_amount' => $tempInvoice->total_amount,
+                        'customer' => $estimate->customer->name ?? null,
+                    ]);
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\DB::rollBack();
                     \Illuminate\Support\Facades\Log::error('Failed to auto-create temp invoice: ' . $e->getMessage());
@@ -447,7 +479,13 @@ class EstimateController extends Controller
             }
         }
 
-        $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate);
+        $this->logAction("Updated status to {$request->status} for estimate: {$estimate->reference_number}", $estimate, [
+            'reference_number' => $estimate->reference_number,
+            'old_status' => $oldStatus,
+            'new_status' => $request->status,
+            'total_amount' => $estimate->total_amount,
+            'customer' => $estimate->customer->name ?? null,
+        ]);
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, $request->status, auth()->user()));
         }
@@ -488,7 +526,7 @@ class EstimateController extends Controller
         $newInvoiceNumber = $prefix . str_pad($sequence, 5, '0', STR_PAD_LEFT);
 
         // Create Invoice
-        $invoice = Invoice::create([
+        $invoiceData = [
             'quotation_id' => $estimate->id,
             'customer_id' => $estimate->customer_id,
             'invoice_number' => $newInvoiceNumber,
@@ -518,8 +556,13 @@ class EstimateController extends Controller
             'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
             'date_of_delivery' => $estimate->date_of_delivery ?? null,
             'place_of_supply' => $estimate->place_of_supply ?? null,
-            'additional_information' => $estimate->additional_notes ?? null,
-        ]);
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'additional_information')) {
+            $invoiceData['additional_information'] = $estimate->additional_notes ?? null;
+        }
+
+        $invoice = Invoice::create($invoiceData);
 
         $estimate->update(['status' => 'invoiced']);
 
@@ -539,7 +582,15 @@ class EstimateController extends Controller
             ]);
         }
 
-        $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate);
+        $this->logAction("Converted estimate: {$estimate->reference_number} to invoice: {$invoice->invoice_number}", $estimate, [
+            'estimate_reference' => $estimate->reference_number,
+            'invoice_number' => $invoice->invoice_number,
+            'customer' => $estimate->customer->name ?? null,
+            'total_amount' => $invoice->total_amount,
+            'date' => $invoice->date,
+            'due_date' => $invoice->due_date,
+            'items_count' => $invoice->items()->count(),
+        ]);
         
         if ($estimate->deal) {
             $this->notifyStakeholders($estimate->deal, new EstimateInvoicedNotification($estimate, $invoice, auth()->user()));
@@ -557,6 +608,12 @@ class EstimateController extends Controller
     public function show(Estimate $estimate)
     {
         $estimate->load(['customer', 'items']);
+        $this->logAction("Viewed estimate preview/PDF: {$estimate->reference_number}", $estimate, [
+            'reference_number' => $estimate->reference_number,
+            'customer' => $estimate->customer->name ?? null,
+            'total_amount' => $estimate->total_amount,
+            'status' => $estimate->status,
+        ]);
         return view('estimates.show', compact('estimate'));
     }
 
@@ -704,6 +761,10 @@ class EstimateController extends Controller
                 return back()->with('error', 'Failed to upload replacement PO document.')->withInput();
             }
         }
+
+        $oldAttributes = $estimate->getAttributes();
+        $oldItems = $estimate->items()->get()->map(fn($it) => $it->getAttributes())->toArray();
+        $oldCosts = $estimate->thirdPartyCosts()->get()->map(fn($c) => $c->getAttributes())->toArray();
 
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
@@ -873,7 +934,28 @@ class EstimateController extends Controller
         $this->syncProformaInvoice($estimate);
         $this->syncTaxInvoices($estimate);
 
-        $this->logAction("Updated estimate: {$estimate->reference_number}", $estimate);
+        $estimate->refresh();
+        $newAttributes = $estimate->getAttributes();
+        $diff = $this->buildAttributeDiff($oldAttributes, $newAttributes);
+        $itemsDiff = $this->buildItemsDiff($oldItems, $request->items ?? []);
+        $costsDiff = $this->buildThirdPartyCostsDiff($oldCosts, $request->third_party_costs ?? []);
+
+        $summaryElements = array_filter([$diff['summary'], $itemsDiff['summary'], $costsDiff['summary']]);
+        $changeSummary = implode(' | ', $summaryElements);
+
+        $this->logAction(
+            "Updated estimate: {$estimate->reference_number}" . ($changeSummary ? " ({$changeSummary})" : ""),
+            $estimate,
+            [
+                'reference_number' => $estimate->reference_number,
+                'customer' => $estimate->customer->name ?? null,
+                'changes' => $diff['changes'],
+                'items_diff' => $itemsDiff,
+                'costs_diff' => $costsDiff,
+                'old_total' => (float)($oldAttributes['total_amount'] ?? 0),
+                'new_total' => (float)$estimate->total_amount,
+            ]
+        );
 
         \Illuminate\Support\Facades\DB::commit();
     } catch (\Throwable $e) {
@@ -899,9 +981,16 @@ class EstimateController extends Controller
     public function destroy(Estimate $estimate)
     {
         $ref = $estimate->reference_number;
+        $properties = [
+            'reference_number' => $ref,
+            'customer' => $estimate->customer->name ?? null,
+            'total_amount' => $estimate->total_amount,
+            'status' => $estimate->status,
+            'items_count' => $estimate->items()->count(),
+        ];
         $estimate->items()->delete();
         $estimate->delete();
-        $this->logAction("Deleted estimate: {$ref}");
+        $this->logAction("Deleted estimate: {$ref}", null, $properties);
 
         return redirect()->route('estimates.index')->with('success', 'Estimate deleted successfully.');
     }
@@ -918,9 +1007,9 @@ class EstimateController extends Controller
                 // Delete old items and update
                 $existingProforma->items()->delete();
                 $invoice = $existingProforma;
-                $invoice->update([
+                $proformaUpdateData = [
                     'total_amount' => $estimate->total_amount,
-                    'date' => now(), // Or $estimate->date
+                    'date' => $existingProforma->date ?: ($estimate->date ?? now()),
                     // 'due_date' => now()->addDays(30),
                     'brand_name' => $estimate->brand_name ?? null,
                     'attention_to' => $estimate->attention_to ?? null,
@@ -944,7 +1033,19 @@ class EstimateController extends Controller
                     'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
                     'date_of_delivery' => $estimate->date_of_delivery ?? null,
                     'place_of_supply' => $estimate->place_of_supply ?? null,
-                    'additional_information' => $estimate->additional_notes ?? null,
+                ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'additional_information')) {
+                    $proformaUpdateData['additional_information'] = $estimate->additional_notes ?? null;
+                }
+
+                $invoice->update($proformaUpdateData);
+
+                $this->logAction("Synced proforma invoice {$invoice->invoice_number} with estimate: {$estimate->reference_number}", $invoice, [
+                    'invoice_number' => $invoice->invoice_number,
+                    'estimate_reference' => $estimate->reference_number,
+                    'total_amount' => $invoice->total_amount,
+                    'customer' => $estimate->customer->name ?? null,
                 ]);
             } else {
                 // Generate Proforma Invoice Number (PROINV_YY_XXXX)
@@ -960,7 +1061,7 @@ class EstimateController extends Controller
                 $newInvoiceNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
 
                 // Create Proforma Invoice
-                $invoice = Invoice::create([
+                $proformaCreateData = [
                     'quotation_id' => $estimate->id,
                     'customer_id' => $estimate->customer_id,
                     'invoice_number' => $newInvoiceNumber,
@@ -991,7 +1092,21 @@ class EstimateController extends Controller
                     'proforma_with_tax' => $estimate->proforma_with_tax ?? true,
                     'date_of_delivery' => $estimate->date_of_delivery ?? null,
                     'place_of_supply' => $estimate->place_of_supply ?? null,
-                    'additional_information' => $estimate->additional_notes ?? null,
+                ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'additional_information')) {
+                    $proformaCreateData['additional_information'] = $estimate->additional_notes ?? null;
+                }
+
+                $invoice = Invoice::create($proformaCreateData);
+
+                $this->logAction("Auto-created proforma invoice {$invoice->invoice_number} for estimate: {$estimate->reference_number}", $invoice, [
+                    'invoice_number' => $invoice->invoice_number,
+                    'estimate_reference' => $estimate->reference_number,
+                    'total_amount' => $invoice->total_amount,
+                    'date' => $invoice->date,
+                    'due_date' => $invoice->due_date,
+                    'customer' => $estimate->customer->name ?? null,
                 ]);
             }
             
@@ -1011,7 +1126,14 @@ class EstimateController extends Controller
             }
         } else {
             // Delete existing proforma if it was changed to 'no'
-            Invoice::where('quotation_id', $estimate->id)->where('is_proforma', true)->delete();
+            $existingProformas = Invoice::where('quotation_id', $estimate->id)->where('is_proforma', true)->get();
+            foreach ($existingProformas as $prof) {
+                $this->logAction("Deleted proforma invoice {$prof->invoice_number} for estimate: {$estimate->reference_number} (Proforma disabled)", $estimate, [
+                    'invoice_number' => $prof->invoice_number,
+                    'estimate_reference' => $estimate->reference_number,
+                ]);
+                $prof->delete();
+            }
         }
     }
 
@@ -1044,6 +1166,12 @@ class EstimateController extends Controller
                     'revenue_category' => $item->revenue_category,
                 ]);
             }
+
+            $this->logAction("Synced tax invoice {$invoice->invoice_number} with updated estimate: {$estimate->reference_number}", $invoice, [
+                'invoice_number' => $invoice->invoice_number,
+                'estimate_reference' => $estimate->reference_number,
+                'total_amount' => $invoice->total_amount,
+            ]);
         }
     }
 
@@ -1151,7 +1279,14 @@ class EstimateController extends Controller
                 ]);
             }
 
-            $this->logAction("Duplicated estimate: {$estimate->reference_number} to new estimate {$newEstimate->reference_number}", $newEstimate);
+            $this->logAction("Duplicated estimate: {$estimate->reference_number} to new estimate {$newEstimate->reference_number}", $newEstimate, [
+                'original_estimate' => $estimate->reference_number,
+                'new_estimate' => $newEstimate->reference_number,
+                'deal_id' => $newDeal->id,
+                'job_number' => $newDeal->job_number,
+                'total_amount' => $newEstimate->total_amount,
+                'customer' => $newEstimate->customer->name ?? null,
+            ]);
 
             \Illuminate\Support\Facades\DB::commit();
 

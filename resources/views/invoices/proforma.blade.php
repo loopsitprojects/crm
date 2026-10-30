@@ -161,6 +161,10 @@
                                     title="View">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                <a href="{{ route('activities.index', ['search' => $invoice->invoice_number]) }}" class="text-gray-500 hover:text-brand-purple"
+                                    title="View Activity Logs">
+                                    <i class="fas fa-history"></i>
+                                </a>
                                 @if(auth()->user()->hasRole('Super Admin'))
                                     <a href="{{ route('invoices.edit', $invoice) }}" class="text-gray-600 hover:text-brand-blue mx-2" title="Edit">
                                         <i class="fas fa-edit"></i>

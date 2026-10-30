@@ -215,7 +215,16 @@ class TempInvoiceController extends Controller
             }
 
             // 4. Log Action
-            $this->logAction("Processed temp invoice {$tempInvoice->temp_invoice_number} into invoice: {$finalInvoice->invoice_number}", $tempInvoice->estimate);
+            $this->logAction("Processed temp invoice {$tempInvoice->temp_invoice_number} into invoice: {$finalInvoice->invoice_number}", $finalInvoice, [
+                'temp_invoice_number' => $tempInvoice->temp_invoice_number,
+                'invoice_number' => $finalInvoice->invoice_number,
+                'estimate_reference' => $tempInvoice->estimate->reference_number ?? null,
+                'customer' => $finalInvoice->customer->name ?? null,
+                'total_amount' => $finalInvoice->total_amount,
+                'date' => $finalInvoice->date,
+                'due_date' => $finalInvoice->due_date,
+                'items_count' => count($request->items ?? []),
+            ]);
 
             // 5. Delete Temp Invoice
             $tempInvoice->delete();

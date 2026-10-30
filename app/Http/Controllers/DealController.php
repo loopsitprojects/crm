@@ -1101,6 +1101,15 @@ class DealController extends Controller
             'revenue_category' => 'Retainer'
         ]);
 
+        $this->logAction("Created estimate: {$estimate->reference_number} from deal: {$deal->title}", $estimate, [
+            'reference_number' => $estimate->reference_number,
+            'deal_id' => $deal->id,
+            'deal_title' => $deal->title,
+            'customer' => $deal->customer_name,
+            'total_amount' => $estimate->total_amount,
+            'currency' => $estimate->currency,
+        ]);
+
         return $estimate;
     }
     public function createInvoice(Request $request, Deal $deal)
@@ -1167,7 +1176,12 @@ class DealController extends Controller
 
             \Illuminate\Support\Facades\DB::commit();
 
-            $this->logAction("Created temp invoice {$tempInvoice->temp_invoice_number} for estimate: {$estimate->reference_number}", $estimate);
+            $this->logAction("Created temp invoice {$tempInvoice->temp_invoice_number} for estimate: {$estimate->reference_number}", $estimate, [
+                'temp_invoice_number' => $tempInvoice->temp_invoice_number,
+                'estimate_reference' => $estimate->reference_number,
+                'customer' => $estimate->customer->name ?? null,
+                'total_amount' => $tempInvoice->total_amount,
+            ]);
 
             return response()->json([
                 'message' => 'Temp invoice created successfully.',

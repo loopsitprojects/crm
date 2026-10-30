@@ -345,6 +345,13 @@ class InvoiceController extends Controller
     public function show(Invoice $invoice)
     {
         $invoice->load(['customer', 'items']);
+        $this->logAction("Viewed invoice: {$invoice->invoice_number}", $invoice, [
+            'invoice_number' => $invoice->invoice_number,
+            'customer' => $invoice->customer->name ?? null,
+            'total_amount' => $invoice->total_amount,
+            'status' => $invoice->status,
+            'is_proforma' => (bool)$invoice->is_proforma,
+        ]);
         return view('invoices.show', compact('invoice'));
     }
 
@@ -439,6 +446,9 @@ class InvoiceController extends Controller
 
         $validated = $request->validate($validationRules);
 
+        $oldAttributes = $invoice->getAttributes();
+        $oldItems = $invoice->items()->get()->map(fn($it) => $it->getAttributes())->toArray();
+
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $updateData = [
@@ -462,8 +472,8 @@ class InvoiceController extends Controller
                 'senior_manager' => $request->senior_manager,
                 'sscl_applicable' => $request->has('sscl_applicable') ? 1 : 0,
                 'vat_applicable' => $request->has('vat_applicable') ? 1 : 0,
-                'proforma_percentage' => $request->proforma_percentage,
-                'proforma_tax' => $request->proforma_tax,
+                'proforma_percentage' => $request->has('proforma_percentage') ? $request->proforma_percentage : $invoice->proforma_percentage,
+                'proforma_tax' => $request->has('proforma_tax') ? $request->proforma_tax : $invoice->proforma_tax,
                 'is_proforma' => ($request->proforma_invoice === 'yes') ? 1 : 0,
                 'date_of_delivery' => $request->date_of_delivery,
                 'place_of_supply' => $request->place_of_supply,
@@ -481,7 +491,10 @@ class InvoiceController extends Controller
             $invoice->update($updateData);
 
             if ($invoice->wasChanged('invoice_number')) {
-                $this->logAction("Updated invoice number from {$oldInvoiceNumber} to {$invoice->invoice_number}", $invoice);
+                $this->logAction("Updated invoice number from {$oldInvoiceNumber} to {$invoice->invoice_number}", $invoice, [
+                    'old_invoice_number' => $oldInvoiceNumber,
+                    'new_invoice_number' => $invoice->invoice_number,
+                ]);
             }
 
             // Sync items
@@ -532,7 +545,25 @@ class InvoiceController extends Controller
                 'total_amount' => $grandTotal - ($request->advance_received_amount ?? 0)
             ]);
 
-            $this->logAction("Updated invoice {$invoice->invoice_number}", $invoice);
+            $invoice->refresh();
+            $newAttributes = $invoice->getAttributes();
+            $diff = $this->buildAttributeDiff($oldAttributes, $newAttributes);
+            $itemsDiff = $this->buildItemsDiff($oldItems, $request->items ?? []);
+            $summaryElements = array_filter([$diff['summary'], $itemsDiff['summary']]);
+            $changeSummary = implode(' | ', $summaryElements);
+
+            $this->logAction(
+                "Updated invoice {$invoice->invoice_number}" . ($changeSummary ? " ({$changeSummary})" : ""),
+                $invoice,
+                [
+                    'invoice_number' => $invoice->invoice_number,
+                    'customer' => $invoice->customer->name ?? null,
+                    'changes' => $diff['changes'],
+                    'items_diff' => $itemsDiff,
+                    'old_total' => (float)($oldAttributes['total_amount'] ?? 0),
+                    'new_total' => (float)$invoice->total_amount,
+                ]
+            );
 
             \Illuminate\Support\Facades\DB::commit();
 
@@ -573,8 +604,16 @@ class InvoiceController extends Controller
             }
         }
 
+        $oldStatus = $invoice->status;
         $invoice->update(['status' => $request->status]);
-        $this->logAction("Updated status to {$request->status} for invoice: {$invoice->invoice_number}", $invoice);
+        $this->logAction("Updated status to {$request->status} for invoice: {$invoice->invoice_number}" . ($oldStatus ? " (from '{$oldStatus}')" : ""), $invoice, [
+            'invoice_number' => $invoice->invoice_number,
+            'old_status' => $oldStatus,
+            'new_status' => $request->status,
+            'total_amount' => $invoice->total_amount,
+            'due_amount' => $invoice->due_amount,
+            'customer' => $invoice->customer->name ?? null,
+        ]);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
@@ -894,7 +933,15 @@ class InvoiceController extends Controller
                 ]);
             }
 
-            $this->logAction("Duplicated invoice: {$invoice->invoice_number} to new estimate", $invoice);
+            $this->logAction("Duplicated invoice: {$invoice->invoice_number} to new estimate", $invoice, [
+                'invoice_number' => $invoice->invoice_number,
+                'new_deal_id' => $newDeal->id,
+                'new_deal_job_number' => $newDeal->job_number,
+                'new_estimate_id' => $newEstimate->id,
+                'new_estimate_reference' => $newEstimate->reference_number,
+                'total_amount' => $invoice->total_amount,
+                'customer' => $invoice->customer->name ?? null,
+            ]);
 
             \Illuminate\Support\Facades\DB::commit();
 
@@ -910,9 +957,17 @@ class InvoiceController extends Controller
     {
         $invoice = Invoice::findOrFail($id);
         $num = $invoice->invoice_number;
+        $properties = [
+            'invoice_number' => $num,
+            'customer' => $invoice->customer->name ?? null,
+            'total_amount' => $invoice->total_amount,
+            'status' => $invoice->status,
+            'date' => $invoice->date,
+            'is_proforma' => (bool)$invoice->is_proforma,
+        ];
         $invoice->items()->delete();
         $invoice->delete();
-        $this->logAction("Deleted invoice: {$num}");
+        $this->logAction("Deleted invoice: {$num}", null, $properties);
 
         return redirect()->route('invoices.index')->with('success', 'Invoice deleted successfully.');
     }
@@ -938,7 +993,11 @@ class InvoiceController extends Controller
             $estimate->update(['status' => 'draft']);
 
             // 2. Log Action
-            $this->logAction("Reverted estimate {$estimate->reference_number} back to pending/draft status", $estimate);
+            $this->logAction("Reverted estimate {$estimate->reference_number} back to pending/draft status", $estimate, [
+                'estimate_reference' => $estimate->reference_number,
+                'temp_invoice_number' => $tempInvoice->temp_invoice_number,
+                'customer' => $estimate->customer->name ?? null,
+            ]);
 
             // 3. Notify Stakeholders
             if ($estimate->deal) {
@@ -1038,7 +1097,12 @@ class InvoiceController extends Controller
                 $invoice->items()->delete();
                 $invoice->delete();
 
-                $this->logAction("Reverted invoice {$invoiceNumber} to Ready to Invoice state", $estimate);
+                $this->logAction("Reverted invoice {$invoiceNumber} to Ready to Invoice state", $estimate, [
+                    'invoice_number' => $invoiceNumber,
+                    'estimate_reference' => $estimate->reference_number ?? null,
+                    'target_state' => 'ready_to_invoice',
+                    'customer' => $estimate->customer->name ?? null,
+                ]);
 
                 \Illuminate\Support\Facades\DB::commit();
 
@@ -1072,7 +1136,12 @@ class InvoiceController extends Controller
                 $invoice->items()->delete();
                 $invoice->delete();
 
-                $this->logAction("Reverted invoice {$invoiceNumber} to Estimate (Draft) state", $estimate);
+                $this->logAction("Reverted invoice {$invoiceNumber} to Estimate (Draft) state", $estimate, [
+                    'invoice_number' => $invoiceNumber,
+                    'estimate_reference' => $estimate->reference_number ?? null,
+                    'target_state' => 'draft',
+                    'customer' => $estimate->customer->name ?? null,
+                ]);
 
                 \Illuminate\Support\Facades\DB::commit();
 
@@ -1182,7 +1251,11 @@ class InvoiceController extends Controller
                 $this->notifyStakeholders($estimate->deal, new EstimateStatusChangedNotification($estimate, $oldStatus, $targetState, $user));
             }
 
-            $this->logAction("Reverted estimate {$estimate->reference_number} to " . ($targetState === 'draft' ? 'Estimate' : 'Ready to Invoice') . " state", $estimate);
+            $this->logAction("Reverted estimate {$estimate->reference_number} to " . ($targetState === 'draft' ? 'Estimate' : 'Ready to Invoice') . " state", $estimate, [
+                'estimate_reference' => $estimate->reference_number,
+                'target_state' => $targetState,
+                'customer' => $estimate->customer->name ?? null,
+            ]);
 
             \Illuminate\Support\Facades\DB::commit();
 
