@@ -29,12 +29,15 @@ class SyncAllWorkflowJobsCommand extends Command
     public function handle(WorkflowWebhookService $webhookService): int
     {
         $customUrl = $this->option('url');
-        $activeUrl = $customUrl ?: $webhookService->getWebhookUrl();
+        $urls = !empty($customUrl)
+            ? array_values(array_unique(preg_split('/[\s,;]+/', trim($customUrl), -1, PREG_SPLIT_NO_EMPTY)))
+            : $webhookService->getWebhookUrls();
+        $activeUrl = implode(', ', $urls);
 
         $this->info("=== Workflow Webhook: Bulk Sync All Jobs ===");
         $this->line("Target URL: " . ($activeUrl ?: '<NOT CONFIGURED>'));
 
-        if (empty($activeUrl)) {
+        if (empty($urls)) {
             $this->error("No webhook URL configured! Please set WORKFLOW_WEBHOOK_URL in .env or pass --url=http://...");
             return Command::FAILURE;
         }
@@ -59,7 +62,7 @@ class SyncAllWorkflowJobsCommand extends Command
         $failedCount = 0;
 
         foreach ($deals as $deal) {
-            $result = $webhookService->send($deal, 'job.created');
+            $result = $webhookService->send($deal, 'job.created', $customUrl);
             if ($result['success']) {
                 $successCount++;
             } else {

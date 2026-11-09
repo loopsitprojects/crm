@@ -213,4 +213,81 @@ class WorkflowWebhookTest extends TestCase
         $this->assertNotNull($deal->job_number);
         Http::assertNothingSent();
     }
+
+    /**
+     * Test that multiple webhook URLs (e.g. Prod and UAT) both receive the webhook.
+     */
+    public function test_multiple_webhook_urls_both_receive_webhook(): void
+    {
+        $prodUrl = 'https://lws.loopsintegrated.com/api/webhooks/crm-jobs';
+        $uatUrl = 'https://uatlws.loopsintegrated.com/api/webhooks/crm-jobs';
+
+        Config::set('services.workflow.webhook_url', "{$prodUrl},{$uatUrl}");
+        Config::set('services.workflow.webhook_secret', 'secretABC');
+
+        Http::fake([
+            $prodUrl => Http::response(['success' => true], 200),
+            $uatUrl => Http::response(['success' => true], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $customer = Customer::create([
+            'name' => 'Dual Target Client',
+            'company_name' => 'Dual Target Client',
+            'brand' => 'Dual Target Brand',
+            'email' => 'client@dualtarget.com',
+            'phone' => '0779998888',
+            'status' => 'active'
+        ]);
+
+        $deal = Deal::create([
+            'title' => 'Dual Webhook Campaign',
+            'customer_id' => $customer->id,
+            'user_id' => $user->id,
+            'customer_name' => $customer->name,
+            'revenue' => 450000,
+            'stage' => 'Working on pitch',
+        ]);
+
+        $this->assertNotNull($deal->job_number);
+
+        // Verify sent to Prod URL
+        Http::assertSent(function ($request) use ($prodUrl, $deal) {
+            $data = $request->data();
+            return $request->url() === $prodUrl
+                && $data['job_number'] === $deal->job_number
+                && $data['brand_name'] === 'Dual Target Brand';
+        });
+
+        // Verify sent to UAT URL
+        Http::assertSent(function ($request) use ($uatUrl, $deal) {
+            $data = $request->data();
+            return $request->url() === $uatUrl
+                && $data['job_number'] === $deal->job_number
+                && $data['brand_name'] === 'Dual Target Brand';
+        });
+    }
+
+    /**
+     * Test updating webhook settings with multiple valid URLs.
+     */
+    public function test_settings_can_update_multiple_webhook_urls(): void
+    {
+        $user = User::factory()->create(['role' => 'Super Admin']);
+
+        $payload = [
+            'workflow_webhook_url' => "https://lws.loopsintegrated.com/api/webhooks/crm-jobs, https://uatlws.loopsintegrated.com/api/webhooks/crm-jobs",
+            'workflow_webhook_secret' => 'test-secret',
+        ];
+
+        $response = $this->actingAs($user)->post(route('settings.webhook.update'), $payload);
+        $response->assertRedirect(route('settings.index', ['section' => 'webhook']));
+        $response->assertSessionHas('success');
+
+        $service = app(WorkflowWebhookService::class);
+        $urls = $service->getWebhookUrls();
+        $this->assertCount(2, $urls);
+        $this->assertContains('https://lws.loopsintegrated.com/api/webhooks/crm-jobs', $urls);
+        $this->assertContains('https://uatlws.loopsintegrated.com/api/webhooks/crm-jobs', $urls);
+    }
 }

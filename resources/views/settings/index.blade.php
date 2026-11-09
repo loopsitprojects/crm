@@ -2039,7 +2039,7 @@
                         $webhookService = app(\App\Services\WorkflowWebhookService::class);
                         $envUrl = env('WORKFLOW_WEBHOOK_URL');
                         $dbUrl = \App\Models\Setting::get('workflow_webhook_url');
-                        $activeUrl = $webhookService->getWebhookUrl();
+                        $activeUrls = $webhookService->getWebhookUrls();
                         $hasSecret = !empty($webhookService->getWebhookSecret());
                     @endphp
                     <section id="section-webhook" class="settings-section space-y-6 hidden">
@@ -2056,9 +2056,15 @@
                                     </p>
                                 </div>
                                 <div class="hidden sm:block text-right">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $activeUrl ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30' }}">
-                                        <span class="w-2 h-2 rounded-full mr-2 {{ $activeUrl ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
-                                        {{ $activeUrl ? 'Active & Configured' : 'URL Not Configured' }}
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ !empty($activeUrls) ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30' }}">
+                                        <span class="w-2 h-2 rounded-full mr-2 {{ !empty($activeUrls) ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
+                                        @if(count($activeUrls) > 1)
+                                            {{ count($activeUrls) }} Webhook Endpoints Active
+                                        @elseif(count($activeUrls) === 1)
+                                            Active & Configured
+                                        @else
+                                            URL Not Configured
+                                        @endif
                                     </span>
                                 </div>
                             </div>
@@ -2076,19 +2082,19 @@
                                 @csrf
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                                        Workflow Webhook URL
+                                        Workflow Webhook URL(s)
                                     </label>
-                                    <input type="url" name="workflow_webhook_url" 
-                                        value="{{ old('workflow_webhook_url', $envUrl ?: $dbUrl) }}" 
-                                        placeholder="https://your-workflow-system.com/api/webhook"
-                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-brand-purple focus:border-brand-purple">
-                                    <div class="mt-1.5 flex items-center text-xs text-gray-500 space-x-2">
+                                    <textarea name="workflow_webhook_url" rows="2"
+                                        placeholder="https://lws.loopsintegrated.com/api/webhooks/crm-jobs, https://uatlws.loopsintegrated.com/api/webhooks/crm-jobs"
+                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:ring-brand-purple focus:border-brand-purple">{{ old('workflow_webhook_url', $envUrl ?: $dbUrl) }}</textarea>
+                                    <div class="mt-1.5 text-xs text-gray-500 space-y-1">
+                                        <p>Enter one or multiple webhook URLs separated by commas or new lines. Each endpoint will receive the real-time job payload.</p>
                                         @if($envUrl)
-                                            <span class="inline-flex items-center text-emerald-600 font-medium">
+                                            <div class="flex items-center text-emerald-600 font-medium">
                                                 <i class="fas fa-check-circle mr-1"></i> Configured in .env file (<code>WORKFLOW_WEBHOOK_URL</code>)
-                                            </span>
+                                            </div>
                                         @else
-                                            <span>Tip: You can also define <code>WORKFLOW_WEBHOOK_URL=https://...</code> directly in your <code>crm/.env</code> file.</span>
+                                            <p>Tip: You can also define <code>WORKFLOW_WEBHOOK_URL=https://...</code> directly in your <code>crm/.env</code> file.</p>
                                         @endif
                                     </div>
                                 </div>
@@ -2124,7 +2130,7 @@
                                 </div>
                                 <form action="{{ route('settings.webhook.test') }}" method="POST">
                                     @csrf
-                                    <button type="submit" {{ empty($activeUrl) ? 'disabled' : '' }}
+                                    <button type="submit" {{ empty($activeUrls) ? 'disabled' : '' }}
                                         class="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm inline-flex items-center">
                                         <i class="fas fa-paper-plane mr-2"></i> Send Test Webhook Ping
                                     </button>

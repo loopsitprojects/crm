@@ -10,17 +10,47 @@ use Illuminate\Support\Facades\Log;
 class WorkflowWebhookService
 {
     /**
-     * Get the configured webhook URL.
+     * Get all configured webhook URLs as an array.
+     * Supports multiple comma, semicolon, or newline-separated URLs.
+     *
+     * @return array<string>
+     */
+    public function getWebhookUrls(): array
+    {
+        $raw = config('services.workflow.webhook_url') ?: env('WORKFLOW_WEBHOOK_URL');
+
+        if (empty($raw) && class_exists(Setting::class)) {
+            $raw = Setting::get('workflow_webhook_url');
+        }
+
+        if (empty($raw)) {
+            return [];
+        }
+
+        if (is_array($raw)) {
+            $candidates = $raw;
+        } else {
+            $candidates = preg_split('/[\s,;]+/', trim((string)$raw), -1, PREG_SPLIT_NO_EMPTY);
+        }
+
+        $urls = [];
+        foreach ($candidates as $item) {
+            $item = trim((string)$item);
+            if (!empty($item)) {
+                $urls[] = $item;
+            }
+        }
+
+        return array_values(array_unique($urls));
+    }
+
+    /**
+     * Get the configured webhook URL (primary URL for backwards compatibility).
      */
     public function getWebhookUrl(): ?string
     {
-        $url = config('services.workflow.webhook_url') ?: env('WORKFLOW_WEBHOOK_URL');
-
-        if (empty($url) && class_exists(Setting::class)) {
-            $url = Setting::get('workflow_webhook_url');
-        }
-
-        return !empty($url) ? trim((string)$url) : null;
+        $urls = $this->getWebhookUrls();
+        return $urls[0] ?? null;
     }
 
     /**
@@ -90,24 +120,67 @@ class WorkflowWebhookService
     }
 
     /**
-     * Send a webhook for a given deal.
+     * Send a webhook for a given deal to all configured webhook endpoints.
      */
-    public function send(Deal $deal, string $event = 'job.created'): array
+    public function send(Deal $deal, string $event = 'job.created', $customUrls = null): array
     {
-        $url = $this->getWebhookUrl();
+        if (!empty($customUrls)) {
+            $urls = is_array($customUrls)
+                ? array_values(array_unique($customUrls))
+                : array_values(array_unique(preg_split('/[\s,;]+/', trim((string)$customUrls), -1, PREG_SPLIT_NO_EMPTY)));
+        } else {
+            $urls = $this->getWebhookUrls();
+        }
 
-        if (empty($url)) {
+        if (empty($urls)) {
             Log::channel('single')->debug("Workflow webhook skipped for Deal #{$deal->id}: WORKFLOW_WEBHOOK_URL is not configured.");
             return [
                 'success' => false,
                 'message' => 'WORKFLOW_WEBHOOK_URL is not configured.',
                 'status' => null,
                 'payload' => null,
+                'results' => [],
             ];
         }
 
         $payload = $this->buildPayload($deal);
-        return $this->sendPayload($url, $payload, $event);
+        $results = [];
+        $overallSuccess = true;
+
+        foreach ($urls as $url) {
+            $res = $this->sendPayload($url, $payload, $event);
+            $results[$url] = $res;
+            if (!$res['success']) {
+                $overallSuccess = false;
+            }
+        }
+
+        $firstResult = reset($results);
+
+        if (count($results) === 1) {
+            return [
+                'success' => $firstResult['success'],
+                'status' => $firstResult['status'],
+                'message' => $firstResult['message'],
+                'response' => $firstResult['response'],
+                'payload' => $payload,
+                'results' => $results,
+            ];
+        }
+
+        $successCount = count(array_filter($results, fn($r) => !empty($r['success'])));
+        $totalCount = count($results);
+
+        return [
+            'success' => $overallSuccess,
+            'status' => $overallSuccess ? 200 : ($firstResult['status'] ?? 500),
+            'message' => $overallSuccess
+                ? "Delivered successfully to all {$totalCount} webhook endpoints."
+                : "Delivered to {$successCount}/{$totalCount} webhook endpoints.",
+            'response' => json_encode(array_map(fn($r) => ['status' => $r['status'], 'message' => $r['message']], $results)),
+            'payload' => $payload,
+            'results' => $results,
+        ];
     }
 
     /**
@@ -115,14 +188,17 @@ class WorkflowWebhookService
      */
     public function sendTest(?string $customUrl = null): array
     {
-        $url = $customUrl ?: $this->getWebhookUrl();
+        $urls = !empty($customUrl)
+            ? array_values(array_unique(preg_split('/[\s,;]+/', trim($customUrl), -1, PREG_SPLIT_NO_EMPTY)))
+            : $this->getWebhookUrls();
 
-        if (empty($url)) {
+        if (empty($urls)) {
             return [
                 'success' => false,
                 'message' => 'No webhook URL configured. Please set WORKFLOW_WEBHOOK_URL in .env or settings.',
                 'status' => null,
                 'payload' => null,
+                'results' => [],
             ];
         }
 
@@ -139,11 +215,48 @@ class WorkflowWebhookService
                 'message' => 'No actual jobs found in the database to send.',
                 'status' => null,
                 'payload' => null,
+                'results' => [],
             ];
         }
 
         $payload = $this->buildPayload($deal);
-        return $this->sendPayload($url, $payload, 'job.updated');
+        $results = [];
+        $overallSuccess = true;
+
+        foreach ($urls as $url) {
+            $res = $this->sendPayload($url, $payload, 'job.updated');
+            $results[$url] = $res;
+            if (!$res['success']) {
+                $overallSuccess = false;
+            }
+        }
+
+        $firstResult = reset($results);
+
+        if (count($results) === 1) {
+            return [
+                'success' => $firstResult['success'],
+                'status' => $firstResult['status'],
+                'message' => $firstResult['message'],
+                'response' => $firstResult['response'],
+                'payload' => $payload,
+                'results' => $results,
+            ];
+        }
+
+        $successCount = count(array_filter($results, fn($r) => !empty($r['success'])));
+        $totalCount = count($results);
+
+        return [
+            'success' => $overallSuccess,
+            'status' => $overallSuccess ? 200 : ($firstResult['status'] ?? 500),
+            'message' => $overallSuccess
+                ? "Delivered test webhook successfully to all {$totalCount} endpoints."
+                : "Test delivered to {$successCount}/{$totalCount} endpoints.",
+            'response' => json_encode(array_map(fn($r) => ['status' => $r['status'], 'message' => $r['message']], $results)),
+            'payload' => $payload,
+            'results' => $results,
+        ];
     }
 
     /**

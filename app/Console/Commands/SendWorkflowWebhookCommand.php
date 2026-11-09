@@ -36,12 +36,16 @@ class SendWorkflowWebhookCommand extends Command
         $jobNumber = $this->option('job');
         $all = $this->option('all');
 
-        $activeUrl = $customUrl ?: $webhookService->getWebhookUrl();
+        $urls = !empty($customUrl)
+            ? array_values(array_unique(preg_split('/[\s,;]+/', trim($customUrl), -1, PREG_SPLIT_NO_EMPTY)))
+            : $webhookService->getWebhookUrls();
+        $activeUrl = implode(', ', $urls);
+
         $this->info("=== Workflow Webhook Dispatcher ===");
         $this->line("Target URL: " . ($activeUrl ?: '<NOT CONFIGURED>'));
         $this->line("Secret:     " . ($webhookService->getWebhookSecret() ? '<CONFIGURED (HMAC-SHA256)>' : '<NONE>'));
 
-        if (empty($activeUrl)) {
+        if (empty($urls)) {
             $this->error("No webhook URL configured! Please set WORKFLOW_WEBHOOK_URL in your .env file or pass --url=http://...");
             return Command::FAILURE;
         }
@@ -61,7 +65,7 @@ class SendWorkflowWebhookCommand extends Command
             $failedCount = 0;
 
             foreach ($deals as $deal) {
-                $result = $webhookService->send($deal, 'job.created');
+                $result = $webhookService->send($deal, 'job.created', $customUrl);
                 if ($result['success']) {
                     $successCount++;
                 } else {
@@ -107,7 +111,7 @@ class SendWorkflowWebhookCommand extends Command
             }
 
             $this->info("Dispatching latest actual job from database: Deal #{$deal->id} (Job: {$deal->job_number})...");
-            $result = $webhookService->send($deal, 'job.updated');
+            $result = $webhookService->send($deal, 'job.updated', $customUrl);
         }
 
         $this->newLine();

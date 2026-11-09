@@ -1046,7 +1046,19 @@ class SettingController extends Controller
         }
 
         $request->validate([
-            'workflow_webhook_url' => 'nullable|url|max:500',
+            'workflow_webhook_url' => [
+                'nullable',
+                'string',
+                'max:1500',
+                function ($attribute, $value, $fail) {
+                    $urls = preg_split('/[\s,;]+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+                    foreach ($urls as $u) {
+                        if (!filter_var($u, FILTER_VALIDATE_URL)) {
+                            $fail("The {$attribute} contains an invalid URL: {$u}");
+                        }
+                    }
+                },
+            ],
             'workflow_webhook_secret' => 'nullable|string|max:255',
         ]);
 
@@ -1064,16 +1076,19 @@ class SettingController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $url = $request->input('workflow_webhook_url') ?: $webhookService->getWebhookUrl();
+        $urlInput = $request->input('workflow_webhook_url');
+        $urls = !empty($urlInput)
+            ? array_values(array_unique(preg_split('/[\s,;]+/', trim($urlInput), -1, PREG_SPLIT_NO_EMPTY)))
+            : $webhookService->getWebhookUrls();
 
-        if (empty($url)) {
+        if (empty($urls)) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'No webhook URL configured.'], 422);
             }
             return back()->with('error', 'No webhook URL configured.')->with('section', 'webhook');
         }
 
-        $result = $webhookService->sendTest($url);
+        $result = $webhookService->sendTest($urlInput);
 
         if ($request->wantsJson()) {
             return response()->json($result);
