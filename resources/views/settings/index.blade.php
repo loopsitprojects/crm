@@ -63,6 +63,11 @@
                             id="btn-webhook">
                             <i class="fas fa-network-wired mr-2 text-purple-600"></i> Workflow Webhook
                         </button>
+                        <button onclick="showSection('google-auth')"
+                            class="section-btn text-left px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-lg bg-white shadow-sm border border-gray-100 hover:border-brand-blue transition-all shrink-0 text-xs sm:text-sm"
+                            id="btn-google-auth">
+                            <i class="fab fa-google mr-2 text-rose-500"></i> Google Authentication
+                        </button>
                     @endif
                     @if(auth()->user()->isITAdmin())
                         <button onclick="showSection('financial-performance-settings')"
@@ -2153,6 +2158,147 @@
 }</pre>
                                 </div>
                             </div>
+                        </div>
+                    </section>
+
+                    <!-- Google Authentication (SSO) Section -->
+                    @php
+                        $googleDbClientId = \App\Models\Setting::get('google_client_id');
+                        $googleDbClientSecret = \App\Models\Setting::get('google_client_secret');
+                        $googleClientId = !empty($googleDbClientId) ? $googleDbClientId : (config('services.google.client_id') ?: env('GOOGLE_CLIENT_ID'));
+                        $googleClientSecret = !empty($googleDbClientSecret) ? $googleDbClientSecret : (config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET'));
+                        $googleRedirectUri = url('/auth/google/callback');
+                        $isGoogleConfigured = !empty($googleClientId) && !empty($googleClientSecret);
+                    @endphp
+                    <section id="section-google-auth" class="settings-section space-y-6 hidden">
+                        <!-- Overview Header -->
+                        <div class="bg-gradient-to-r from-red-600 via-rose-600 to-orange-600 rounded-xl shadow-md p-6 text-white">
+                            <div class="flex items-start justify-between flex-wrap gap-4">
+                                <div>
+                                    <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20 text-white mb-2">
+                                        <i class="fab fa-google mr-1.5"></i> Single Sign-On (SSO)
+                                    </div>
+                                    <h3 class="text-xl font-bold">Google Authentication</h3>
+                                    <p class="text-red-100 text-sm mt-1 max-w-2xl">
+                                        Enable seamless, one-click sign in for your team using their Google accounts.
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold {{ $isGoogleConfigured ? 'bg-emerald-400/20 text-emerald-100 border border-emerald-400/30' : 'bg-amber-400/20 text-amber-100 border border-amber-400/30' }}">
+                                        <span class="w-2 h-2 rounded-full mr-2 {{ $isGoogleConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-300' }}"></span>
+                                        {{ $isGoogleConfigured ? 'Active & Ready' : 'Needs Setup' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuration Card -->
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                                <div>
+                                    <h4 class="text-base font-bold text-gray-800">OAuth 2.0 Credentials</h4>
+                                    <p class="text-xs text-gray-500">Credentials can be configured here in database settings or via your <code>.env</code> file.</p>
+                                </div>
+                            </div>
+
+                            <form action="{{ route('settings.google-auth.update') }}" method="POST" class="p-6 space-y-6">
+                                @csrf
+
+                                <!-- Authorized Redirect URI (Read-only Copyable) -->
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+                                        Authorized Redirect URI <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" readonly id="google_redirect_uri_display"
+                                            value="{{ $googleRedirectUri }}"
+                                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono text-gray-700 select-all focus:ring-rose-500 focus:border-rose-500">
+                                        <button type="button" onclick="navigator.clipboard.writeText('{{ $googleRedirectUri }}'); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy', 2000)"
+                                            class="px-4 py-2.5 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition shrink-0">
+                                            Copy
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1.5">
+                                        Paste this exact URL into your Google Cloud Console under <strong>Authorized redirect URIs</strong>.
+                                    </p>
+                                </div>
+
+                                <!-- Client ID -->
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+                                        Google Client ID <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" name="google_client_id"
+                                        value="{{ old('google_client_id', $googleClientId) }}"
+                                        placeholder="e.g. 1234567890-abcdefg1234567.apps.googleusercontent.com"
+                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:ring-rose-500 focus:border-rose-500">
+                                    <p class="text-xs text-gray-500 mt-1">Obtained from Google Cloud Console &gt; APIs & Services &gt; Credentials &gt; OAuth 2.0 Client IDs.</p>
+                                </div>
+
+                                <!-- Client Secret -->
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
+                                        Google Client Secret <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="password" name="google_client_secret" id="google_client_secret"
+                                        value="{{ old('google_client_secret', $googleClientSecret) }}"
+                                        placeholder="e.g. GOCSPX-xxxxxxxxxxxxxxxxxxxx"
+                                        class="w-full px-3.5 py-2.5 border border-gray-300 rounded-lg text-sm font-mono focus:ring-rose-500 focus:border-rose-500">
+                                    <div class="flex items-center justify-between mt-1">
+                                        <p class="text-xs text-gray-500">Keep this secret safe. Only Super Admins and IT Admins can view or modify it.</p>
+                                        <button type="button" onclick="const f = document.getElementById('google_client_secret'); f.type = f.type === 'password' ? 'text' : 'password'; this.innerText = f.type === 'password' ? 'Show' : 'Hide';"
+                                            class="text-xs text-rose-600 hover:text-rose-800 font-medium">
+                                            Show
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="pt-4 border-t border-gray-100 flex items-center justify-between">
+                                    <a href="{{ route('auth.google') }}" target="_blank"
+                                        class="inline-flex items-center text-xs font-medium text-gray-600 hover:text-gray-900 {{ !$isGoogleConfigured ? 'pointer-events-none opacity-40' : '' }}">
+                                        <i class="fas fa-external-link-alt mr-1.5"></i> Test Google Sign-in flow
+                                    </a>
+                                    <button type="submit"
+                                        class="px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium rounded-lg shadow-sm hover:shadow text-sm transition">
+                                        <i class="fas fa-save mr-2"></i> Save Google Auth Settings
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Instructions / Setup Guide Card -->
+                        <div class="bg-white rounded-xl shadow-md p-6 space-y-4">
+                            <h4 class="text-base font-bold text-gray-800 flex items-center">
+                                <i class="fas fa-info-circle text-rose-500 mr-2"></i> How to set up Google OAuth in Google Cloud Console
+                            </h4>
+                            <ol class="list-decimal list-inside text-xs sm:text-sm text-gray-600 space-y-2.5">
+                                <li>
+                                    Open the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="text-rose-600 hover:underline font-semibold">Google Cloud Console Credentials page <i class="fas fa-external-link-alt text-[10px]"></i></a>.
+                                </li>
+                                <li>
+                                    Select or create a Google Cloud Project (e.g., <em>Loops CRM</em>).
+                                </li>
+                                <li>
+                                    Under <strong>OAuth consent screen</strong>, configure your app name (<em>Loops CRM</em>), user support email, and select <strong>Internal</strong> (if Google Workspace organization only) or <strong>External</strong>.
+                                </li>
+                                <li>
+                                    Go to <strong>Credentials</strong> &gt; <strong>Create Credentials</strong> &gt; <strong>OAuth client ID</strong>.
+                                </li>
+                                <li>
+                                    Choose <strong>Web application</strong> as the application type.
+                                </li>
+                                <li>
+                                    Under <strong>Authorized redirect URIs</strong>, click <em>ADD URI</em> and paste:
+                                    <div class="mt-1 p-2 bg-slate-100 rounded text-slate-800 font-mono text-xs select-all">{{ $googleRedirectUri }}</div>
+                                </li>
+                                <li>
+                                    Click <strong>Create</strong>, copy the generated <strong>Client ID</strong> and <strong>Client Secret</strong>, paste them into the form above, and click <strong>Save Google Auth Settings</strong>.
+                                </li>
+                                <li>
+                                    <strong>Access Control:</strong> Users must exist in the CRM Users table matching their Google email address. Unregistered users cannot self-register through Google login.
+                                </li>
+                            </ol>
                         </div>
                     </section>
                 @endif

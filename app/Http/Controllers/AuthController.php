@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Laravel\Socialite\Facades\Socialite;
 use App\Models\Setting;
 use App\Models\User;
 use App\Traits\LogsActivity;
@@ -98,6 +100,152 @@ class AuthController extends Controller
         return back()->withErrors([
             'email' => 'The provided credentials do not match our records.',
         ])->onlyInput('email');
+    }
+
+    /**
+     * Get Google OAuth configuration from services, env, or database settings.
+     */
+    protected function getGoogleConfig(): array
+    {
+        $dbClientId = class_exists(Setting::class) ? Setting::get('google_client_id') : null;
+        $clientId = !empty($dbClientId) ? $dbClientId : (config('services.google.client_id') ?: env('GOOGLE_CLIENT_ID'));
+
+        $dbClientSecret = class_exists(Setting::class) ? Setting::get('google_client_secret') : null;
+        $clientSecret = !empty($dbClientSecret) ? $dbClientSecret : (config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET'));
+
+        $dbRedirect = class_exists(Setting::class) ? Setting::get('google_redirect_uri') : null;
+        $redirect = !empty($dbRedirect)
+            ? $dbRedirect
+            : (config('services.google.redirect') ?: env('GOOGLE_REDIRECT_URI') ?: url('/auth/google/callback'));
+
+        return [
+            'client_id' => $clientId ? trim((string)$clientId) : null,
+            'client_secret' => $clientSecret ? trim((string)$clientSecret) : null,
+            'redirect' => $redirect ? trim((string)$redirect) : url('/auth/google/callback'),
+        ];
+    }
+
+    /**
+     * Redirect the user to the Google authentication page.
+     */
+    public function redirectToGoogle()
+    {
+        $config = $this->getGoogleConfig();
+
+        if (empty($config['client_id']) || empty($config['client_secret'])) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Google authentication is not yet configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file or CRM Settings.',
+            ]);
+        }
+
+        config([
+            'services.google.client_id' => $config['client_id'],
+            'services.google.client_secret' => $config['client_secret'],
+            'services.google.redirect' => $config['redirect'],
+        ]);
+
+        return Socialite::driver('google')->redirect();
+    }
+
+    /**
+     * Obtain the user information from Google.
+     */
+    public function handleGoogleCallback(Request $request)
+    {
+        if ($request->has('error')) {
+            $errorDesc = $request->get('error_description') ?: $request->get('error');
+            return redirect()->route('login')->withErrors([
+                'email' => 'Google sign-in was cancelled or encountered an error: ' . $errorDesc,
+            ]);
+        }
+
+        $config = $this->getGoogleConfig();
+
+        if (empty($config['client_id']) || empty($config['client_secret'])) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Google authentication is not configured.',
+            ]);
+        }
+
+        config([
+            'services.google.client_id' => $config['client_id'],
+            'services.google.client_secret' => $config['client_secret'],
+            'services.google.redirect' => $config['redirect'],
+        ]);
+
+        try {
+            $googleUser = Socialite::driver('google')->user();
+        } catch (\Laravel\Socialite\Two\InvalidStateException $e) {
+            try {
+                $googleUser = Socialite::driver('google')->stateless()->user();
+            } catch (\Throwable $ex) {
+                Log::warning('Google Auth fallback error: ' . $ex->getMessage());
+                return redirect()->route('login')->withErrors([
+                    'email' => 'Google authentication session expired. Please try again.',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Google Auth callback exception: ' . $e->getMessage());
+            return redirect()->route('login')->withErrors([
+                'email' => 'Unable to authenticate with Google. Please try again or sign in with your email and password.',
+            ]);
+        }
+
+        $email = strtolower(trim((string)$googleUser->getEmail()));
+        $googleId = (string)$googleUser->getId();
+        $avatar = $googleUser->getAvatar();
+
+        if (empty($email)) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'Google did not return an email address for your account.',
+            ]);
+        }
+
+        // Match user by google_id first, then email
+        $user = User::where('google_id', $googleId)->first();
+        if (!$user) {
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+        }
+
+        if (!$user) {
+            return redirect()->route('login')->withErrors([
+                'email' => "No CRM account is associated with {$email}. Please contact your administrator to set up an account.",
+            ]);
+        }
+
+        // Check maintenance mode authorization
+        $mode = (int) Setting::get('maintenance_mode', 0);
+        if ($mode == 1 || $mode == 2) {
+            $isAllowed = false;
+            if ($mode == 1 && ($user->hasRole('IT Admin') || $user->hasAdminPrivileges())) {
+                $isAllowed = true;
+            } elseif ($mode == 2 && $user->hasRole('IT Admin')) {
+                $isAllowed = true;
+            }
+
+            if (!$isAllowed) {
+                return redirect()->route('maintenance');
+            }
+        }
+
+        // Update google_id and avatar if changed or missing
+        $updateData = [];
+        if (empty($user->google_id) || $user->google_id !== $googleId) {
+            $updateData['google_id'] = $googleId;
+        }
+        if (!empty($avatar) && $user->avatar !== $avatar) {
+            $updateData['avatar'] = $avatar;
+        }
+        if (!empty($updateData)) {
+            $user->update($updateData);
+        }
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        $this->logAction('Logged in via Google', $user);
+
+        return redirect()->intended(route('dashboard'));
     }
 
     public function changePassword(Request $request)

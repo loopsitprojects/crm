@@ -48,6 +48,8 @@ class User extends Authenticatable
         'role',
         'supervisor_id',
         'department',
+        'google_id',
+        'avatar',
     ];
 
     /**

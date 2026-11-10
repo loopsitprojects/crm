@@ -18,6 +18,10 @@ Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->middleware('throttle:15,1')->name('login.post');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+// Google Authentication Routes
+Route::get('auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+
 // Password Reset Routes (Email OTP)
 Route::get('forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
 Route::post('forgot-password', [AuthController::class, 'sendOtp'])->middleware('throttle:6,1')->name('password.email');
@@ -301,6 +305,9 @@ Route::middleware(['auth'])->group(function () {
             // Workflow Webhook Settings
             Route::post('settings/webhook', [SettingController::class, 'updateWebhook'])->name('settings.webhook.update');
             Route::post('settings/webhook/test', [SettingController::class, 'testWorkflowWebhook'])->name('settings.webhook.test');
+
+            // Google Authentication Settings
+            Route::post('settings/google-auth', [SettingController::class, 'updateGoogleAuth'])->name('settings.google-auth.update');
 
             // Financial Performance Permissions Setting
             Route::post('settings/financial-performance-permissions', [SettingController::class, 'updateFinancialPerformancePermissions'])->name('settings.updateFinancialPerformancePermissions');

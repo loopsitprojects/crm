@@ -23,8 +23,8 @@ class MaintenanceModeMiddleware
         // Mode 1: Admin Maintenance Mode (Blocks standard roles, allows IT Admin & Super Admin)
         // Mode 2: Full IT Maintenance Mode (Blocks all roles except IT Admin)
         if ($mode == 1 || $mode == 2) {
-            // Allow access to login, logout, maintenance page and health check
-            if ($request->is('login') || $request->is('logout') || $request->is('maintenance') || $request->is('up')) {
+            // Allow access to login, logout, maintenance page, health check, and Google OAuth
+            if ($request->is('login') || $request->is('logout') || $request->is('maintenance') || $request->is('up') || $request->is('auth/google*')) {
                 return $next($request);
             }
 

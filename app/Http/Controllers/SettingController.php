@@ -1102,6 +1102,28 @@ class SettingController extends Controller
     }
 
     /**
+     * Update Google OAuth settings.
+     */
+    public function updateGoogleAuth(Request $request)
+    {
+        if (!auth()->user()->hasAdminPrivileges() && !auth()->user()->hasRole('IT Admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'google_client_id' => 'nullable|string|max:500',
+            'google_client_secret' => 'nullable|string|max:500',
+        ]);
+
+        Setting::set('google_client_id', $request->input('google_client_id'), 'integrations');
+        Setting::set('google_client_secret', $request->input('google_client_secret'), 'integrations');
+
+        return redirect()->route('settings.index', ['section' => 'google-auth'])
+            ->with('success', 'Google authentication settings updated successfully.')
+            ->with('section', 'google-auth');
+    }
+
+    /**
      * Update access permissions for the Financial Performance Dashboard.
      * Restricted to IT Admin only.
      */
