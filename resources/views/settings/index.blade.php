@@ -2167,7 +2167,17 @@
                         $googleDbClientSecret = \App\Models\Setting::get('google_client_secret');
                         $googleClientId = !empty($googleDbClientId) ? $googleDbClientId : (config('services.google.client_id') ?: env('GOOGLE_CLIENT_ID'));
                         $googleClientSecret = !empty($googleDbClientSecret) ? $googleDbClientSecret : (config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET'));
-                        $googleRedirectUri = url('/auth/google/callback');
+
+                        $currHost = request()->getHost();
+                        if (in_array($currHost, ['localhost', '127.0.0.1'])) {
+                            $googleRedirectUri = request()->getSchemeAndHttpHost() . '/auth/google/callback';
+                        } else {
+                            $googleRedirectUri = url('/auth/google/callback');
+                            $parsedHost = parse_url($googleRedirectUri, PHP_URL_HOST);
+                            if (!in_array($parsedHost, ['localhost', '127.0.0.1'])) {
+                                $googleRedirectUri = preg_replace('/^http:/i', 'https:', $googleRedirectUri);
+                            }
+                        }
                         $isGoogleConfigured = !empty($googleClientId) && !empty($googleClientSecret);
                     @endphp
                     <section id="section-google-auth" class="settings-section space-y-6 hidden">
@@ -2289,8 +2299,19 @@
                                     Choose <strong>Web application</strong> as the application type.
                                 </li>
                                 <li>
-                                    Under <strong>Authorized redirect URIs</strong>, click <em>ADD URI</em> and paste:
-                                    <div class="mt-1 p-2 bg-slate-100 rounded text-slate-800 font-mono text-xs select-all">{{ $googleRedirectUri }}</div>
+                                    Under <strong>Authorized redirect URIs</strong>, click <em>ADD URI</em> and add your callback URIs:
+                                    <div class="mt-2 space-y-1.5 font-mono text-xs">
+                                        <div class="p-2 bg-slate-100 rounded text-slate-800 select-all flex items-center justify-between">
+                                            <span><strong>Production:</strong> https://crm.loopsintegrated.com/auth/google/callback</span>
+                                        </div>
+                                        <div class="p-2 bg-slate-100 rounded text-slate-800 select-all flex items-center justify-between">
+                                            <span><strong>Local (127.0.0.1):</strong> http://127.0.0.1:8000/auth/google/callback</span>
+                                        </div>
+                                        <div class="p-2 bg-slate-100 rounded text-slate-800 select-all flex items-center justify-between">
+                                            <span><strong>Local (localhost):</strong> http://localhost:8000/auth/google/callback</span>
+                                        </div>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 mt-1">You can add multiple authorized URIs in Google Cloud Console so both local testing and live production work simultaneously.</p>
                                 </li>
                                 <li>
                                     Click <strong>Create</strong>, copy the generated <strong>Client ID</strong> and <strong>Client Secret</strong>, paste them into the form above, and click <strong>Save Google Auth Settings</strong>.

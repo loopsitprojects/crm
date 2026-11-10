@@ -88,6 +88,20 @@ class GoogleAuthTest extends TestCase
         $response->assertRedirect('https://accounts.google.com/o/oauth2/auth');
     }
 
+    public function test_redirect_to_google_uses_local_uri_when_requested_on_localhost(): void
+    {
+        Config::set('services.google.client_id', 'test-client-id');
+        Config::set('services.google.client_secret', 'test-client-secret');
+
+        $provider = Mockery::mock('Laravel\Socialite\Two\GoogleProvider');
+        $provider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get('http://127.0.0.1:8000/auth/google');
+
+        $this->assertEquals('http://127.0.0.1:8000/auth/google/callback', config('services.google.redirect'));
+    }
+
     public function test_google_callback_logs_in_existing_user_and_saves_google_id_and_avatar(): void
     {
         Config::set('services.google.client_id', 'test-client-id');

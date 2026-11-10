@@ -113,10 +113,29 @@ class AuthController extends Controller
         $dbClientSecret = class_exists(Setting::class) ? Setting::get('google_client_secret') : null;
         $clientSecret = !empty($dbClientSecret) ? $dbClientSecret : (config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET'));
 
-        $dbRedirect = class_exists(Setting::class) ? Setting::get('google_redirect_uri') : null;
-        $redirect = !empty($dbRedirect)
-            ? $dbRedirect
-            : (config('services.google.redirect') ?: env('GOOGLE_REDIRECT_URI') ?: url('/auth/google/callback'));
+        $host = request()->getHost();
+
+        // When running locally on 127.0.0.1 or localhost, dynamically use the current local host & port
+        if (in_array($host, ['localhost', '127.0.0.1'])) {
+            $redirect = request()->getSchemeAndHttpHost() . '/auth/google/callback';
+        } else {
+            $dbRedirect = class_exists(Setting::class) ? Setting::get('google_redirect_uri') : null;
+            $envRedirect = env('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect');
+
+            if (!empty($dbRedirect)) {
+                $redirect = $dbRedirect;
+            } elseif (!empty($envRedirect)) {
+                $redirect = $envRedirect;
+            } else {
+                $redirect = url('/auth/google/callback');
+            }
+
+            // Google OAuth strictly forbids HTTP for custom domain names; ensure https:// is used
+            $parsedHost = parse_url($redirect, PHP_URL_HOST);
+            if (!in_array($parsedHost, ['localhost', '127.0.0.1'])) {
+                $redirect = preg_replace('/^http:/i', 'https:', $redirect);
+            }
+        }
 
         return [
             'client_id' => $clientId ? trim((string)$clientId) : null,
