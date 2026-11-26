@@ -34,52 +34,56 @@
 </style>
 @endpush
 
-@section('header')
-    <div class="flex justify-between items-center no-print w-full" x-data="{ showDuplicateModal: false }">
-        <span class="font-semibold text-gray-700">Estimate Preview</span>
-        <div class="space-x-2">
-            <button type="button" @click="showDuplicateModal = true"
-                class="bg-brand-purple hover:bg-brand-blue text-white px-4 py-2 rounded shadow-sm text-sm transition-colors inline-flex items-center">
-                <i class="fas fa-copy mr-2"></i> Duplicate Estimate
-            </button>
-            <button onclick="window.print()"
-                class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded shadow-sm text-sm transition-colors">
-                <i class="fas fa-print mr-2"></i> Print / Save as PDF
-            </button>
-            <a href="{{ route('estimates.index') }}"
-                class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm text-sm transition-colors">
-                Back to List
-            </a>
-        </div>
+@section('header', 'Estimate Preview')
+
+@section('content')
+    <!-- Action Bar: kept out of the shared header (which truncates/clips a single-line row) so buttons can wrap instead of getting cut off -->
+    <div class="no-print mb-4 flex flex-wrap items-center justify-end gap-2" x-data="{ showDuplicateModal: false }">
+        <button type="button" @click="showDuplicateModal = true"
+            class="bg-brand-purple hover:bg-brand-blue text-white px-4 py-2 rounded shadow-sm text-sm transition-colors inline-flex items-center">
+            <i class="fas fa-copy mr-2"></i> Duplicate Estimate
+        </button>
+        <button id="download-btn" onclick="downloadPDF()"
+            class="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded shadow-sm text-sm transition-colors inline-flex items-center">
+            <i class="fas fa-download mr-2"></i> Download as PDF
+        </button>
+        <button onclick="window.print()"
+            class="bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded shadow-sm text-sm transition-colors">
+            <i class="fas fa-print mr-2"></i> Print / Save as PDF
+        </button>
+        <a href="{{ route('estimates.index') }}"
+            class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm text-sm transition-colors">
+            Back to List
+        </a>
 
         <!-- Customized Duplicate Confirmation Modal -->
-        <div x-show="showDuplicateModal" 
-            class="fixed inset-0 z-50 overflow-y-auto text-left" 
+        <div x-show="showDuplicateModal"
+            class="fixed inset-0 z-50 overflow-y-auto text-left"
             style="display: none;">
             <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <div x-show="showDuplicateModal" 
-                    x-transition:enter="ease-out duration-300" 
-                    x-transition:enter-start="opacity-0" 
-                    x-transition:enter-end="opacity-100" 
-                    x-transition:leave="ease-in duration-200" 
-                    x-transition:leave-start="opacity-100" 
-                    x-transition:leave-end="opacity-0" 
+                <div x-show="showDuplicateModal"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0"
+                    x-transition:enter-end="opacity-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100"
+                    x-transition:leave-end="opacity-0"
                     class="fixed inset-0 transition-opacity" aria-hidden="true">
                     <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
                 </div>
 
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
-                <div x-show="showDuplicateModal" 
-                    x-transition:enter="ease-out duration-300" 
-                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                    x-transition:leave="ease-in duration-200" 
-                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                <div x-show="showDuplicateModal"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                     class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full"
                     @click.away="showDuplicateModal = false">
-                    
+
                     <div class="bg-white px-6 pt-6 pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-brand-purple bg-opacity-10 sm:mx-0 sm:h-10 sm:w-10">
@@ -123,10 +127,10 @@
             </div>
         </div>
     </div>
-@endsection
 
-@section('content')
-    <div class="max-w-[210mm] mx-auto bg-white shadow-2xl my-10 min-h-[297mm] relative print:shadow-none print:w-full print:m-0 print:border-none"
+    <!-- Horizontal scroll wrapper so the fixed-layout document scrolls on narrow screens instead of squishing -->
+    <div class="overflow-x-auto print:overflow-visible">
+    <div class="max-w-[210mm] mx-auto bg-white shadow-2xl my-10 relative print:shadow-none print:w-full print:m-0 print:border-none print:min-h-[297mm] min-w-[650px] print:min-w-0"
         id="invoice-container">
         <!-- Top Colored Bar -->
         <div class="h-2 bg-brand-pink w-full absolute top-0 left-0 print:bg-brand-pink"></div>
@@ -190,7 +194,7 @@
                     <div class="w-1/3 text-right">
                         @if($estimate->heading)
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Subject</h3>
-                            <p class="text-gray-800 font-medium text-lg leading-tight">{{ $estimate->heading }}</p>
+                            <p class="text-gray-700 font-semibold text-sm leading-snug break-words">{{ $estimate->heading }}</p>
                         @endif
                     </div>
                 </div>
@@ -307,6 +311,7 @@
             <div class="absolute bottom-0 left-0 w-full h-2 bg-gray-100 print:bg-gray-100"></div>
         </div>
     </div>
+    </div>
 
     <style>
         /* Base styles for BOTH screen and print to ensure perfect match */
@@ -383,10 +388,72 @@
                 border-collapse: collapse !important;
             }
         }
+
+        /* PDF Generation Specific Styles to strip screen spacing/margins/shadows */
+        body.generating-pdf {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        body.generating-pdf #paginated-estimate-view {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.generating-pdf .a4-page {
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            page-break-after: always;
+            break-after: page;
+        }
+        body.generating-pdf .a4-page:last-child {
+            page-break-after: avoid !important;
+            break-after: avoid !important;
+        }
     </style>
 @endsection
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    function downloadPDF() {
+        // Toggle PDF generation styles to remove screen margins and shadows
+        document.body.classList.add('generating-pdf');
+
+        const element = document.getElementById('paginated-estimate-view') || document.getElementById('invoice-container');
+
+        const btn = document.getElementById('download-btn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generating PDF...';
+
+        const opt = {
+            margin:       0,
+            filename:     'Estimate-{{ $estimate->reference_number }}.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                letterRendering: false
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            document.body.classList.remove('generating-pdf');
+        }).catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            document.body.classList.remove('generating-pdf');
+            alert('Failed to generate PDF. Please try again.');
+        });
+    }
+</script>
 <script>
 window.addEventListener("load", function () {
     // Only run on desktop screen mode
@@ -661,17 +728,14 @@ window.addEventListener("load", function () {
     // Helper to create page elements
     function createPageElement(pageNum) {
         const div = document.createElement('div');
-        div.className = 'a4-page bg-white shadow-2xl my-4 mx-auto relative';
+        div.className = 'a4-page bg-white shadow-2xl my-4 mx-auto relative print:min-h-[297mm]';
         div.style.width = '210mm';
-        div.style.height = '297mm';
         div.style.boxSizing = 'border-box';
         div.style.border = '1px solid #e5e7eb';
         div.style.borderRadius = '4px';
-        div.style.overflow = 'hidden';
-        
+
         const inner = document.createElement('div');
         inner.className = 'page-content p-12';
-        inner.style.height = '100%';
         inner.style.boxSizing = 'border-box';
         div.appendChild(inner);
 

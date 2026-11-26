@@ -64,8 +64,32 @@ class PettyCashController extends Controller
             $query->where('user_id', $user->id);
         }
 
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+        $type = $request->input('type', 'all');
+
+        // Apply status filter if provided
+        if ($request->has('status') && $request->status !== 'all' && $request->status !== '') {
+            if ($request->status === 'approved') {
+                $query->whereIn('status', ['approved', 'iou_issued']);
+            } else {
+                $query->where('status', $request->status);
+            }
+        }
+
+        // Calculate counts for Request Type before applying the type filter so badges reflect scope & status
+        $baseTypeQuery = clone $query;
+        $totalCount = (clone $baseTypeQuery)->count();
+        $pettyCashCount = (clone $baseTypeQuery)->where(function ($q) {
+            $q->where('is_iou', false)->orWhereNull('is_iou');
+        })->count();
+        $iouCount = (clone $baseTypeQuery)->where('is_iou', true)->count();
+
+        // Apply type filter (Petty Cash vs IOU)
+        if ($type === 'iou') {
+            $query->where('is_iou', true);
+        } elseif ($type === 'petty_cash') {
+            $query->where(function ($q) {
+                $q->where('is_iou', false)->orWhereNull('is_iou');
+            });
         }
 
         $pettyCashes = $query->orderBy('created_at', 'desc')->get();
@@ -116,7 +140,19 @@ class PettyCashController extends Controller
                 return [$deal->job_number => $label];
             });
 
-        return view('petty-cash.index', compact('pettyCashes', 'expenseCategories', 'hods', 'jobs', 'scope', 'myRequestsCount', 'pendingApprovalsCount'));
+        return view('petty-cash.index', compact(
+            'pettyCashes',
+            'expenseCategories',
+            'hods',
+            'jobs',
+            'scope',
+            'type',
+            'totalCount',
+            'pettyCashCount',
+            'iouCount',
+            'myRequestsCount',
+            'pendingApprovalsCount'
+        ));
     }
 
     public function store(Request $request)
@@ -203,7 +239,7 @@ class PettyCashController extends Controller
         \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $pettyCash = PettyCashRequest::create([
-                'reference_number' => PettyCashRequest::generateReferenceNumber(),
+                'reference_number' => null,
                 'user_id' => $user->id,
                 'hod_id' => $hodId,
                 'department' => $user->department ?: 'General',
@@ -411,7 +447,12 @@ class PettyCashController extends Controller
                 $updateData['settlement_money_notes'] = $request->input('settlement_money_notes');
             }
 
+            if (empty($pettyCash->reference_number)) {
+                $updateData['reference_number'] = PettyCashRequest::generateVoucherNumber(true);
+            }
+
             $pettyCash->update($updateData);
+            $pettyCash->refresh();
 
             if ($pettyCash->user) {
                 $pettyCash->user->notify(new PettyCashNotification($pettyCash, 'iou_settled', $user));
@@ -434,7 +475,13 @@ class PettyCashController extends Controller
             $updateData['issued_money_notes'] = $request->input('issued_money_notes');
         }
 
+        // Generate voucher number only upon Finance Department approval
+        if (empty($pettyCash->reference_number)) {
+            $updateData['reference_number'] = PettyCashRequest::generateVoucherNumber($isIOU);
+        }
+
         $pettyCash->update($updateData);
+        $pettyCash->refresh();
 
         // 3. Notify Staff, Associated HOD, and Super Admins upon Super Admin Approval (with PDF Voucher)
         // 3. Notify Staff, Associated HOD, and Super Admins upon Super Admin Approval (with PDF Voucher)
@@ -484,7 +531,8 @@ class PettyCashController extends Controller
 
         $this->safeNotify($requestedUser, new PettyCashNotification($pettyCash, 'notify_sign_voucher', $user), 'notify_sign_voucher_user');
 
-        $msg = 'Notification email sent to ' . ($requestedUser->name ?? 'Staff') . ' to visit Finance and sign the voucher (' . $pettyCash->reference_number . ').';
+        $refDisplay = $pettyCash->reference_number ?: ('Request #' . $pettyCash->id);
+        $msg = 'Notification email sent to ' . ($requestedUser->name ?? 'Staff') . ' to visit Finance and sign the voucher (' . $refDisplay . ').';
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => $msg]);
         }
@@ -512,6 +560,54 @@ class PettyCashController extends Controller
         $requestedUser = User::find($pettyCash->user_id);
         $this->safeNotify($requestedUser, new PettyCashNotification($pettyCash, 'admin_rejected', $user, $request->admin_rejection_note), 'admin_rejected_user');
         return redirect()->back()->with('success', 'Petty Cash request rejected by Finance. Staff has been notified.');
+    }
+
+    public function sendToHod(Request $request, PettyCashRequest $pettyCash)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasAdminPrivileges()) {
+            return redirect()->back()->with('error', 'Unauthorized action. Only Finance Admin can perform this action.');
+        }
+
+        $request->validate([
+            'hod_id' => 'required|exists:users,id',
+            'hod_notes' => 'nullable|string|max:2000',
+        ]);
+
+        $hod = User::findOrFail($request->hod_id);
+
+        // If request is in settlement phase, route to pending_settlement_hod, otherwise pending_hod
+        $targetStatus = in_array($pettyCash->status, ['pending_settlement', 'pending_settlement_hod'])
+            ? 'pending_settlement_hod'
+            : 'pending_hod';
+
+        $updateData = [
+            'status' => $targetStatus,
+            'hod_id' => $hod->id,
+        ];
+
+        if ($request->filled('hod_notes')) {
+            $prefix = "\n[Transfer Note by Finance ({$user->name})]: ";
+            $updateData['extra_notes'] = $pettyCash->extra_notes ? ($pettyCash->extra_notes . $prefix . $request->hod_notes) : $request->hod_notes;
+        }
+
+        $pettyCash->update($updateData);
+
+        // Notify HOD
+        $this->safeNotify($hod, new PettyCashNotification($pettyCash, 'sent_to_hod', $user, $request->hod_notes), 'sent_to_hod');
+
+        // Notify requesting staff
+        $requestedUser = User::find($pettyCash->user_id);
+        if ($requestedUser && $requestedUser->id !== $user->id) {
+            $this->safeNotify($requestedUser, new PettyCashNotification($pettyCash, 'sent_to_hod', $user, $request->hod_notes), 'sent_to_hod_user');
+        }
+
+        $refDisplay = $pettyCash->reference_number ?: ('Request #' . $pettyCash->id);
+        $typeLabel = $pettyCash->isIOU() ? 'IOU' : 'Petty Cash';
+        $msg = "{$typeLabel} {$refDisplay} was successfully transferred to HOD {$hod->name} for approval.";
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function sendToManagement(Request $request, PettyCashRequest $pettyCash)
@@ -544,7 +640,8 @@ class PettyCashController extends Controller
         }
 
         $recipientCount = $managementRecipients->count();
-        $msg = "Petty Cash request #{$pettyCash->reference_number} was successfully forwarded to Management for approval.";
+        $refDisplay = $pettyCash->reference_number ?: ('Request #' . $pettyCash->id);
+        $msg = "Petty Cash {$refDisplay} was successfully forwarded to Management for approval.";
         if ($recipientCount > 0) {
             $msg .= " Notification email sent to {$recipientCount} Management recipient(s).";
         } else {
@@ -596,7 +693,8 @@ class PettyCashController extends Controller
             $this->safeNotify($requestedUser, new PettyCashNotification($pettyCash, 'management_approved', $user, $notesVal), 'management_approved_user');
         }
 
-        return redirect()->back()->with('success', "Petty Cash request #{$pettyCash->reference_number} was APPROVED by Management. Finance Admin has been notified by email to approve and disburse funds.");
+        $refDisplay = $pettyCash->reference_number ?: ('Request #' . $pettyCash->id);
+        return redirect()->back()->with('success', "Petty Cash {$refDisplay} was APPROVED by Management. Finance Admin has been notified by email to approve and disburse funds.");
     }
 
     public function managementReject(Request $request, PettyCashRequest $pettyCash)
@@ -625,7 +723,8 @@ class PettyCashController extends Controller
         $requestedUser = User::find($pettyCash->user_id);
         $this->safeNotify($requestedUser, new PettyCashNotification($pettyCash, 'management_rejected', $user, $request->management_rejection_note), 'management_rejected_user');
 
-        return redirect()->back()->with('success', "Petty Cash request #{$pettyCash->reference_number} was REJECTED by Management. Staff has been notified.");
+        $refDisplay = $pettyCash->reference_number ?: ('Request #' . $pettyCash->id);
+        return redirect()->back()->with('success', "Petty Cash {$refDisplay} was REJECTED by Management. Staff has been notified.");
     }
 
     public function settleIOU(Request $request, PettyCashRequest $pettyCash)
@@ -1042,6 +1141,11 @@ class PettyCashController extends Controller
             'total_amount' => $totalAmount,
             'is_iou' => $isIou,
         ];
+
+        // Generate voucher number if transitioning to an approved state without a voucher number
+        if (in_array($request->status, ['approved', 'iou_issued', 'settled']) && empty($pettyCash->reference_number)) {
+            $updateData['reference_number'] = PettyCashRequest::generateVoucherNumber($isIou);
+        }
 
         if ($request->filled('created_at')) {
             $updateData['created_at'] = $request->created_at;

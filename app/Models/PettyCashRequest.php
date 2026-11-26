@@ -183,12 +183,61 @@ class PettyCashRequest extends Model
         return $this->belongsTo(User::class, 'management_approved_by');
     }
 
-    public static function generateReferenceNumber()
+    /**
+     * Generate separate IOU voucher number starting with IOU001, IOU002, IOU003, ...
+     */
+    public static function generateIouVoucherNumber(): string
+    {
+        $iouRefs = self::whereNotNull('reference_number')
+            ->where('reference_number', 'LIKE', 'IOU%')
+            ->pluck('reference_number');
+
+        $max = 0;
+        foreach ($iouRefs as $ref) {
+            if (preg_match('/^IOU(\d+)$/i', $ref, $matches)) {
+                $num = (int) $matches[1];
+                if ($num > $max) {
+                    $max = $num;
+                }
+            }
+        }
+
+        return 'IOU' . str_pad($max + 1, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate standard Petty Cash voucher number (e.g. PC-2026-0001, PC-2026-0002).
+     */
+    public static function generateReferenceNumber(): string
     {
         $year = date('Y');
-        $last = self::whereYear('created_at', $year)->orderBy('id', 'desc')->first();
-        $sequence = $last ? ((int) substr($last->reference_number, -4)) + 1 : 1;
-        return 'PC-' . $year . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        $prefix = 'PC-' . $year . '-';
+
+        $refs = self::whereNotNull('reference_number')
+            ->where('reference_number', 'LIKE', $prefix . '%')
+            ->pluck('reference_number');
+
+        $max = 0;
+        $prefixLen = strlen($prefix);
+        foreach ($refs as $ref) {
+            $part = substr($ref, $prefixLen);
+            if (is_numeric($part)) {
+                $num = (int) $part;
+                if ($num > $max) {
+                    $max = $num;
+                }
+            }
+        }
+
+        return $prefix . str_pad($max + 1, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate the appropriate voucher number based on request type (IOU vs standard Petty Cash).
+     */
+    public static function generateVoucherNumber(bool $isIou = false): string
+    {
+        return $isIou ? self::generateIouVoucherNumber() : self::generateReferenceNumber();
     }
 
     /**

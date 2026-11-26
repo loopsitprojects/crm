@@ -488,7 +488,7 @@
 
         @if(auth()->user()->role === 'Manager')
         <!-- Manager Dashboard Charts -->
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="glass-card">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="chart-title mb-0"><i class="fas fa-funnel-dollar text-orange-500"></i> Deals Progress Pipeline</h3>
@@ -514,7 +514,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="glass-card flex flex-col">
                 <h3 class="chart-title"><i class="fas fa-trophy text-yellow-500"></i> Key Ongoing Deals</h3>
                 <div class="flex-1 overflow-y-auto">
@@ -559,7 +559,7 @@
         </div>
         @else
         <!-- Top Charts Row -->
-        <div class="grid grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="glass-card relative overflow-hidden">
                 @if($isHalloween)
                 <img src="{{ asset('images/halloween/pumpkin.svg') }}" class="absolute -bottom-3 -right-3 w-20 h-20 opacity-[0.06] pointer-events-none" alt="">
@@ -596,7 +596,7 @@
         </div>
 
         <!-- Bottom Charts Row -->
-        <div class="grid grid-cols-3 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="glass-card relative overflow-hidden">
                 @if($isHalloween)
                 <img src="{{ asset('images/halloween/pumpkin.svg') }}" class="absolute -bottom-3 -right-3 w-20 h-20 opacity-[0.06] pointer-events-none" alt="">

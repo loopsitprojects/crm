@@ -133,12 +133,12 @@
 
     <!-- Primary Scope Tabs (My Requests vs Approvals vs Team) -->
     <div class="bg-white rounded-xl shadow-sm p-2 flex border border-gray-100 space-x-2">
-        <a href="{{ route('petty-cash.index', ['scope' => 'my_requests']) }}"
+        <a href="{{ route('petty-cash.index', array_filter(['scope' => 'my_requests', 'type' => ($type ?? 'all') !== 'all' ? $type : null])) }}"
            class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all {{ $scope === 'my_requests' ? 'bg-brand-pink text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="fas fa-user-circle mr-1.5"></i> My Requests ({{ $myRequestsCount }})
         </a>
         @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD' || auth()->user()->role === 'HR Admin' || $pendingApprovalsCount > 0)
-            <a href="{{ route('petty-cash.index', ['scope' => 'approvals']) }}"
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => 'approvals', 'type' => ($type ?? 'all') !== 'all' ? $type : null])) }}"
                class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all relative {{ $scope === 'approvals' ? 'bg-brand-purple text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
                 <i class="fas fa-check-double mr-1.5"></i> Pending Approvals
                 @if($pendingApprovalsCount > 0)
@@ -149,55 +149,104 @@
             </a>
         @endif
         @if(auth()->user()->hasAdminPrivileges() || auth()->user()->role === 'HOD' || auth()->user()->role === 'HR Admin')
-            <a href="{{ route('petty-cash.index', ['scope' => 'all_team']) }}"
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => 'all_team', 'type' => ($type ?? 'all') !== 'all' ? $type : null])) }}"
                class="flex-1 text-center py-2.5 px-4 rounded-lg font-bold text-sm transition-all {{ $scope === 'all_team' ? 'bg-brand-blue text-white shadow-md' : 'text-gray-600 hover:bg-gray-50' }}">
                 <i class="fas fa-users-cog mr-1.5"></i> All Team Requests
             </a>
         @endif
     </div>
 
-    <!-- Status Filter Bar -->
-    <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center gap-2 border border-gray-100">
-        <a href="{{ route('petty-cash.index', ['scope' => $scope]) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ !request('status') || request('status') === 'all' ? 'bg-brand-pink text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
-            All Statuses
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_hod']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_hod' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
-            Pending HOD
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_settlement_hod']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_settlement_hod' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-900 hover:bg-amber-100' }}">
-            Settlement Exceeded
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_super_admin']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_super_admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100' }}">
-            Pending Finance Approval
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_settlement']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_settlement' ? 'bg-brand-purple text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
-            Settlement Pending
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'pending_management']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_management' ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
-            Pending Management
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'approved']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'approved' ? 'bg-green-600 text-white shadow-sm' : 'bg-green-50 text-green-800 hover:bg-green-100' }}">
-            Approved
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'rejected_by_hod']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_hod' ? 'bg-red-600 text-white shadow-sm' : 'bg-red-50 text-red-800 hover:bg-red-100' }}">
-            Rejected by HOD
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'rejected_by_super_admin']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_super_admin' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-800 hover:bg-rose-100' }}">
-            Rejected by Finance
-        </a>
-        <a href="{{ route('petty-cash.index', ['scope' => $scope, 'status' => 'rejected_by_management']) }}" 
-           class="px-4 py-2 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_management' ? 'bg-rose-800 text-white shadow-sm' : 'bg-rose-50 text-rose-900 hover:bg-rose-100' }}">
-            Rejected by Management
-        </a>
+    <!-- Filter Bar (Type & Status Filters) -->
+    <div class="bg-white rounded-xl shadow-sm p-4 space-y-3.5 border border-gray-100">
+        <!-- Request Type Filter -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-400 mr-1 flex items-center gap-1.5">
+                    <i class="fas fa-layer-group text-brand-purple text-xs"></i> Request Type:
+                </span>
+                <div class="inline-flex bg-gray-100/80 p-1 rounded-xl gap-1">
+                    <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'status' => request('status') !== 'all' ? request('status') : null, 'type' => 'all'])) }}"
+                       class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 {{ ($type ?? 'all') === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                        <i class="fas fa-list-ul text-[10px]"></i> All Requests
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full {{ ($type ?? 'all') === 'all' ? 'bg-gray-100 text-gray-700' : 'bg-gray-200/80 text-gray-600' }}">
+                            {{ $totalCount ?? 0 }}
+                        </span>
+                    </a>
+                    <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'status' => request('status') !== 'all' ? request('status') : null, 'type' => 'petty_cash'])) }}"
+                       class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 {{ ($type ?? 'all') === 'petty_cash' ? 'bg-brand-pink text-white shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                        <i class="fas fa-receipt text-[10px]"></i> Petty Cash
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full {{ ($type ?? 'all') === 'petty_cash' ? 'bg-white/25 text-white' : 'bg-gray-200/80 text-gray-600' }}">
+                            {{ $pettyCashCount ?? 0 }}
+                        </span>
+                    </a>
+                    <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'status' => request('status') !== 'all' ? request('status') : null, 'type' => 'iou'])) }}"
+                       class="px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 {{ ($type ?? 'all') === 'iou' ? 'bg-amber-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900' }}">
+                        <i class="fas fa-hand-holding-usd text-[10px]"></i> IOU Requests
+                        <span class="ml-1 px-1.5 py-0.5 text-[10px] font-extrabold rounded-full {{ ($type ?? 'all') === 'iou' ? 'bg-white/25 text-white' : 'bg-gray-200/80 text-gray-600' }}">
+                            {{ $iouCount ?? 0 }}
+                        </span>
+                    </a>
+                </div>
+            </div>
+
+            @if(request('status') || (($type ?? 'all') !== 'all'))
+                <a href="{{ route('petty-cash.index', ['scope' => $scope]) }}" 
+                   class="text-xs text-gray-500 hover:text-rose-600 flex items-center gap-1 font-medium transition">
+                    <i class="fas fa-times-circle"></i> Clear Filters
+                </a>
+            @endif
+        </div>
+
+        <!-- Status Filter Bar -->
+        <div class="flex flex-wrap items-center gap-2 pt-0.5">
+            <span class="text-xs font-bold uppercase tracking-wider text-gray-400 mr-1 flex items-center gap-1.5">
+                <i class="fas fa-tasks text-xs"></i> Status:
+            </span>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ !request('status') || request('status') === 'all' ? 'bg-brand-pink text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">
+                All Statuses
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'pending_hod'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_hod' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-800 hover:bg-amber-100' }}">
+                Pending HOD
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'pending_settlement_hod'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_settlement_hod' ? 'bg-amber-600 text-white shadow-sm' : 'bg-amber-50 text-amber-900 hover:bg-amber-100' }}">
+                Settlement Exceeded
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'pending_super_admin'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_super_admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-50 text-blue-800 hover:bg-blue-100' }}">
+                Pending Finance Approval
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'pending_settlement'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_settlement' ? 'bg-brand-purple text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
+                Settlement Pending
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'pending_management'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'pending_management' ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-800 hover:bg-purple-100' }}">
+                Pending Management
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'approved'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'approved' ? 'bg-green-600 text-white shadow-sm' : 'bg-green-50 text-green-800 hover:bg-green-100' }}">
+                Approved
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'settled'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'settled' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100' }}">
+                IOU Settled
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'rejected_by_hod'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_hod' ? 'bg-red-600 text-white shadow-sm' : 'bg-red-50 text-red-800 hover:bg-red-100' }}">
+                Rejected by HOD
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'rejected_by_super_admin'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_super_admin' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-800 hover:bg-rose-100' }}">
+                Rejected by Finance
+            </a>
+            <a href="{{ route('petty-cash.index', array_filter(['scope' => $scope, 'type' => ($type ?? 'all') !== 'all' ? $type : null, 'status' => 'rejected_by_management'])) }}" 
+               class="px-3.5 py-1.5 text-xs font-semibold rounded-full transition-all {{ request('status') === 'rejected_by_management' ? 'bg-rose-800 text-white shadow-sm' : 'bg-rose-50 text-rose-900 hover:bg-rose-100' }}">
+                Rejected by Management
+            </a>
+        </div>
     </div>
 
     <!-- Requests Container: Desktop Table & Mobile Cards -->
@@ -220,7 +269,26 @@
                 <tbody class="divide-y divide-gray-100 text-sm">
                     @forelse($pettyCashes as $pc)
                         <tr class="hover:bg-gray-50/60 transition-colors whitespace-nowrap">
-                            <td class="py-4 px-6 font-mono font-bold text-gray-900">{{ $pc->reference_number }}</td>
+                            <td class="py-4 px-6 font-mono font-bold text-gray-900">
+                                <div class="flex items-center gap-2">
+                                    @if($pc->is_iou)
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300" title="IOU Request">
+                                            <i class="fas fa-hand-holding-usd mr-1 text-[9px]"></i>IOU
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200" title="Petty Cash Request">
+                                            <i class="fas fa-receipt mr-1 text-[9px]"></i>PC
+                                        </span>
+                                    @endif
+                                    @if($pc->reference_number)
+                                        <span>{{ $pc->reference_number }}</span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200" title="Voucher number will be generated upon Finance approval">
+                                            #{{ $pc->id }} · Pending
+                                        </span>
+                                    @endif
+                                </div>
+                            </td>
                             <td class="py-4 px-6 font-medium text-gray-800">{{ $pc->user->name ?? '-' }}</td>
                             <td class="py-4 px-6 text-gray-600">{{ $pc->department ?: '-' }}</td>
                             <td class="py-4 px-6 text-gray-600">{{ $pc->hod->name ?? 'Not Assigned' }}</td>
@@ -297,7 +365,7 @@
                                         <i class="fas fa-eye mr-1"></i> Details
                                     </button>
                                     @if(auth()->user()->hasAdminPrivileges() && !in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management', 'settled']))
-                                        <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
+                                        <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
                                             @csrf
                                             <button type="submit"
                                                 class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center whitespace-nowrap shadow-sm" title="Notify {{ $pc->user->name ?? 'Staff' }} to come to Finance to sign the voucher">
@@ -335,27 +403,34 @@
 
                                     @if(auth()->user()->hasAdminPrivileges())
                                         @if($pc->status === 'pending_management')
-                                            <button onclick="openManagementApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ addslashes($pc->management_notes ?? '') }}')"
+                                            <button onclick="openManagementApproveModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ addslashes($pc->management_notes ?? '') }}')"
                                                 class="px-2.5 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors inline-flex items-center shadow-sm whitespace-nowrap">
                                                 <i class="fas fa-check mr-1"></i> Approve
                                             </button>
-                                            <button onclick="openManagementRejectModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
+                                            <button onclick="openManagementRejectModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
                                                 class="px-2.5 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition-colors inline-flex items-center shadow-sm whitespace-nowrap">
                                                 <i class="fas fa-times mr-1"></i> Reject
                                             </button>
                                         @elseif(auth()->user()->isFinanceAdmin())
                                             @if(!in_array($pc->status, ['approved', 'settled', 'rejected_by_management']))
-                                                <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', {{ $pc->isIOU() ? 'true' : 'false' }}, '{{ $pc->status }}', {{ $pc->total_amount }})"
+                                                <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', {{ $pc->isIOU() ? 'true' : 'false' }}, '{{ $pc->status }}', {{ $pc->total_amount }})"
                                                     class="px-2.5 py-1.5 bg-brand-pink text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors inline-flex items-center whitespace-nowrap">
                                                     <i class="fas fa-check-double mr-1"></i> {{ $pc->status === 'pending_settlement' ? 'Approve Settlement' : 'Approve' }}
                                                 </button>
                                                 @if(empty($pc->management_approved_at))
-                                                    <button onclick="openSendToManagementModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
+                                                    <button onclick="openSendToManagementModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
                                                         class="px-2.5 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center whitespace-nowrap shadow-sm" title="Send Approval Request to Management">
                                                         <i class="fas fa-paper-plane mr-1"></i> To Management
                                                     </button>
                                                 @endif
                                             @endif
+                                            @php
+                                                $defaultHodId = $pc->hod_id ?: ($pc->user->associated_hod->id ?? ($pc->user->supervisor_id ?? ''));
+                                            @endphp
+                                            <button onclick="openSendToHodModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ $defaultHodId }}')"
+                                                class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center whitespace-nowrap shadow-sm" title="Transfer Request to HOD Approval">
+                                                <i class="fas fa-user-check mr-1"></i> To HOD
+                                            </button>
                                             @if(!in_array($pc->status, ['rejected_by_super_admin', 'settled', 'approved', 'rejected_by_management']))
                                                 <button onclick="openAdminRejectModal({{ $pc->id }})"
                                                     class="px-2.5 py-1.5 bg-rose-700 text-white text-xs font-semibold rounded-lg hover:bg-rose-800 transition-colors inline-flex items-center whitespace-nowrap">
@@ -370,7 +445,7 @@
                                             class="px-2.5 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center shadow-sm" title="Edit Request">
                                             <i class="fas fa-edit mr-1"></i> Edit
                                         </button>
-                                        <form action="{{ route('petty-cash.destroy', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmDeletePettyCash(event, this, '{{ $pc->reference_number }}');">
+                                        <form action="{{ route('petty-cash.destroy', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmDeletePettyCash(event, this, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}');">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit"
@@ -392,8 +467,8 @@
                     @empty
                         <tr>
                             <td colspan="8" class="py-12 text-center text-gray-400">
-                                <i class="fas fa-receipt text-4xl mb-3 block"></i>
-                                No Petty Cash requests found.
+                                <i class="fas fa-receipt text-4xl mb-3 block text-gray-300"></i>
+                                No {{ ($type ?? 'all') === 'iou' ? 'IOU' : (($type ?? 'all') === 'petty_cash' ? 'Petty Cash' : '') }} requests found matching the current filters.
                             </td>
                         </tr>
                     @endforelse
@@ -409,9 +484,26 @@
                     <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-gray-100">
                         <div>
                             <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-0.5">Reference</span>
-                            <span class="font-mono text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 inline-block">
-                                {{ $pc->reference_number }}
-                            </span>
+                            <div class="flex items-center gap-1.5">
+                                @if($pc->is_iou)
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                                        IOU
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                                        PC
+                                    </span>
+                                @endif
+                                @if($pc->reference_number)
+                                    <span class="font-mono text-xs font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200/60 inline-block">
+                                        {{ $pc->reference_number }}
+                                    </span>
+                                @else
+                                    <span class="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 inline-block" title="Voucher number will be generated upon Finance approval">
+                                        #{{ $pc->id }} · Pending
+                                    </span>
+                                @endif
+                            </div>
                         </div>
                         <div>
                             @if($pc->status === 'pending_hod')
@@ -514,7 +606,7 @@
                             <i class="fas fa-eye mr-1"></i> Details
                         </button>
                         @if(auth()->user()->hasAdminPrivileges() && !in_array($pc->status, ['rejected_by_hod', 'rejected_by_super_admin', 'rejected_by_management', 'settled']))
-                            <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
+                            <form action="{{ route('petty-cash.notify-sign', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmNotifySignVoucher(event, this, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}');">
                                 @csrf
                                 <button type="submit"
                                     class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center shadow-sm" title="Notify {{ $pc->user->name ?? 'Staff' }} to come to Finance to sign the voucher">
@@ -552,27 +644,34 @@
 
                         @if(auth()->user()->hasAdminPrivileges())
                             @if($pc->status === 'pending_management')
-                                <button onclick="openManagementApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ addslashes($pc->management_notes ?? '') }}')"
+                                <button onclick="openManagementApproveModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ addslashes($pc->management_notes ?? '') }}')"
                                     class="px-2.5 py-1.5 bg-green-600 text-white text-xs font-bold rounded-lg hover:bg-green-700 transition-colors inline-flex items-center shadow-sm">
                                     <i class="fas fa-check mr-1"></i> Approve
                                 </button>
-                                <button onclick="openManagementRejectModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
+                                <button onclick="openManagementRejectModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
                                     class="px-2.5 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition-colors inline-flex items-center shadow-sm">
                                     <i class="fas fa-times mr-1"></i> Reject
                                 </button>
                             @elseif(auth()->user()->isFinanceAdmin())
                                 @if(!in_array($pc->status, ['approved', 'settled', 'rejected_by_management']))
-                                    <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', {{ $pc->isIOU() ? 'true' : 'false' }}, '{{ $pc->status }}', {{ $pc->total_amount }})"
+                                    <button onclick="openAdminApproveModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', {{ $pc->isIOU() ? 'true' : 'false' }}, '{{ $pc->status }}', {{ $pc->total_amount }})"
                                         class="px-2.5 py-1.5 bg-brand-pink text-white text-xs font-semibold rounded-lg hover:bg-brand-purple transition-colors inline-flex items-center">
                                         <i class="fas fa-check-double mr-1"></i> {{ $pc->status === 'pending_settlement' ? 'Approve Settlement' : 'Approve' }}
                                     </button>
                                     @if(empty($pc->management_approved_at))
-                                        <button onclick="openSendToManagementModal({{ $pc->id }}, '{{ $pc->reference_number }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
+                                        <button onclick="openSendToManagementModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}')"
                                             class="px-2.5 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center shadow-sm" title="Send Approval Request to Management">
                                             <i class="fas fa-paper-plane mr-1"></i> To Management
                                         </button>
                                     @endif
                                 @endif
+                                @php
+                                    $defaultHodId = $pc->hod_id ?: ($pc->user->associated_hod->id ?? ($pc->user->supervisor_id ?? ''));
+                                @endphp
+                                <button onclick="openSendToHodModal({{ $pc->id }}, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}', '{{ addslashes($pc->user->name ?? 'Staff') }}', '{{ number_format($pc->total_amount, 2) }}', '{{ $defaultHodId }}')"
+                                    class="px-2.5 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center shadow-sm" title="Transfer Request to HOD Approval">
+                                    <i class="fas fa-user-check mr-1"></i> To HOD
+                                </button>
                                 @if(!in_array($pc->status, ['rejected_by_super_admin', 'settled', 'approved', 'rejected_by_management']))
                                     <button onclick="openAdminRejectModal({{ $pc->id }})"
                                         class="px-2.5 py-1.5 bg-rose-700 text-white text-xs font-semibold rounded-lg hover:bg-rose-800 transition-colors inline-flex items-center">
@@ -587,7 +686,7 @@
                                 class="px-2.5 py-1.5 bg-amber-600 text-white text-xs font-semibold rounded-lg hover:bg-amber-700 transition-colors inline-flex items-center shadow-sm" title="Edit Request">
                                 <i class="fas fa-edit mr-1"></i> Edit
                             </button>
-                            <form action="{{ route('petty-cash.destroy', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmDeletePettyCash(event, this, '{{ $pc->reference_number }}');">
+                            <form action="{{ route('petty-cash.destroy', $pc) }}" method="POST" class="inline-block" onsubmit="return confirmDeletePettyCash(event, this, '{{ $pc->reference_number ?: ('Request #' . $pc->id) }}');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit"
@@ -608,7 +707,7 @@
             @empty
                 <div class="py-8 text-center text-gray-400 bg-white rounded-2xl border border-gray-100">
                     <i class="fas fa-receipt text-3xl text-gray-300 mb-2 block"></i>
-                    No Petty Cash requests found.
+                    No {{ ($type ?? 'all') === 'iou' ? 'IOU' : (($type ?? 'all') === 'petty_cash' ? 'Petty Cash' : '') }} requests found matching the current filters.
                 </div>
             @endforelse
         </div>
@@ -1385,6 +1484,82 @@
     </div>
 </div>
 
+<!-- Send to HOD Modal -->
+<div id="sendToHodModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
+    <div class="relative my-auto p-5 sm:p-6 border w-full max-w-lg shadow-2xl rounded-2xl bg-white max-h-[92vh] overflow-y-auto">
+        <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+            <h3 class="text-base sm:text-lg font-bold text-gray-800 flex items-center">
+                <i class="fas fa-user-check text-amber-500 mr-2"></i> Transfer to HOD for Approval
+            </h3>
+            <button onclick="closeSendToHodModal()" class="text-gray-400 hover:text-gray-600 p-1">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <form id="sendToHodForm" action="" method="POST" class="mt-4 space-y-4">
+            @csrf
+
+            <!-- Summary Box -->
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3.5 text-xs space-y-1.5 text-gray-700">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">Request Reference:</span>
+                    <strong class="font-mono text-amber-900 font-bold" id="hodRefDisplay">-</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">Requester:</span>
+                    <strong class="text-gray-800" id="hodRequesterDisplay">-</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 font-medium">Total Amount:</span>
+                    <strong class="text-brand-purple font-bold text-sm" id="hodAmountDisplay">LKR 0.00</strong>
+                </div>
+            </div>
+
+            <!-- Target HOD Selection -->
+            <div>
+                <label class="block text-xs sm:text-sm font-bold text-gray-700 mb-1">
+                    Select Head of Department (HOD) <span class="text-rose-500">*</span>
+                </label>
+                <select name="hod_id" id="sendHodSelect" required
+                    class="w-full rounded-lg border-gray-300 text-xs sm:text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm p-2.5">
+                    <option value="">-- Choose HOD --</option>
+                    @foreach($hods as $h)
+                        <option value="{{ $h->id }}">{{ $h->name }} ({{ $h->role }}{{ $h->department ? ' - ' . $h->department : '' }})</option>
+                    @endforeach
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">
+                    The request will be transferred to this HOD's approval queue with status <em>Pending HOD</em>.
+                </p>
+            </div>
+
+            <!-- Notes / Instructions Textarea -->
+            <div>
+                <label class="block text-xs sm:text-sm font-bold text-gray-700 mb-1">
+                    Note / Instructions for HOD <span class="text-gray-400 font-normal text-xs">(Optional)</span>
+                </label>
+                <textarea name="hod_notes" id="hodNotesInput" rows="3"
+                    placeholder="E.g., Please review and verify this expense before Finance approval..."
+                    class="w-full rounded-lg border-gray-300 text-xs sm:text-sm focus:border-amber-500 focus:ring-amber-500 shadow-sm p-2.5"></textarea>
+                <p class="text-[11px] text-gray-500 mt-1">
+                    This note will be included in the email notification to the HOD and requester.
+                </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+                <button type="button" onclick="closeSendToHodModal()"
+                    class="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600 transition-colors inline-flex items-center shadow-md">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Transfer to HOD
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Management Approve Confirmation Modal -->
 <div id="managementApproveModal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 p-2 sm:p-4 md:p-6 flex items-center justify-center">
     <div class="relative my-auto p-5 sm:p-6 border w-full max-w-lg shadow-2xl rounded-2xl bg-white max-h-[92vh] overflow-y-auto">
@@ -1966,6 +2141,25 @@
         document.getElementById('sendToManagementModal').classList.add('hidden');
     }
 
+    function openSendToHodModal(id, ref, requester, amount, defaultHodId) {
+        document.getElementById('sendToHodForm').action = "{{ route('petty-cash.index') }}/" + id + "/send-to-hod";
+        document.getElementById('hodRefDisplay').textContent = ref;
+        document.getElementById('hodRequesterDisplay').textContent = requester;
+        document.getElementById('hodAmountDisplay').textContent = 'LKR ' + amount;
+        document.getElementById('hodNotesInput').value = '';
+        const select = document.getElementById('sendHodSelect');
+        if (defaultHodId && select) {
+            select.value = defaultHodId;
+        } else if (select) {
+            select.value = '';
+        }
+        document.getElementById('sendToHodModal').classList.remove('hidden');
+    }
+
+    function closeSendToHodModal() {
+        document.getElementById('sendToHodModal').classList.add('hidden');
+    }
+
     function openManagementApproveModal(id, ref, requester, amount, financeNotes = '') {
         document.getElementById('managementApproveForm').action = "{{ route('petty-cash.index') }}/" + id + "/management-approve";
         document.getElementById('mgmtApproveRefDisplay').textContent = ref;
@@ -2302,7 +2496,7 @@
                     const baseUrl = "{{ url('/') }}";
                     const createdOrIssuedDate = formatDateStr(pc.created_at);
                     const settledDateDisplay = pc.settled_at ? formatDateStr(pc.settled_at) : (pc.status === 'settled' ? 'Settled' : 'Not Settled');
-                    document.getElementById('modalRef').innerHTML = `<i class="fas fa-info-circle text-brand-blue mr-2"></i> Request: ${pc.reference_number}`;
+                    document.getElementById('modalRef').innerHTML = `<i class="fas fa-info-circle text-brand-blue mr-2"></i> Request: ${pc.reference_number || ('#' + pc.id + ' (Pending Voucher)')}`;
                     
                     let itemsHtml = pc.items.map(item => `
                         <tr class="border-b border-gray-100 text-sm">
@@ -2731,9 +2925,9 @@
                 if (data.success) {
                     const pc = data.pettyCash;
                     document.getElementById('editPettyCashForm').action = "{{ route('petty-cash.index') }}/" + id;
-                    document.getElementById('editModalRef').innerHTML = `<i class="fas fa-edit text-amber-600 mr-2"></i> Edit Petty Cash Request: ${pc.reference_number}`;
+                    document.getElementById('editModalRef').innerHTML = `<i class="fas fa-edit text-amber-600 mr-2"></i> Edit Petty Cash Request: ${pc.reference_number || ('#' + pc.id + ' (Pending Voucher)')}`;
                     document.getElementById('editRequesterName').textContent = pc.user ? pc.user.name : 'Staff';
-                    document.getElementById('editRefDisplay').textContent = pc.reference_number;
+                    document.getElementById('editRefDisplay').textContent = pc.reference_number || ('#' + pc.id + ' (Pending Voucher)');
 
                     const hodSelect = document.getElementById('editHodId');
                     if (hodSelect) hodSelect.value = pc.hod_id;

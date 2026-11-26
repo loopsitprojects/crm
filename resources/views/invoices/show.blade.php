@@ -105,8 +105,10 @@
 
 @section('content')
 
+    <!-- Horizontal scroll wrapper so the fixed-layout document scrolls on narrow screens instead of squishing -->
+    <div class="overflow-x-auto print:overflow-visible">
     <!-- MAIN BORDERED CONTAINER -->
-    <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8" id="invoice-container">
+    <div class="max-w-4xl mx-auto bg-white border border-black p-4 md:p-[24px] print:border print:m-4 text-black font-sans text-[13px] leading-tight mb-8 min-w-[650px] print:min-w-0" id="invoice-container">
         
         <!-- Header with Logo for Proforma -->
         <div class="flex justify-between items-center mb-[20px] mt-2 invoice-header">
@@ -332,6 +334,7 @@
             This is a computer generated invoice, No manual signature requires
         </div>
 
+    </div>
     </div>
     </div>
     <style>

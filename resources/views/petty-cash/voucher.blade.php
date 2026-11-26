@@ -72,7 +72,7 @@
                 <i class="fas fa-arrow-left mr-2"></i> Back to Petty Cash
             </a>
         @else
-            <span class="text-xs font-bold text-gray-600">Reference: <span class="font-mono text-gray-900">{{ $pettyCash->reference_number }}</span></span>
+            <span class="text-xs font-bold text-gray-600">Reference: <span class="font-mono text-gray-900">{{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}</span></span>
         @endif
         <div class="flex items-center gap-2">
             <button id="downloadPdfBtn" type="button" onclick="generateAndDownloadPDF()" class="bg-gradient-to-r from-brand-pink to-brand-purple text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:opacity-90 transition-all inline-flex items-center cursor-pointer">
@@ -100,7 +100,7 @@
                 <span class="inline-block px-3.5 py-1 text-xs font-extrabold rounded-full bg-brand-pink/10 text-brand-pink border border-brand-pink/20 uppercase tracking-wide">
                     {{ $pettyCash->isIOU() ? 'IOU PETTY CASH VOUCHER' : 'PETTY CASH VOUCHER' }}
                 </span>
-                <h1 class="text-xl font-mono font-bold text-gray-800 mt-2">{{ $pettyCash->reference_number }}</h1>
+                <h1 class="text-xl font-mono font-bold text-gray-800 mt-2">{{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}</h1>
                 <div class="mt-1">
                     @if($pettyCash->status === 'approved')
                         <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-green-100 text-green-800">STATUS: APPROVED</span>
@@ -451,7 +451,7 @@
 
         const opt = {
             margin:       [6, 6, 12, 6],
-            filename:     'Petty_Cash_Voucher_{{ $pettyCash->reference_number }}.pdf',
+            filename:     'Petty_Cash_Voucher_{{ $pettyCash->reference_number ?: ('Request_' . $pettyCash->id) }}.pdf',
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { 
                 scale: 2, 

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Petty Cash Notification - {{ $pettyCash->reference_number }}</title>
+    <title>Petty Cash Notification - {{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}</title>
 </head>
 <body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #334155; margin: 0; padding: 20px; line-height: 1.5;">
 
@@ -35,7 +35,7 @@
                                 Reference Number
                             </span>
                             <h2 style="margin: 2px 0 0 0; font-size: 18px; font-weight: bold; color: #0f172a; font-family: monospace;">
-                                {{ $pettyCash->reference_number }}
+                                {{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}
                             </h2>
                         </td>
                         <td style="text-align: right; vertical-align: middle;">
@@ -271,7 +271,7 @@
                 @if(in_array($action, ['admin_approved', 'iou_settled', 'notify_sign_voucher']) || in_array($pettyCash->status, ['approved', 'iou_issued', 'settled']))
                 <!-- Attachment & Download Notice -->
                 <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 14px; text-align: center; font-size: 11px; color: #64748b;">
-                    📎 <strong>Voucher Access:</strong> You can download or view the official PDF voucher directly by <a href="{{ route('petty-cash.download-secure', $pettyCash->getSecureVoucherToken()) }}" target="_blank" style="color: #0284c7; font-weight: bold; text-decoration: underline;">clicking here</a> or via the attached file (<code>Petty_Cash_Voucher_{{ $pettyCash->reference_number }}.pdf</code>).
+                    📎 <strong>Voucher Access:</strong> You can download or view the official PDF voucher directly by <a href="{{ route('petty-cash.download-secure', $pettyCash->getSecureVoucherToken()) }}" target="_blank" style="color: #0284c7; font-weight: bold; text-decoration: underline;">clicking here</a> or via the attached file (<code>Petty_Cash_Voucher_{{ $pettyCash->reference_number ?: ('Request_' . $pettyCash->id) }}.pdf</code>).
                 </div>
                 @endif
 

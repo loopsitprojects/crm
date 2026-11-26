@@ -225,6 +225,7 @@ class PettyCashNotification extends Notification
         $isHodApprovalNeeded = (
             ($this->action === 'submitted' && $pettyCash->status === 'pending_hod') ||
             ($this->action === 'reappealed' && $pettyCash->status === 'pending_hod') ||
+            ($this->action === 'sent_to_hod' && in_array($pettyCash->status, ['pending_hod', 'pending_settlement_hod'])) ||
             ($this->action === 'iou_settlement_exceeded' && $pettyCash->status === 'pending_settlement_hod')
         );
 
@@ -302,7 +303,7 @@ class PettyCashNotification extends Notification
     public function toArray(object $notifiable): array
     {
         $actorName = $this->actor->name ?? 'System';
-        $ref = $this->pettyCash->reference_number;
+        $ref = $this->pettyCash->reference_number ?: ('#' . $this->pettyCash->id);
         $message = "";
 
         switch ($this->action) {
@@ -332,6 +333,9 @@ class PettyCashNotification extends Notification
                 break;
             case 'sent_to_management':
                 $message = "Petty Cash request {$ref} was forwarded to Management for approval." . ($this->note ? " Reason: {$this->note}" : "");
+                break;
+            case 'sent_to_hod':
+                $message = "Petty Cash request {$ref} was transferred to HOD for approval." . ($this->note ? " Reason: {$this->note}" : "");
                 break;
             case 'management_approved':
                 $message = "Petty Cash request {$ref} was APPROVED by Management and awaits Finance final approval & disbursement.";

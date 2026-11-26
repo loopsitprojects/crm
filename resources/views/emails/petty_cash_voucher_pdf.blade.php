@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Petty Cash Voucher {{ $pettyCash->reference_number }}</title>
+    <title>Petty Cash Voucher {{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}</title>
     <style>
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -202,7 +202,7 @@
             </td>
             <td style="vertical-align: top; text-align: right;">
                 <div class="voucher-title">{{ $pettyCash->isIOU() ? 'IOU PETTY CASH VOUCHER' : 'PETTY CASH VOUCHER' }}</div>
-                <div class="ref-no">{{ $pettyCash->reference_number }}</div>
+                <div class="ref-no">{{ $pettyCash->reference_number ?: ('Request #' . $pettyCash->id) }}</div>
                 <div style="margin-top: 4px;">
                     @if($pettyCash->status === 'approved')
                         <span class="status-badge status-approved">Status: Approved</span>

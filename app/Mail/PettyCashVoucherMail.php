@@ -36,7 +36,7 @@ class PettyCashVoucherMail extends Mailable
      */
     public function build()
     {
-        $ref = $this->pettyCash->reference_number;
+        $ref = $this->pettyCash->reference_number ?: ('Request #' . $this->pettyCash->id);
         $amountStr = "LKR " . number_format($this->pettyCash->total_amount, 2);
         $isIou = $this->pettyCash->isIOU();
         $typeStr = $isIou ? 'IOU Request' : 'Petty Cash Request';
@@ -119,6 +119,9 @@ class PettyCashVoucherMail extends Mailable
             'sent_to_management' => $isRequester
                 ? "Your {$typeStr} {$ref} Forwarded to Management for Approval"
                 : "Approval Request: {$typeStr} {$ref} ({$amountStr}) Sent to Management",
+            'sent_to_hod' => $isRequester
+                ? "Your {$typeStr} {$ref} Transferred to HOD for Approval"
+                : "Approval Required: {$typeStr} {$ref} ({$amountStr}) Transferred to HOD",
             'management_approved' => $isSuperAdmin
                 ? "Management APPROVED: {$typeStr} {$ref} ({$amountStr}) - Awaiting Finance Approval"
                 : ($isRequester 
@@ -190,6 +193,9 @@ class PettyCashVoucherMail extends Mailable
             'sent_to_management' => $isRequester
                 ? "Your {$typeStr} {$ref} for {$amountStr} has been forwarded to Management for approval by Finance."
                 : "Finance Admin ({$approverName}) has submitted {$typeStr} {$ref} for {$amountStr} requested by {$requesterName} for Management approval." . ($this->note ? " Reason/Note: {$this->note}" : ""),
+            'sent_to_hod' => $isRequester
+                ? "Your {$typeStr} {$ref} for {$amountStr} has been transferred by Finance to Head of Department ({$this->pettyCash->hod->name ?? 'HOD'}) for approval." . ($this->note ? " Note: {$this->note}" : "")
+                : "Finance Admin ({$approverName}) has transferred {$typeStr} {$ref} for {$amountStr} requested by {$requesterName} to you for HOD approval." . ($this->note ? " Note: {$this->note}" : ""),
             'management_approved' => $isSuperAdmin
                 ? "Petty cash request {$ref} for {$amountStr} requested by {$requesterName} was APPROVED by Management ({$approverName}). Please proceed with final Finance approval and cash disbursement." . ($this->note ? " Management Note: {$this->note}" : "")
                 : ($isRequester
@@ -237,7 +243,7 @@ class PettyCashVoucherMail extends Mailable
 
         try {
             $this->pettyCash->loadMissing('user', 'hod', 'items.category');
-            $ref = $this->pettyCash->reference_number;
+            $ref = $this->pettyCash->reference_number ?: ('Request_' . $this->pettyCash->id);
 
             $tempDir = storage_path('app/temp');
             if (!file_exists($tempDir)) {
